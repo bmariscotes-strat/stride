@@ -2,7 +2,9 @@ import { ArrowLeft, Settings, Users, Calendar, MoreHorizontal } from "lucide-rea
 import Link from "next/link"
 import { DashboardLayout } from "@/components/dashboard-layout"
 
-export default function ProjectPage({ params }: { params: { id: string } }) {
+export default async function ProjectPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -16,7 +18,7 @@ export default function ProjectPage({ params }: { params: { id: string } }) {
               <ArrowLeft size={20} />
             </Link>
             <div>
-              <h1 className="text-3xl font-bold text-outer_space-500 dark:text-platinum-500">Project #{params.id}</h1>
+              <h1 className="text-3xl font-bold text-outer_space-500 dark:text-platinum-500">Project #{id}</h1>
               <p className="text-payne's_gray-500 dark:text-french_gray-500 mt-1">
                 Kanban board view for project management
               </p>
