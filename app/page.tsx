@@ -7,10 +7,6 @@ export default function HomePage() {
     <div className="min-h-screen bg-gradient-to-br from-platinum-900 to-platinum-800 dark:from-outer_space-500 dark:to-payne's_gray-500">
       {/* Header */}
 
-      <main className="min-h-screen bg-blue-500 text-white flex items-center justify-center">
-        <h1 className="text-4xl font-bold">Tailwind is working!</h1>
-      </main>
-
       <header className="border-b border-french_gray-300 dark:border-payne's_gray-400 bg-white/80 dark:bg-outer_space-500/80 backdrop-blur-sm">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
