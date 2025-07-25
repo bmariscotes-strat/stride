@@ -7,6 +7,9 @@ import { ThemeProvider } from "@/components/theme-provider";
 
 export const metadata: Metadata = {
   title: "Project Management Tool",
+  icons: {
+    icon: "/favicon.ico",
+  },
   description: "Team collaboration and project management platform",
   generator: "v0.dev",
 };
