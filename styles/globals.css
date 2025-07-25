@@ -7,7 +7,7 @@
   --color-card-foreground: oklch(15% 0 0);
   --color-popover: oklch(100% 0 0);
   --color-popover-foreground: oklch(15% 0 0);
-  --color-primary: oklch(25% 0 0);
+  --color-primary: #244c81;
   --color-primary-foreground: oklch(98% 0 0);
   --color-secondary: oklch(96% 0 0);
   --color-secondary-foreground: oklch(25% 0 0);
@@ -73,4 +73,13 @@
     --color-sidebar-border: oklch(28% 0 0);
     --color-sidebar-ring: oklch(65% 0.15 250);
   }
+}
+
+/* Fonts */
+.font-brand {
+  font-family: var(--font-sen);
+}
+
+.font-primary {
+  font-family: var(--font-inclusive-sans);
 }
