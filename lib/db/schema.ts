@@ -40,7 +40,9 @@ export const users = pgTable(
     id: uuid("id").primaryKey().defaultRandom(),
     clerkUserId: varchar("clerk_user_id", { length: 255 }).notNull().unique(),
     email: varchar("email", { length: 255 }).notNull(),
-    name: varchar("name", { length: 255 }).notNull(),
+    username: varchar("username", { length: 255 }).notNull(),
+    firstName: varchar("first_name", { length: 255 }).notNull(),
+    lastName: varchar("last_name", { length: 255 }).notNull(),
     avatarUrl: text("avatar_url"),
     personalTeamId: uuid("personal_team_id"),
     schemaVersion: integer("schema_version").default(1).notNull(),
@@ -206,7 +208,7 @@ export const cardLabels = pgTable(
 export const cardComments = pgTable(
   "card_comments",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
+    id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
     cardId: uuid("card_id").notNull(),
     userId: uuid("user_id").notNull(),
     content: text("content").notNull(),
@@ -223,7 +225,7 @@ export const cardComments = pgTable(
 export const cardAttachments = pgTable(
   "card_attachments",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
+    id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
     cardId: uuid("card_id").notNull(),
     fileName: varchar("file_name", { length: 255 }).notNull(),
     fileUrl: text("file_url").notNull(),
@@ -247,7 +249,7 @@ export const cardAttachments = pgTable(
 export const activityLog = pgTable(
   "activity_log",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
+    id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
     projectId: uuid("project_id"),
     cardId: uuid("card_id"),
     userId: uuid("user_id").notNull(),
@@ -268,7 +270,7 @@ export const activityLog = pgTable(
 export const notifications = pgTable(
   "notifications",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
+    id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
     userId: uuid("user_id").notNull(),
     type: notificationTypeEnum("type").notNull(),
     title: varchar("title", { length: 255 }).notNull(),
@@ -291,7 +293,7 @@ export const notifications = pgTable(
 export const mentions = pgTable(
   "mentions",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
+    id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
     commentId: uuid("comment_id").notNull(),
     mentionedUserId: uuid("mentioned_user_id").notNull(),
     mentionedBy: uuid("mentioned_by").notNull(),

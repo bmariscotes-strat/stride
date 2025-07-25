@@ -2,7 +2,7 @@ CREATE TYPE "public"."notification_type" AS ENUM('task_assigned', 'task_updated'
 CREATE TYPE "public"."priority" AS ENUM('high', 'medium', 'low');--> statement-breakpoint
 CREATE TYPE "public"."team_role" AS ENUM('owner', 'admin', 'member', 'viewer');--> statement-breakpoint
 CREATE TABLE "activity_log" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"id" integer PRIMARY KEY GENERATED ALWAYS AS IDENTITY (sequence name "activity_log_id_seq" INCREMENT BY 1 MINVALUE 1 MAXVALUE 2147483647 START WITH 1 CACHE 1),
 	"project_id" uuid,
 	"card_id" uuid,
 	"user_id" uuid NOT NULL,
@@ -13,7 +13,7 @@ CREATE TABLE "activity_log" (
 );
 --> statement-breakpoint
 CREATE TABLE "card_attachments" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"id" integer PRIMARY KEY GENERATED ALWAYS AS IDENTITY (sequence name "card_attachments_id_seq" INCREMENT BY 1 MINVALUE 1 MAXVALUE 2147483647 START WITH 1 CACHE 1),
 	"card_id" uuid NOT NULL,
 	"file_name" varchar(255) NOT NULL,
 	"file_url" text NOT NULL,
@@ -23,7 +23,7 @@ CREATE TABLE "card_attachments" (
 );
 --> statement-breakpoint
 CREATE TABLE "card_comments" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"id" integer PRIMARY KEY GENERATED ALWAYS AS IDENTITY (sequence name "card_comments_id_seq" INCREMENT BY 1 MINVALUE 1 MAXVALUE 2147483647 START WITH 1 CACHE 1),
 	"card_id" uuid NOT NULL,
 	"user_id" uuid NOT NULL,
 	"content" text NOT NULL,
@@ -50,6 +50,7 @@ CREATE TABLE "cards" (
 	"position" integer NOT NULL,
 	"status" varchar(50),
 	"is_archived" boolean DEFAULT false NOT NULL,
+	"schema_version" integer DEFAULT 1 NOT NULL,
 	"created_at" timestamp DEFAULT now() NOT NULL,
 	"updated_at" timestamp DEFAULT now() NOT NULL
 );
@@ -73,7 +74,7 @@ CREATE TABLE "labels" (
 );
 --> statement-breakpoint
 CREATE TABLE "mentions" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"id" integer PRIMARY KEY GENERATED ALWAYS AS IDENTITY (sequence name "mentions_id_seq" INCREMENT BY 1 MINVALUE 1 MAXVALUE 2147483647 START WITH 1 CACHE 1),
 	"comment_id" uuid NOT NULL,
 	"mentioned_user_id" uuid NOT NULL,
 	"mentioned_by" uuid NOT NULL,
@@ -81,7 +82,7 @@ CREATE TABLE "mentions" (
 );
 --> statement-breakpoint
 CREATE TABLE "notifications" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"id" integer PRIMARY KEY GENERATED ALWAYS AS IDENTITY (sequence name "notifications_id_seq" INCREMENT BY 1 MINVALUE 1 MAXVALUE 2147483647 START WITH 1 CACHE 1),
 	"user_id" uuid NOT NULL,
 	"type" "notification_type" NOT NULL,
 	"title" varchar(255) NOT NULL,
@@ -101,6 +102,7 @@ CREATE TABLE "projects" (
 	"owner_id" uuid NOT NULL,
 	"color_theme" varchar(50),
 	"is_archived" boolean DEFAULT false NOT NULL,
+	"schema_version" integer DEFAULT 1 NOT NULL,
 	"created_at" timestamp DEFAULT now() NOT NULL,
 	"updated_at" timestamp DEFAULT now() NOT NULL,
 	CONSTRAINT "team_slug_unique" UNIQUE("team_id","slug")
@@ -123,6 +125,7 @@ CREATE TABLE "teams" (
 	"is_personal" boolean DEFAULT false NOT NULL,
 	"is_archived" boolean DEFAULT false NOT NULL,
 	"created_by" uuid NOT NULL,
+	"schema_version" integer DEFAULT 1 NOT NULL,
 	"created_at" timestamp DEFAULT now() NOT NULL,
 	"updated_at" timestamp DEFAULT now() NOT NULL,
 	CONSTRAINT "teams_slug_unique" UNIQUE("slug")
@@ -132,9 +135,12 @@ CREATE TABLE "users" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"clerk_user_id" varchar(255) NOT NULL,
 	"email" varchar(255) NOT NULL,
-	"name" varchar(255) NOT NULL,
+	"username" varchar(255) NOT NULL,
+	"first_name" varchar(255) NOT NULL,
+	"last_name" varchar(255) NOT NULL,
 	"avatar_url" text,
 	"personal_team_id" uuid,
+	"schema_version" integer DEFAULT 1 NOT NULL,
 	"created_at" timestamp DEFAULT now() NOT NULL,
 	"updated_at" timestamp DEFAULT now() NOT NULL,
 	CONSTRAINT "users_clerk_user_id_unique" UNIQUE("clerk_user_id")
