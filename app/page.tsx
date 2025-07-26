@@ -47,8 +47,8 @@ export default function HomePage() {
       {/* Hero Section */}
       <section className="py-20 px-4 sm:px-6 lg:px-8">
         <div className="container mx-auto text-center">
-          <h1 className="text-5xl md:text-6xl font-bold text-outer_space-500 dark:text-platinum-500 mb-6">
-            Manage Projects with
+          <h1 className="text-5xl md:text-6xl font-bold text-primary mb-6">
+            Manage
             <span className="text-blue_munsell-500"> Kanban Boards</span>
           </h1>
 

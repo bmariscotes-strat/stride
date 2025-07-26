@@ -1,13 +1,16 @@
 @import "tailwindcss";
 
+:root {
+  --color-primary: oklab(41.586% -0.02357 -0.09698);
+}
 @theme {
   --color-background: oklch(100% 0 0);
-  --color-foreground: oklch(15% 0 0);
+  --color-foreground: oklab(20.463% 0 -0.00002);
   --color-card: oklch(100% 0 0);
   --color-card-foreground: oklch(15% 0 0);
   --color-popover: oklch(100% 0 0);
   --color-popover-foreground: oklch(15% 0 0);
-  --color-primary: oklch(25% 0 0);
+  --color-primary: oklab(41.586% -0.02357 -0.09698);
   --color-primary-foreground: oklch(98% 0 0);
   --color-secondary: oklch(96% 0 0);
   --color-secondary-foreground: oklch(25% 0 0);
@@ -38,7 +41,7 @@
   --radius: 0.5rem;
 }
 
-@media (prefers-color-scheme: dark) {
+/* @media (prefers-color-scheme: dark) {
   @theme {
     --color-background: oklch(15% 0 0);
     --color-foreground: oklch(98% 0 0);
@@ -73,4 +76,18 @@
     --color-sidebar-border: oklch(28% 0 0);
     --color-sidebar-ring: oklch(65% 0.15 250);
   }
+} */
+
+body {
+  background: var(--background);
+  color: var(--color-foreground);
+}
+
+/* Fonts */
+.font-brand {
+  font-family: var(--font-sen);
+}
+
+.font-primary {
+  font-family: var(--font-inclusive-sans);
 }
