@@ -5,8 +5,6 @@ import { ClerkProvider } from "@clerk/nextjs";
 import "@/styles/globals.css";
 import { Providers } from "@/components/theme-provider";
 
-const inter = Inter({ subsets: ["latin"] });
-
 export const metadata: Metadata = {
   title: "Project Management Tool",
   icons: {
