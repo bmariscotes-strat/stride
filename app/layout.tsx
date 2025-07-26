@@ -21,7 +21,11 @@ export default function RootLayout({
 }) {
   return (
     <ClerkProvider>
-      <html lang="en" className={`${sen.variable} ${inclusive_sans.variable}`}>
+      <html
+        lang="en"
+        className={`${sen.variable} ${inclusive_sans.variable}`}
+        suppressHydrationWarning
+      >
         <body className={inclusive_sans.className}>
           <Providers>{children}</Providers>
         </body>
