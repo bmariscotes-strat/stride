@@ -46,7 +46,7 @@ export default function HomePage() {
         <div className="container mx-auto text-center">
           <h1 className="text-5xl md:text-6xl font-bold text-foreground mb-6">
             Manage Projects with
-            <span className="text-blue-600"> Kanban Boards</span>
+            <span className="text-primary"> Kanban Boards</span>
           </h1>
 
           <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
