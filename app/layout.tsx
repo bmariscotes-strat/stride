@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { sen, inclusive_sans } from "@/lib/ui/fonts";
 import { ClerkProvider } from "@clerk/nextjs";
 import "@/styles/globals.css";
-import { ThemeProvider } from "@/components/theme-provider";
+import { Providers } from "@/components/theme-provider";
 
 export const metadata: Metadata = {
   title: "Project Management Tool",
@@ -21,9 +21,13 @@ export default function RootLayout({
 }) {
   return (
     <ClerkProvider>
-      <html lang="en" className={`${sen.variable} ${inclusive_sans.variable}`}>
+      <html
+        lang="en"
+        className={`${sen.variable} ${inclusive_sans.variable}`}
+        suppressHydrationWarning
+      >
         <body className={inclusive_sans.className}>
-          <ThemeProvider>{children}</ThemeProvider>
+          <Providers>{children}</Providers>
         </body>
       </html>
     </ClerkProvider>
