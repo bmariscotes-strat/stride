@@ -13,8 +13,7 @@ export default function SignInPage() {
           </p>
         </div>
 
-        {/* TODO: Task 2.3 - Replace with actual Clerk SignIn component */}
-        <div className="bg-white dark:bg-outer_space-500 p-8 rounded-lg border border-french_gray-300 dark:border-payne's_gray-400">
+        <div className="bg-white p-8 rounded-lg">
           <SignIn
             afterSignInUrl="/blogs"
             redirectUrl="/blogs"
@@ -50,11 +49,3 @@ export default function SignInPage() {
     </div>
   );
 }
-
-/*
-TODO: Task 2.3 Implementation Notes:
-- Import SignIn from @clerk/nextjs
-- Configure sign-in redirects
-- Style to match design system
-- Add proper error handling
-*/

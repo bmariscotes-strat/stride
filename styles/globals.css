@@ -75,3 +75,12 @@
   --color-sidebar-border: oklch(14.9% 0 0);
   --color-sidebar-ring: oklch(83.1% 0 0);
 }
+
+/* Fonts */
+.font-sen {
+  font-family: var(--font-sen);
+}
+
+.font-inc-sans {
+  font-family: var(--font-inclusive-sans) !important;
+}
