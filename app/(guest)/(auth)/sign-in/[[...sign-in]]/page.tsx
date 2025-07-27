@@ -15,8 +15,8 @@ export default function SignInPage() {
 
         <div className="bg-white p-8 rounded-lg">
           <SignIn
-            afterSignInUrl="/blogs"
-            redirectUrl="/blogs"
+            afterSignInUrl="/dashboard"
+            redirectUrl="/dashboard"
             appearance={{
               elements: {
                 rootBox: "mx-auto",
