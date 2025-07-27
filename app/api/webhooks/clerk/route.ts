@@ -33,75 +33,112 @@ interface ClerkDeletedUserData {
  */
 
 export async function POST(req: Request) {
-  // Get the headers - await the promise
-  const headerPayload = await headers();
-  const svix_id = headerPayload.get("svix-id");
-  const svix_timestamp = headerPayload.get("svix-timestamp");
-  const svix_signature = headerPayload.get("svix-signature");
-
-  // If there are no headers, error out
-  if (!svix_id || !svix_timestamp || !svix_signature) {
-    return new Response("Error occurred -- no svix headers", {
-      status: 400,
-    });
-  }
-
-  // Get the body
-  const payload = await req.text();
-
-  // Get the Webhook secret
-  const WEBHOOK_SECRET = process.env.CLERK_WEBHOOK_SECRET;
-
-  if (!WEBHOOK_SECRET) {
-    throw new Error(
-      "Please add CLERK_WEBHOOK_SECRET to your environment variables"
-    );
-  }
-
-  // Create a new Svix instance with your secret.
-  const wh = new Webhook(WEBHOOK_SECRET);
-
-  let evt: WebhookEvent;
-
-  // Verify the payload with the headers
-  try {
-    evt = wh.verify(payload, {
-      "svix-id": svix_id,
-      "svix-timestamp": svix_timestamp,
-      "svix-signature": svix_signature,
-    }) as WebhookEvent;
-  } catch (err) {
-    console.error("Error verifying webhook:", err);
-    return new Response("Error occurred", {
-      status: 400,
-    });
-  }
-
-  // Handle the webhook
-  const eventType = evt.type;
+  console.log("🔵 Webhook received");
 
   try {
-    switch (eventType) {
-      case "user.created":
-        await handleUserCreated(evt.data as ClerkUserData);
-        break;
-      case "user.updated":
-        await handleUserUpdated(evt.data as ClerkUserData);
-        break;
-      case "user.deleted":
-        await handleUserDeleted(evt.data as ClerkDeletedUserData);
-        break;
-      default:
-        console.log(`Unhandled event type: ${eventType}`);
+    // Get the headers - await the promise
+    const headerPayload = await headers();
+    const svix_id = headerPayload.get("svix-id");
+    const svix_timestamp = headerPayload.get("svix-timestamp");
+    const svix_signature = headerPayload.get("svix-signature");
+
+    console.log("🔵 Headers extracted:", {
+      svix_id,
+      svix_timestamp,
+      svix_signature: !!svix_signature,
+    });
+
+    // If there are no headers, error out
+    if (!svix_id || !svix_timestamp || !svix_signature) {
+      console.log("❌ Missing svix headers");
+      return new Response("Error occurred -- no svix headers", {
+        status: 400,
+      });
     }
+
+    // Get the body
+    const payload = await req.text();
+    console.log("🔵 Payload received, length:", payload.length);
+
+    // Get the Webhook secret
+    const WEBHOOK_SECRET = process.env.CLERK_WEBHOOK_SECRET;
+
+    if (!WEBHOOK_SECRET) {
+      console.log("❌ Missing CLERK_WEBHOOK_SECRET");
+      throw new Error(
+        "Please add CLERK_WEBHOOK_SECRET to your environment variables"
+      );
+    }
+
+    console.log("🔵 Webhook secret found");
+
+    // Create a new Svix instance with your secret.
+    const wh = new Webhook(WEBHOOK_SECRET);
+
+    let evt: WebhookEvent;
+
+    // Verify the payload with the headers
+    try {
+      console.log("🔵 Attempting to verify webhook...");
+      evt = wh.verify(payload, {
+        "svix-id": svix_id,
+        "svix-timestamp": svix_timestamp,
+        "svix-signature": svix_signature,
+      }) as WebhookEvent;
+      console.log("✅ Webhook verified successfully");
+    } catch (err) {
+      console.error("❌ Error verifying webhook:", err);
+      return new Response("Error occurred during verification", {
+        status: 400,
+      });
+    }
+
+    // Handle the webhook
+    const eventType = evt.type;
+    console.log("🔵 Processing event type:", eventType);
+
+    try {
+      switch (eventType) {
+        case "user.created":
+          console.log("🔵 Handling user.created");
+          await handleUserCreated(evt.data as ClerkUserData);
+          break;
+        case "user.updated":
+          console.log("🔵 Handling user.updated");
+          await handleUserUpdated(evt.data as ClerkUserData);
+          break;
+        case "user.deleted":
+          console.log("🔵 Handling user.deleted");
+          await handleUserDeleted(evt.data as ClerkDeletedUserData);
+          break;
+        case "email.created":
+          console.log("🔵 Ignoring email.created event");
+          break;
+        default:
+          console.log(`🔵 Unhandled event type: ${eventType}`);
+      }
+    } catch (error) {
+      console.error(`❌ Error handling webhook ${eventType}:`, error);
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
+      return new Response(
+        `Error occurred while processing webhook: ${errorMessage}`,
+        {
+          status: 500,
+        }
+      );
+    }
+
+    console.log("✅ Webhook processed successfully");
+    return new Response("Webhook processed successfully", { status: 200 });
   } catch (error) {
-    console.error(`Error handling webhook ${eventType}:`, error);
-    return new Response("Error occurred while processing webhook", {
+    console.error("❌ Unexpected error in webhook:", error);
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error";
+    return new Response(`Unexpected error: ${errorMessage}`, {
       status: 500,
     });
   }
-
-  return new Response("Webhook processed successfully", { status: 200 });
 }
 
 /**
@@ -110,7 +147,10 @@ export async function POST(req: Request) {
 
 async function handleUserCreated(userData: ClerkUserData) {
   try {
-    console.log("Creating user:", userData);
+    console.log(
+      "🔵 Creating user with data:",
+      JSON.stringify(userData, null, 2)
+    );
 
     const result = await db
       .insert(users)
@@ -123,10 +163,12 @@ async function handleUserCreated(userData: ClerkUserData) {
       })
       .returning();
 
-    console.log(`User created in database:`, result[0]);
+    console.log("✅ User created in database:", result[0]);
   } catch (error) {
-    console.error("Error creating user in database:", error);
-    throw error;
+    console.error("❌ Database error creating user:", error);
+    const errorMessage =
+      error instanceof Error ? error.message : "Database error";
+    throw new Error(`Failed to create user: ${errorMessage}`);
   }
 }
 
