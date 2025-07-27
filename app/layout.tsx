@@ -1,32 +1,35 @@
-import type React from "react"
-import type { Metadata } from "next"
-import { Inter } from "next/font/google"
-import "./globals.css"
-// TODO: Task 2.1 - Set up Clerk authentication service
-// import { ClerkProvider } from "@clerk/nextjs"
-import { ThemeProvider } from "@/components/theme-provider"
-
-const inter = Inter({ subsets: ["latin"] })
+import type React from "react";
+import type { Metadata } from "next";
+import { sen, inclusive_sans } from "@/lib/ui/fonts";
+import { ClerkProvider } from "@clerk/nextjs";
+import "@/styles/globals.css";
+import { Providers } from "@/components/theme/ThemeProvider";
 
 export const metadata: Metadata = {
   title: "Project Management Tool",
+  icons: {
+    icon: "/favicon.ico",
+  },
   description: "Team collaboration and project management platform",
-    generator: 'v0.dev'
-}
+  generator: "v0.dev",
+};
 
 export default function RootLayout({
   children,
 }: {
-  children: React.ReactNode
+  children: React.ReactNode;
 }) {
   return (
-    // TODO: Task 2.1 - Wrap with ClerkProvider once Clerk is set up
-    // <ClerkProvider>
-    <html lang="en" suppressHydrationWarning>
-      <body className={inter.className}>
-        <ThemeProvider>{children}</ThemeProvider>
-      </body>
-    </html>
-    // </ClerkProvider>
-  )
+    <ClerkProvider>
+      <html
+        lang="en"
+        className={`${sen.variable} ${inclusive_sans.variable}`}
+        suppressHydrationWarning
+      >
+        <body className={inclusive_sans.className}>
+          <Providers>{children}</Providers>
+        </body>
+      </html>
+    </ClerkProvider>
+  );
 }
