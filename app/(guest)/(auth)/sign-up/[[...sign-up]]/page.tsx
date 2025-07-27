@@ -2,8 +2,8 @@ import { SignUp } from "@clerk/nextjs";
 
 export default function SignUpPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-platinum-900 dark:bg-outer_space-600 px-4">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center bg-platinum-900 px-4">
+      <div className="w-full max-w-md py-10">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-outer_space-500 dark:text-platinum-500 mb-2">
             Create Account
@@ -13,8 +13,7 @@ export default function SignUpPage() {
           </p>
         </div>
 
-        {/* TODO: Task 2.3 - Replace with actual Clerk SignUp component */}
-        <div className="bg-white dark:bg-outer_space-500 p-8 rounded-lg border border-french_gray-300 dark:border-payne's_gray-400">
+        <div className="bg-white dark:bg-outer_space-500 px-8 rounded-lg">
           <SignUp
             afterSignUpUrl="/blogs"
             appearance={{
