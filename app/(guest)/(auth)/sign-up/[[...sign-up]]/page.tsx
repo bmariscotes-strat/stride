@@ -15,7 +15,7 @@ export default function SignUpPage() {
 
         <div className="bg-white dark:bg-outer_space-500 px-8 rounded-lg">
           <SignUp
-            afterSignUpUrl="/blogs"
+            afterSignUpUrl="/dashboard"
             appearance={{
               variables: {
                 colorPrimary: "#244c81",
