@@ -66,7 +66,7 @@ export async function POST(req: Request) {
     if (!WEBHOOK_SECRET) {
       console.log("❌ Missing CLERK_WEBHOOK_SECRET");
       throw new Error(
-        "Please add CLERK_WEBHOOK_SECRET to your environment variables"
+        "Please add CLERK_WEBHOOK_SECRET to your environment variable"
       );
     }
 
