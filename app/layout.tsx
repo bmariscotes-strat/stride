@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { sen, inclusive_sans } from "@/lib/ui/fonts";
 import { ClerkProvider } from "@clerk/nextjs";
 import "@/styles/globals.css";
-import { Providers } from "@/components/theme-provider";
+import { Providers } from "@/components/theme/ThemeProvider";
 
 export const metadata: Metadata = {
   title: "Project Management Tool",

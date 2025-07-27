@@ -18,7 +18,7 @@ export default function SignUpPage() {
             afterSignUpUrl="/blogs"
             appearance={{
               variables: {
-                colorPrimary: "#6d67c1",
+                colorPrimary: "#244c81",
                 colorText: "#374151",
                 colorTextSecondary: "#6b7280",
                 colorBackground: "#ffffff",
