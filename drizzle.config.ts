@@ -1,8 +1,10 @@
 import type { Config } from "drizzle-kit";
 import dotenv from "dotenv";
 
-// Change
-dotenv.config({ path: ".env.local" });
+dotenv.config({
+  path:
+    process.env.NODE_ENV === "production" ? ".env.production" : ".env.local",
+});
 
 export default {
   schema: "./lib/db/schema.ts",
