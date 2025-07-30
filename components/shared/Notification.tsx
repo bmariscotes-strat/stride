@@ -162,10 +162,10 @@ export default function Notifications() {
       {/* Notification Bell Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="relative flex items-center justify-center w-4 h-3 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-full transition-colors duration-200"
+        className="relative flex items-center justify-center w-4.5 h-4.5 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-full transition-colors duration-200"
         aria-label="Notifications"
       >
-        <Bell className="w-10 h-10" />
+        <Bell className="w-12 h-12" />
         {unreadCount > 0 && (
           <span className="absolute -top-1.5 -right-1 flex items-center justify-center w-3 h-3 text-[8px] font-bold text-white bg-red-500 rounded-full">
             {unreadCount > 99 ? "99+" : unreadCount}
