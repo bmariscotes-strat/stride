@@ -9,15 +9,11 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-
   return (
     <div className="min-h-screen">
-      {/* <Sidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} /> */}
-
       {/* Main content */}
       <div>
-        <Header setSidebarOpen={setSidebarOpen} />
+        <Header />
 
         {/* Page content */}
         <main className="py-8 px-4 sm:px-6 lg:px-8">
