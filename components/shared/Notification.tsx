@@ -162,7 +162,7 @@ export default function Notifications() {
       {/* Notification Bell Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="relative flex items-center justify-center w-4.5 h-4.5 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-full transition-colors duration-200"
+        className="relative flex items-center justify-center w-4 h-4 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-full transition-colors duration-200"
         aria-label="Notifications"
       >
         <Bell className="w-12 h-12" />

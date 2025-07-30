@@ -58,7 +58,7 @@ export default function UserDropdown() {
           name={user.name}
           email={user.email}
           src={user.src}
-          size="32"
+          size="28"
           round={true}
           className="cursor-pointer"
         />
