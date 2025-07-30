@@ -3,7 +3,6 @@
 import type React from "react";
 import { useState, Suspense } from "react";
 import Header from "@/components/layout/dashboard/Header";
-import Sidebar from "@/components/layout/dashboard/Sidebar";
 
 export default function DashboardLayout({
   children,
@@ -14,10 +13,10 @@ export default function DashboardLayout({
 
   return (
     <div className="min-h-screen">
-      <Sidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
+      {/* <Sidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} /> */}
 
       {/* Main content */}
-      <div className="lg:pl-64">
+      <div>
         <Header setSidebarOpen={setSidebarOpen} />
 
         {/* Page content */}
