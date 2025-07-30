@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 import Notifications from "@/components/shared/Notification";
 import { useState } from "react";
 import NavDropdown from "@/components/shared/NavDropdown";
+import UserDropdown from "@/components/shared/UserDropdown";
 
 const teamsPlaceholder = [
   {
@@ -108,9 +109,7 @@ export default function Header() {
         {/* Right Side Nav */}
         <section className="flex items-center space-x-4">
           <Notifications />
-          <div className="hidden md:flex items-center space-x-8">
-            <Link href="/sign-in">Get Started</Link>
-          </div>
+          <UserDropdown />
         </section>
 
         {/* Mobile Menu Button */}
