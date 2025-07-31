@@ -3,6 +3,9 @@
 // MAIN EXPORT FILE - Re-export all types for easy importing
 // =============================================================================
 
+// Base types
+export type { UUID } from "./base";
+
 // Enums
 export type { TeamRole, Priority, NotificationType, UserRole } from "./enums";
 

@@ -1,44 +1,45 @@
 // types/base.ts
 import type { TeamRole, Priority, NotificationType } from "./enums";
+export type UUID = string & { readonly __brand: unique symbol };
 
 // =============================================================================
 // CORE ENTITY INTERFACES - Main business entities
 // =============================================================================
 
 export interface User {
-  id: string;
+  id: UUID;
   clerkUserId: string;
   email: string;
   username: string;
   firstName: string;
   lastName: string;
   avatarUrl: string | null;
-  personalTeamId: string | null;
+  personalTeamId: UUID | null;
   schemaVersion: number;
   createdAt: Date;
   updatedAt: Date;
 }
 
 export interface Team {
-  id: string;
+  id: UUID;
   name: string;
   slug: string;
   description: string | null;
   isPersonal: boolean;
   isArchived: boolean;
-  createdBy: string;
+  createdBy: UUID;
   schemaVersion: number;
   createdAt: Date;
   updatedAt: Date;
 }
 
 export interface Project {
-  id: string;
+  id: UUID;
   name: string;
   slug: string;
   description: string | null;
-  teamId: string;
-  ownerId: string;
+  teamId: UUID;
+  ownerId: UUID;
   colorTheme: string | null;
   isArchived: boolean;
   schemaVersion: number;
@@ -47,8 +48,8 @@ export interface Project {
 }
 
 export interface Column {
-  id: string;
-  projectId: string;
+  id: UUID;
+  projectId: UUID;
   name: string;
   position: number;
   color: string | null;
@@ -57,11 +58,11 @@ export interface Column {
 }
 
 export interface Card {
-  id: string;
-  columnId: string;
+  id: UUID;
+  columnId: UUID;
   title: string;
   description: string | null;
-  assigneeId: string | null;
+  assigneeId: UUID | null;
   priority: Priority | null;
   startDate: Date | null;
   dueDate: Date | null;
@@ -74,10 +75,10 @@ export interface Card {
 }
 
 export interface Label {
-  id: string;
+  id: UUID;
   name: string;
   color: string;
-  teamId: string;
+  teamId: UUID;
   createdAt: Date;
 }
 
@@ -86,17 +87,17 @@ export interface Label {
 // =============================================================================
 
 export interface TeamMember {
-  id: string;
-  teamId: string;
-  userId: string;
+  id: UUID;
+  teamId: UUID;
+  userId: UUID;
   role: TeamRole;
   joinedAt: Date;
 }
 
 export interface CardLabel {
-  id: string;
-  cardId: string;
-  labelId: string;
+  id: UUID;
+  cardId: UUID;
+  labelId: UUID;
 }
 
 // =============================================================================
@@ -105,8 +106,8 @@ export interface CardLabel {
 
 export interface CardComment {
   id: number;
-  cardId: string;
-  userId: string;
+  cardId: UUID;
+  userId: UUID;
   content: string;
   createdAt: Date;
   updatedAt: Date;
@@ -114,11 +115,11 @@ export interface CardComment {
 
 export interface CardAttachment {
   id: number;
-  cardId: string;
+  cardId: UUID;
   fileName: string;
   fileUrl: string;
   fileSize: number | null;
-  uploadedBy: string;
+  uploadedBy: UUID;
   createdAt: Date;
 }
 
@@ -128,9 +129,9 @@ export interface CardAttachment {
 
 export interface ActivityLog {
   id: number;
-  projectId: string | null;
-  cardId: string | null;
-  userId: string;
+  projectId: UUID | null;
+  cardId: UUID | null;
+  userId: UUID;
   actionType: string;
   oldValue: string | null;
   newValue: string | null;
@@ -139,20 +140,20 @@ export interface ActivityLog {
 
 export interface Notification {
   id: number;
-  userId: string;
+  userId: UUID;
   type: NotificationType;
   title: string;
   message: string | null;
-  cardId: string | null;
-  projectId: string | null;
+  cardId: UUID | null;
+  projectId: UUID | null;
   isRead: boolean;
   createdAt: Date;
 }
 
 export interface Mention {
   id: number;
-  commentId: string;
-  mentionedUserId: string;
-  mentionedBy: string;
+  commentId: UUID;
+  mentionedUserId: UUID;
+  mentionedBy: UUID;
   createdAt: Date;
 }

@@ -1,5 +1,6 @@
 // types/create.ts
 import type { TeamRole, Priority, NotificationType } from "./enums";
+import type { UUID } from "@/types/base";
 
 // =============================================================================
 // CREATE INTERFACES - For creating new records (omitting auto-generated fields)
@@ -11,97 +12,97 @@ export interface CreateUser {
   username: string;
   firstName: string;
   lastName: string;
-  avatarUrl?: string;
-  personalTeamId?: string;
+  avatarUrl?: string | null;
+  personalTeamId?: UUID | null;
 }
 
 export interface CreateTeam {
   name: string;
   slug: string;
-  description?: string;
+  description?: string | null;
   isPersonal?: boolean;
-  createdBy: string;
+  createdBy: UUID;
 }
 
 export interface CreateProject {
   name: string;
   slug: string;
-  description?: string;
-  teamId: string;
-  ownerId: string;
-  colorTheme?: string;
+  description?: string | null;
+  teamId: UUID;
+  ownerId: UUID;
+  colorTheme?: string | null;
 }
 
 export interface CreateColumn {
-  projectId: string;
+  projectId: UUID;
   name: string;
   position: number;
-  color?: string;
+  color?: string | null;
 }
 
 export interface CreateCard {
-  columnId: string;
+  columnId: UUID;
   title: string;
-  description?: string;
-  assigneeId?: string;
-  priority?: Priority;
-  startDate?: Date;
-  dueDate?: Date;
+  description?: string | null;
+  assigneeId?: UUID | null;
+  priority?: Priority | null;
+  startDate?: Date | null;
+  dueDate?: Date | null;
   position: number;
-  status?: string;
+  status?: string | null;
 }
 
 export interface CreateLabel {
   name: string;
   color: string;
-  teamId: string;
+  teamId: UUID;
 }
 
 export interface CreateTeamMember {
-  teamId: string;
-  userId: string;
+  teamId: UUID;
+  userId: UUID;
   role?: TeamRole;
 }
 
 export interface CreateCardLabel {
-  cardId: string;
-  labelId: string;
+  cardId: UUID;
+  labelId: UUID;
 }
 
 export interface CreateCardComment {
-  cardId: string;
-  userId: string;
+  cardId: UUID;
+  userId: UUID;
   content: string;
 }
 
 export interface CreateCardAttachment {
-  cardId: string;
+  cardId: UUID;
   fileName: string;
   fileUrl: string;
-  fileSize?: number;
-  uploadedBy: string;
+  fileSize?: number | null;
+  uploadedBy: UUID;
 }
 
 export interface CreateActivityLog {
-  projectId?: string;
-  cardId?: string;
-  userId: string;
+  projectId?: UUID | null;
+  cardId?: UUID | null;
+  userId: UUID;
   actionType: string;
-  oldValue?: string;
-  newValue?: string;
+  oldValue?: string | null;
+  newValue?: string | null;
 }
 
 export interface CreateNotification {
-  userId: string;
+  userId: UUID;
   type: NotificationType;
   title: string;
-  message?: string;
-  cardId?: string;
-  projectId?: string;
+  message?: string | null;
+  cardId?: UUID | null;
+  projectId?: UUID | null;
 }
 
 export interface CreateMention {
-  commentId: string;
-  mentionedUserId: string;
-  mentionedBy: string;
+  commentId: UUID;
+  mentionedUserId: UUID;
+  mentionedBy: UUID;
 }

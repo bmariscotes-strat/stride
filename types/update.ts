@@ -1,66 +1,67 @@
 // types/update.ts
 import type { TeamRole, Priority, NotificationType } from "./enums";
+import type { UUID } from "@/types/base";
 
 // =============================================================================
 // UPDATE INTERFACES - For updating existing records (all fields optional except id)
 // =============================================================================
 
 export interface UpdateUser {
-  id: string;
+  id: UUID;
   email?: string;
   username?: string;
   firstName?: string;
   lastName?: string;
-  avatarUrl?: string;
-  personalTeamId?: string;
+  avatarUrl?: string | null;
+  personalTeamId?: UUID | null;
 }
 
 export interface UpdateTeam {
-  id: string;
+  id: UUID;
   name?: string;
   slug?: string;
-  description?: string;
+  description?: string | null;
   isArchived?: boolean;
 }
 
 export interface UpdateProject {
-  id: string;
+  id: UUID;
   name?: string;
   slug?: string;
-  description?: string;
-  colorTheme?: string;
+  description?: string | null;
+  colorTheme?: string | null;
   isArchived?: boolean;
 }
 
 export interface UpdateColumn {
-  id: string;
+  id: UUID;
   name?: string;
   position?: number;
-  color?: string;
+  color?: string | null;
 }
 
 export interface UpdateCard {
-  id: string;
-  columnId?: string;
+  id: UUID;
+  columnId?: UUID;
   title?: string;
-  description?: string;
-  assigneeId?: string;
-  priority?: Priority;
-  startDate?: Date;
-  dueDate?: Date;
+  description?: string | null;
+  assigneeId?: UUID | null;
+  priority?: Priority | null;
+  startDate?: Date | null;
+  dueDate?: Date | null;
   position?: number;
-  status?: string;
+  status?: string | null;
   isArchived?: boolean;
 }
 
 export interface UpdateLabel {
-  id: string;
+  id: UUID;
   name?: string;
   color?: string;
 }
 
 export interface UpdateTeamMember {
-  id: string;
+  id: UUID;
   role?: TeamRole;
 }
 
@@ -73,5 +74,5 @@ export interface UpdateNotification {
   id: number;
   isRead?: boolean;
   title?: string;
-  message?: string;
+  message?: string | null;
 }
