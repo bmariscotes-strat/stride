@@ -2,14 +2,14 @@
 
 import { useState, useRef, useEffect } from "react";
 import { Settings, LogOut, ChevronDown } from "lucide-react";
-// Install: npm install react-avatar
 import Avatar from "react-avatar";
+import { SignOutButton } from "@clerk/nextjs";
 
 export default function UserDropdown() {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // User data - you can get this from your auth context/props
+  // User data
   const user = {
     name: "John Doe",
     email: "john.doe@example.com",
@@ -36,15 +36,6 @@ export default function UserDropdown() {
   const handleSettings = () => {
     console.log("Navigate to settings");
     setIsOpen(false);
-    // Add your navigation logic here
-    // Example: router.push('/settings')
-  };
-
-  const handleLogout = () => {
-    console.log("Logout user");
-    setIsOpen(false);
-    // Add your logout logic here
-    // Example: signOut()
   };
 
   return (
@@ -87,13 +78,12 @@ export default function UserDropdown() {
             <div className="border-t border-gray-100 my-1" />
 
             {/* Logout Link */}
-            <button
-              onClick={handleLogout}
-              className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors duration-150"
-            >
-              <LogOut className="w-4 h-4 mr-3 text-red-500" />
-              Logout
-            </button>
+            <SignOutButton>
+              <button className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors duration-150">
+                <LogOut className="w-4 h-4 mr-3 text-red-500" />
+                Logout
+              </button>
+            </SignOutButton>
           </div>
         </div>
       )}
