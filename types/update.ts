@@ -1,23 +1,22 @@
 // types/update.ts
 import type { TeamRole, Priority, NotificationType } from "./enums";
-import type { UUID } from "@/types/base";
 
 // =============================================================================
 // UPDATE INTERFACES - For updating existing records (all fields optional except id)
 // =============================================================================
 
 export interface UpdateUser {
-  id: UUID;
+  id: string;
   email?: string;
   username?: string;
   firstName?: string;
   lastName?: string;
   avatarUrl?: string | null;
-  personalTeamId?: UUID | null;
+  personalTeamId?: string | null;
 }
 
 export interface UpdateTeam {
-  id: UUID;
+  id: string;
   name?: string;
   slug?: string;
   description?: string | null;
@@ -25,7 +24,7 @@ export interface UpdateTeam {
 }
 
 export interface UpdateProject {
-  id: UUID;
+  id: string;
   name?: string;
   slug?: string;
   description?: string | null;
@@ -34,18 +33,18 @@ export interface UpdateProject {
 }
 
 export interface UpdateColumn {
-  id: UUID;
+  id: string;
   name?: string;
   position?: number;
   color?: string | null;
 }
 
 export interface UpdateCard {
-  id: UUID;
-  columnId?: UUID;
+  id: string;
+  columnId?: string;
   title?: string;
   description?: string | null;
-  assigneeId?: UUID | null;
+  assigneeId?: string | null;
   priority?: Priority | null;
   startDate?: Date | null;
   dueDate?: Date | null;
@@ -55,13 +54,13 @@ export interface UpdateCard {
 }
 
 export interface UpdateLabel {
-  id: UUID;
+  id: string;
   name?: string;
   color?: string;
 }
 
 export interface UpdateTeamMember {
-  id: UUID;
+  id: string;
   role?: TeamRole;
 }
 

@@ -5,25 +5,20 @@ import { users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import type { User as ClerkUser } from "@clerk/nextjs/server";
-import type { User, CreateUser, UUID } from "@/types";
-
-// Type assertion helper to convert Drizzle results to our UUID types
-function assertUser(user: any): User {
-  return user as User;
-}
+import type { User, CreateUser } from "@/types";
 
 /**
  * Get a user by ID
- * @param userId UUID - user UUID
+ * @param userId string - user UUID
  * @returns user object or null if not found
  */
-export async function getUserById(userId: UUID): Promise<User | null> {
+export async function getUserById(userId: string): Promise<User | null> {
   try {
     const user = await db.query.users.findFirst({
       where: (u, { eq }) => eq(u.id, userId),
     });
 
-    return user ? assertUser(user) : null;
+    return user || null;
   } catch (error) {
     console.error("Error fetching user by ID:", error);
     return null;
@@ -41,7 +36,7 @@ export async function getUserByClerkId(clerkId: string): Promise<User | null> {
       where: (u, { eq }) => eq(u.clerkUserId, clerkId),
     });
 
-    return user ? assertUser(user) : null;
+    return user || null;
   } catch (error) {
     console.error("Error fetching user by Clerk ID:", error);
     return null;
@@ -59,7 +54,7 @@ export async function getUserByEmail(email: string): Promise<User | null> {
       where: (u, { eq }) => eq(u.email, email),
     });
 
-    return user ? assertUser(user) : null;
+    return user || null;
   } catch (error) {
     console.error("Error fetching user by email:", error);
     return null;
@@ -79,7 +74,7 @@ export async function getUserByUsername(
       where: (u, { eq }) => eq(u.username, username),
     });
 
-    return user ? assertUser(user) : null;
+    return user || null;
   } catch (error) {
     console.error("Error fetching user by username:", error);
     return null;
@@ -163,7 +158,7 @@ export async function createOrUpdateUser(
         .where(eq(users.clerkUserId, clerkUser.id))
         .returning();
 
-      return updatedUser ? assertUser(updatedUser) : null;
+      return updatedUser;
     } else {
       // Generate unique username
       const username = await generateUniqueUsername(email, firstName, lastName);
@@ -180,7 +175,7 @@ export async function createOrUpdateUser(
 
       const [newUser] = await db.insert(users).values(newUserData).returning();
 
-      return newUser ? assertUser(newUser) : null;
+      return newUser;
     }
   } catch (error) {
     console.error("Error creating/updating user:", error);
@@ -190,12 +185,12 @@ export async function createOrUpdateUser(
 
 /**
  * Update user profile
- * @param userId UUID - user ID
+ * @param userId string - user ID
  * @param updateData - partial user data to update
  * @returns updated user or null if error
  */
 export async function updateUserProfile(
-  userId: UUID,
+  userId: string,
   updateData: Partial<
     Pick<User, "firstName" | "lastName" | "username" | "avatarUrl">
   >
@@ -218,7 +213,7 @@ export async function updateUserProfile(
       .where(eq(users.id, userId))
       .returning();
 
-    return updatedUser ? assertUser(updatedUser) : null;
+    return updatedUser || null;
   } catch (error) {
     console.error("Error updating user profile:", error);
     return null;
@@ -291,10 +286,10 @@ export async function syncUserWithClerk(): Promise<User | null> {
 
 /**
  * Delete user (soft delete by setting isArchived flag if you add it, or hard delete)
- * @param userId UUID - user ID
+ * @param userId string - user ID
  * @returns boolean indicating success
  */
-export async function deleteUser(userId: UUID): Promise<boolean> {
+export async function deleteUser(userId: string): Promise<boolean> {
   try {
     await db.delete(users).where(eq(users.id, userId));
 
@@ -328,7 +323,7 @@ export async function searchUsers(
       )
       .limit(limit);
 
-    return foundUsers.map(assertUser);
+    return foundUsers;
   } catch (error) {
     console.error("Error searching users:", error);
     return [];
@@ -338,12 +333,12 @@ export async function searchUsers(
 /**
  * Check if username is available
  * @param username string
- * @param excludeUserId UUID - optional user ID to exclude from check
+ * @param excludeUserId string - optional user ID to exclude from check
  * @returns boolean indicating availability
  */
 export async function isUsernameAvailable(
   username: string,
-  excludeUserId?: UUID
+  excludeUserId?: string
 ): Promise<boolean> {
   try {
     const existingUser = await getUserByUsername(username);

@@ -4,17 +4,18 @@ import { useState, useRef, useEffect } from "react";
 import { Settings, LogOut, ChevronDown } from "lucide-react";
 import Avatar from "react-avatar";
 import { SignOutButton } from "@clerk/nextjs";
+import { useUserData } from "@/hooks/useUserData";
 
 export default function UserDropdown() {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // User data
-  const user = {
-    name: "John Doe",
-    email: "john.doe@example.com",
-    src: "", // Profile image URL if available
-  };
+  // Use the custom hook with logging enabled for debugging
+  const { clerkUser, displayName, avatarUrl, loading, error, refetch } =
+    useUserData({
+      enableLogging: false,
+      fallbackToClerk: true,
+    });
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -34,26 +35,50 @@ export default function UserDropdown() {
   }, []);
 
   const handleSettings = () => {
-    console.log("Navigate to settings");
+    console.log("⚙️ Settings clicked");
     setIsOpen(false);
   };
+
+  // Handle error state
+  if (error) {
+    return (
+      <div className="flex items-center space-x-2 px-4 py-2 text-red-600">
+        <span className="text-sm">Error loading user</span>
+        <button
+          onClick={refetch}
+          className="text-xs underline hover:no-underline"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
+
+  // Loading state
+  if (loading && !clerkUser) {
+    return (
+      <div className="flex items-center space-x-2 px-4 py-2">
+        <div className="w-7 h-7 bg-gray-200 rounded-full animate-pulse" />
+        <div className="w-20 h-4 bg-gray-200 rounded animate-pulse" />
+      </div>
+    );
+  }
 
   return (
     <div className="relative inline-block text-left" ref={dropdownRef}>
       {/* Dropdown Trigger */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center space-x-2 px-4 py-2 rounded-lg hover:bg-gray-50 focus:outline-none  transition-colors duration-200"
+        className="flex items-center space-x-2 px-4 py-2 rounded-lg hover:bg-gray-50 focus:outline-none transition-colors duration-200"
       >
         <Avatar
-          name={user.name}
-          email={user.email}
-          src={user.src}
+          name={displayName}
+          src={avatarUrl}
           size="28"
           round={true}
           className="cursor-pointer"
         />
-        <span className="text-sm font-medium text-gray-700">{user.name}</span>
+        <span className="text-sm font-medium text-gray-700">{displayName}</span>
         <ChevronDown
           className={`w-4 h-4 text-gray-500 transition-transform duration-200 ${
             isOpen ? "rotate-180" : ""
