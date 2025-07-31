@@ -4,18 +4,20 @@ import { useState, useRef, useEffect } from "react";
 import { Settings, LogOut, ChevronDown } from "lucide-react";
 import Avatar from "react-avatar";
 import { SignOutButton } from "@clerk/nextjs";
-import { useUserData } from "@/hooks/useUserData";
+import {
+  useUserContext,
+  useDisplayName,
+  useUserLoading,
+} from "@/contexts/UserContext";
 
 export default function UserDropdown() {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Use the custom hook with logging enabled for debugging
-  const { clerkUser, displayName, avatarUrl, loading, error, refetch } =
-    useUserData({
-      enableLogging: false,
-      fallbackToClerk: true,
-    });
+  // Context values
+  const { clerkUser, avatarUrl, error, refetch } = useUserContext();
+  const displayName = useDisplayName();
+  const loading = useUserLoading();
 
   // Close dropdown when clicking outside
   useEffect(() => {

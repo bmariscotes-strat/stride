@@ -12,15 +12,15 @@ import type { User, CreateUser } from "@/types";
  * @param userId string - user UUID
  * @returns user object or null if not found
  */
-export async function getUserById(userId: string): Promise<User | null> {
+export async function getUserById(clerkUserId: string): Promise<User | null> {
   try {
     const user = await db.query.users.findFirst({
-      where: (u, { eq }) => eq(u.id, userId),
+      where: (u, { eq }) => eq(u.clerkUserId, clerkUserId),
     });
 
     return user || null;
   } catch (error) {
-    console.error("Error fetching user by ID:", error);
+    console.error("Error fetching user by Clerk ID:", error);
     return null;
   }
 }

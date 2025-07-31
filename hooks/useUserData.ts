@@ -1,7 +1,7 @@
 // hooks/useUserData.ts
 import { useState, useEffect } from "react";
 import { useUser } from "@clerk/nextjs";
-import { getUserById } from "@/lib/services/users";
+import { getUserByClerkId } from "@/lib/services/users";
 import type { User } from "@/types";
 
 interface UseUserDataOptions {
@@ -59,7 +59,7 @@ export function useUserData(
     setError(null);
 
     try {
-      const user = await getUserById(clerkUser.id);
+      const user = await getUserByClerkId(clerkUser.id);
 
       if (enableLogging) {
         console.log("✅ Successfully fetched user data:", user);
