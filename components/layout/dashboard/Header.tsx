@@ -1,51 +1,159 @@
 "use client";
 
 import type React from "react";
-import { ThemeToggle } from "@/components/theme/ThemeToggle";
-import { Menu, Bell, Search } from "lucide-react";
+import Link from "next/link";
+import Image from "next/image";
+import { usePathname } from "next/navigation";
+import Notifications from "@/components/shared/Notification";
+import { useState } from "react";
+import NavDropdown from "@/components/shared/NavDropdown";
+import UserDropdown from "@/components/shared/UserDropdown";
 
-interface HeaderProps {
-  setSidebarOpen: (open: boolean) => void;
-}
+const teamsPlaceholder = [
+  {
+    slug: "getting-started-with-nextjs",
+    name: "Getting Started with Next.js",
+    type: "Software Project Team",
+  },
+  {
+    slug: "typescript-best-practices",
+    name: "TypeScript Best Practices",
+    type: "Business Team",
+  },
+  {
+    slug: "react-performance-tips",
+    name: "React Performance Tips",
+    type: "Main Team",
+  },
+];
 
-export default function Header({ setSidebarOpen }: HeaderProps) {
+const projectsPlaceholder = [
+  {
+    slug: "my-team-1",
+    name: "My Team",
+    description: "Lorem ipsum, lorem ipsum.....",
+  },
+  {
+    slug: "my-team-2",
+    name: "ProjectFlow Team",
+    description: "Write better TypeScript code",
+  },
+  {
+    slug: "my-team-3",
+    name: "Stratpoint Team",
+    description: "Optimize your React applications",
+  },
+];
+
+const workspaceItems = [
+  { href: "/dashboard", name: "Dashboard" },
+  { href: "/calendar", name: "Calendar" },
+  { href: "/analytics", name: "Analytics" },
+];
+
+export default function Header() {
+  const pathname = usePathname();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  const isActive = (path: string) => pathname === path;
+
+  const navLinks = [
+    { href: "/", label: "About" },
+    { href: "/sign-up", label: "Register" },
+  ];
+
   return (
-    <div className="sticky top-0 z-30 flex h-16 items-center gap-x-4 border-b border-french_gray-300 dark:border-payne's_gray-400 bg-white dark:bg-outer_space-500 px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:px-8">
-      <button
-        onClick={() => setSidebarOpen(true)}
-        className="lg:hidden p-2 rounded-lg hover:bg-platinum-500 dark:hover:bg-payne's_gray-400"
-      >
-        <Menu size={20} />
-      </button>
+    <header className="w-full px-6 py-1 bg-background sm:px-6 lg:px-10 sticky top-0 z-50 border-b border-border">
+      <nav className="flex items-center justify-between max-w-10xl mx-auto">
+        {/* Left Side Nav */}
+        <section className="flex items-center space-x-6">
+          {/* Brand */}
+          <Link href="/" className="flex items-center space-x-1 group">
+            <div className="w-10 h-10 rounded-lg flex items-center justify-center">
+              <Image
+                src="/branding/logo.png"
+                alt="Logo"
+                width={30}
+                height={30}
+              />
+            </div>
+            <span className="text-xl font-sen font-medium text-primary">
+              Stride
+            </span>
+          </Link>
 
-      <div className="flex flex-1 gap-x-4 self-stretch lg:gap-x-6">
-        {/* Search bar */}
-        <div className="flex flex-1 items-center">
-          <div className="relative flex-1 max-w-md">
-            <Search
-              className="absolute left-3 top-1/2 transform -translate-y-1/2 text-payne's_gray-500 dark:text-french_gray-400"
-              size={16}
-            />
-            <input
-              type="text"
-              placeholder="Search projects, tasks..."
-              className="w-full pl-10 pr-4 py-2 bg-platinum-500 dark:bg-payne's_gray-400 border border-french_gray-300 dark:border-payne's_gray-300 rounded-lg text-outer_space-500 dark:text-platinum-500 placeholder-payne's_gray-500 dark:placeholder-french_gray-400 focus:outline-none focus:ring-2 focus:ring-blue_munsell-500"
-            />
-          </div>
-        </div>
+          {/* Workspace */}
+          <NavDropdown
+            title="My Workspace"
+            items={workspaceItems}
+            viewAllHref="/workspace"
+          />
 
-        <div className="flex items-center gap-x-4 lg:gap-x-6">
-          <button className="p-2 rounded-lg hover:bg-platinum-500 dark:hover:bg-payne's_gray-400">
-            <Bell size={20} />
+          {/* Teams */}
+          <NavDropdown
+            title="Teams"
+            items={teamsPlaceholder}
+            basePath="/blog"
+            viewAllHref="/blog"
+          />
+
+          {/* Projects */}
+          <NavDropdown
+            title="Projects"
+            items={projectsPlaceholder}
+            basePath="/blog"
+            viewAllHref="/blog"
+          />
+        </section>
+
+        {/* Right Side Nav */}
+        <section className="flex items-center space-x-4">
+          <Notifications />
+          <UserDropdown />
+        </section>
+
+        {/* Mobile Menu Button */}
+        <div className="md:hidden">
+          <button
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            className="text-muted-foreground hover:text-primary p-2 rounded-lg hover:bg-accent transition-colors"
+            aria-expanded={isMobileMenuOpen}
+            aria-label="Toggle mobile menu"
+          >
+            {/* SVG content */}
           </button>
+        </div>
+      </nav>
 
-          <ThemeToggle />
-
-          <div className="w-8 h-8 bg-blue_munsell-500 rounded-full flex items-center justify-center text-white font-semibold">
-            U
+      {/* Mobile Menu */}
+      {isMobileMenuOpen && (
+        <div className="md:hidden absolute left-0 right-0 bg-background border-b-2 pb-1 border-t-2 mt-2 border-border">
+          <div className="flex flex-col space-y-4 p-4">
+            {navLinks.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className={`transition-colors font-medium px-4 py-2 rounded-lg ${
+                  isActive(link.href)
+                    ? "text-primary bg-accent font-semibold"
+                    : "text-muted-foreground hover:text-primary hover:bg-accent"
+                }`}
+                onClick={() => setIsMobileMenuOpen(false)}
+                scroll={false}
+              >
+                {link.label}
+              </Link>
+            ))}
+            <Link
+              href="/sign-in"
+              className="mx-4 px-4 py-2 border border-primary text-primary rounded-lg hover:bg-accent hover:border-primary/80 transition-all duration-200 font-medium text-center"
+              onClick={() => setIsMobileMenuOpen(false)}
+            >
+              Get Started
+            </Link>
           </div>
         </div>
-      </div>
-    </div>
+      )}
+    </header>
   );
 }
