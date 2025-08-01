@@ -39,6 +39,39 @@ const NavDropdown = React.memo<NavDropdownProps>(
     const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const pathname = usePathname();
 
+    // Check if current route is active for this dropdown
+    const isRouteActive = useCallback(() => {
+      // Check if current path matches viewAllHref exactly
+      if (pathname === viewAllHref) {
+        return true;
+      }
+
+      // Check if current path starts with viewAllHref (for nested routes)
+      if (pathname.startsWith(viewAllHref + "/")) {
+        return true;
+      }
+
+      // Check if current path starts with basePath (for nested routes)
+      if (
+        basePath &&
+        (pathname.startsWith(basePath + "/") || pathname === basePath)
+      ) {
+        return true;
+      }
+
+      // Check if current path matches or is nested under any item's href
+      return items.some((item) => {
+        if (item.href) {
+          return pathname === item.href || pathname.startsWith(item.href + "/");
+        }
+        if (item.slug && basePath) {
+          const itemPath = `${basePath}/${item.slug}`;
+          return pathname === itemPath || pathname.startsWith(itemPath + "/");
+        }
+        return false;
+      });
+    }, [pathname, viewAllHref, basePath, items]);
+
     const closeDropdown = useCallback(() => {
       setIsOpen(false);
     }, []);
@@ -141,6 +174,7 @@ const NavDropdown = React.memo<NavDropdownProps>(
 
     const visibleItems = items.slice(0, maxVisibleItems);
     const hasMoreItems = items.length > maxVisibleItems;
+    const routeActive = isRouteActive();
 
     return (
       <div
@@ -154,10 +188,13 @@ const NavDropdown = React.memo<NavDropdownProps>(
         <button
           type="button"
           className={`
-          flex items-center gap-1 px-1 py-2 text-sm font-medium text-gray-700 
-          hover:text-gray-900 hover:bg-gray-50 rounded-md transition-colors
-          focus:outline-none focus:bg-primary/5
-          ${isOpen ? "text-gray-900 bg-gray-50" : ""}
+          relative flex items-center gap-1 px-1 py-2 text-sm transition-colors
+          ${
+            routeActive
+              ? "text-primary font-semibold"
+              : "text-gray-700 font-medium hover:text-gray-900"
+          }
+          ${isOpen ? "text-gray-900 bg-gray-50" : "hover:bg-gray-50"}
         `}
           onClick={handleToggle}
           aria-expanded={isOpen}
@@ -171,6 +208,14 @@ const NavDropdown = React.memo<NavDropdownProps>(
             }`}
             aria-hidden="true"
           />
+
+          {/* Active Route Underline */}
+          {routeActive && (
+            <div
+              className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-full"
+              aria-hidden="true"
+            />
+          )}
         </button>
 
         {/* Dropdown Menu */}
