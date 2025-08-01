@@ -91,7 +91,9 @@ export default function DualPanelLayout({
       </div>
 
       {/* Main Content */}
-      <main className="w-full">{right}</main>
+      <main className="w-full">
+        <div className="pl-10 pr-5">{right}</div>
+      </main>
     </div>
   );
 }

@@ -7,19 +7,15 @@ export default function SettingsPage() {
     <>
       <DualPanelLayout
         left={
-          <>
-            <div>
-              <AppBreadcrumb />
-            </div>
-            <div className="p-4 h-full">
-              <h2 className="font-bold text-lg">Sidebar</h2>
-              <ul className="mt-4 space-y-2 text-sm text-gray-600">
-                <li>Overview</li>
-                <li>Projects</li>
-                <li>Settings</li>
-              </ul>
-            </div>
-          </>
+          <div className="p-4 h-full">
+            <AppBreadcrumb />
+            <h2 className="font-bold text-lg pt-2">Create Team</h2>
+            <ul className="mt-4 space-y-2 text-sm text-gray-600">
+              <li>Information</li>
+              <li>Members</li>
+              <li>Settings</li>
+            </ul>
+          </div>
         }
         right={
           <div className="p-4">
