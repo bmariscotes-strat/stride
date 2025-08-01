@@ -93,16 +93,15 @@ export default function Header() {
           <NavDropdown
             title="Teams"
             items={teamsPlaceholder}
-            basePath="/blog"
-            viewAllHref="/blog"
+            viewAllHref="/work/team"
           />
 
           {/* Projects */}
           <NavDropdown
             title="Projects"
             items={projectsPlaceholder}
-            basePath="/blog"
-            viewAllHref="/blog"
+            basePath="/workspace"
+            viewAllHref="/work/projects"
           />
         </section>
 

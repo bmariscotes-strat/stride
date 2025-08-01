@@ -17,7 +17,7 @@ interface NavItem {
 interface NavDropdownProps {
   readonly title: string;
   readonly items: readonly NavItem[];
-  readonly basePath?: string; // Optional for direct links mode
+  readonly basePath?: string;
   readonly viewAllHref: string;
   readonly className?: string;
   readonly maxVisibleItems?: number;

@@ -16,7 +16,7 @@ export default function DashboardLayout({
         <Header />
 
         {/* Page content */}
-        <main className="py-8 px-4 sm:px-6 lg:px-8">
+        <main className="py-8 px-4 sm:px-6 lg:px-12">
           <Suspense>{children}</Suspense>
         </main>
       </div>
