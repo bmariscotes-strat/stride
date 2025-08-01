@@ -27,7 +27,7 @@ export default function AppBreadcrumb() {
   const segments = pathname.split("/").filter(Boolean);
 
   return (
-    <Breadcrumb>
+    <Breadcrumb className="pb-2">
       <BreadcrumbList>
         {/* Home link */}
         <BreadcrumbItem>
