@@ -5,17 +5,21 @@ import AppBreadcrumb from "@/components/shared/AppBreadcrumb";
 export default function SettingsPage() {
   return (
     <>
-      <AppBreadcrumb />
       <DualPanelLayout
         left={
-          <div className="p-4 border-r h-full">
-            <h2 className="font-bold text-lg">Sidebar</h2>
-            <ul className="mt-4 space-y-2 text-sm text-gray-600">
-              <li>Overview</li>
-              <li>Projects</li>
-              <li>Settings</li>
-            </ul>
-          </div>
+          <>
+            <div>
+              <AppBreadcrumb />
+            </div>
+            <div className="p-4 h-full">
+              <h2 className="font-bold text-lg">Sidebar</h2>
+              <ul className="mt-4 space-y-2 text-sm text-gray-600">
+                <li>Overview</li>
+                <li>Projects</li>
+                <li>Settings</li>
+              </ul>
+            </div>
+          </>
         }
         right={
           <div className="p-4">
