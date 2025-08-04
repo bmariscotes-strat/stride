@@ -23,13 +23,17 @@ export default function DualPanelLayout({
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   return (
-    <div className={`relative flex flex-col md:flex-row w-full ${className}`}>
+    <div
+      className={`relative min-h-screen flex flex-col md:flex-row w-full ${className}`}
+    >
       {/* Sidebar */}
       <aside
         className={`
-          transition-all duration-300 overflow-hidden
+          transition-all duration-300
           ${isCollapsed ? "md:w-0" : "md:w-[20%]"}
           w-full
+          sticky top-0 h-screen overflow-hidden 
+          bg-white
         `}
       >
         {left}

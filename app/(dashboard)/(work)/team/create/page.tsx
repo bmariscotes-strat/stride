@@ -403,7 +403,7 @@ export default function CreateTeamPage() {
                         handleInputChange("slug", e.target.value)
                       }
                       className="flex-1 block w-full rounded-none rounded-r-md border-gray-300 focus:border-blue-500 focus:ring-blue-500 px-3 py-2 border"
-                      placeholder="team-slug"
+                      placeholder="team-url"
                       required
                       pattern="[a-z0-9-]+"
                       title="Only lowercase letters, numbers, and hyphens are allowed"
