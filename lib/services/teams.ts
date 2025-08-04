@@ -1,695 +1,157 @@
+// lib/services/teams.ts
 "use server";
 
 import { db } from "@/lib/db/db";
-import {
-  users,
-  teams,
-  projects,
-  columns,
-  cards,
-  labels,
-  teamMembers,
-  cardLabels,
-  cardComments,
-  cardAttachments,
-  activityLog,
-  notifications,
-  mentions,
-} from "@/lib/db/schema";
-import { eq, and, desc, asc } from "drizzle-orm";
+import { teams, teamMembers, users } from "@/lib/db/schema";
+import { eq, and } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import { bulkInviteUsersAction, getUsersByEmailsAction } from "./user-search";
+import type { Team, TeamMember, User } from "@/types";
 
-// =============================================================================
-// USERS CRUD
-// =============================================================================
-
-// Create user
-export async function createUser(userData: {
-  clerkUserId: string;
-  email: string;
-  username: string;
-  firstName: string;
-  lastName: string;
-  avatarUrl?: string;
-  personalTeamId?: string;
-}) {
-  const [user] = await db.insert(users).values(userData).returning();
-  return user;
-}
-
-// Get user by ID
-export async function getUserById(id: string) {
-  const [user] = await db.select().from(users).where(eq(users.id, id));
-  return user;
-}
-
-// Get user by Clerk ID
-export async function getUserByClerkId(clerkUserId: string) {
-  const [user] = await db
-    .select()
-    .from(users)
-    .where(eq(users.clerkUserId, clerkUserId));
-  return user;
-}
-
-// Update user
-export async function updateUser(
-  id: string,
-  userData: Partial<typeof users.$inferInsert>
-) {
-  const [user] = await db
-    .update(users)
-    .set({ ...userData, updatedAt: new Date() })
-    .where(eq(users.id, id))
-    .returning();
-  return user;
-}
-
-// Delete user
-export async function deleteUser(id: string) {
-  await db.delete(users).where(eq(users.id, id));
-}
-
-// Get all users
-export async function getAllUsers() {
-  return await db.select().from(users).orderBy(asc(users.createdAt));
-}
-
-// =============================================================================
-// TEAMS CRUD
-// =============================================================================
-
-// Create team
-export async function createTeam(teamData: {
+interface CreateTeamData {
   name: string;
   slug: string;
   description?: string;
-  isPersonal?: boolean;
+  members: string[]; // Array of email addresses
   createdBy: string;
-}) {
-  const [team] = await db.insert(teams).values(teamData).returning();
-  return team;
 }
 
-// Get team by ID
-export async function getTeamById(id: string) {
-  const [team] = await db.select().from(teams).where(eq(teams.id, id));
-  return team;
-}
-
-// Get team by slug
-export async function getTeamBySlug(slug: string) {
-  const [team] = await db.select().from(teams).where(eq(teams.slug, slug));
-  return team;
-}
-
-// Update team
-export async function updateTeam(
-  id: string,
-  teamData: Partial<typeof teams.$inferInsert>
-) {
-  const [team] = await db
-    .update(teams)
-    .set({ ...teamData, updatedAt: new Date() })
-    .where(eq(teams.id, id))
-    .returning();
-  return team;
-}
-
-// Delete team
-export async function deleteTeam(id: string) {
-  await db.delete(teams).where(eq(teams.id, id));
-}
-
-// Get teams by user ID
-export async function getTeamsByUserId(userId: string) {
-  return await db
-    .select({
-      team: teams,
-      membership: teamMembers,
-    })
-    .from(teams)
-    .innerJoin(teamMembers, eq(teams.id, teamMembers.teamId))
-    .where(eq(teamMembers.userId, userId))
-    .orderBy(asc(teams.name));
-}
-
-// =============================================================================
-// PROJECTS CRUD
-// =============================================================================
-
-// Create project
-export async function createProject(projectData: {
-  name: string;
-  slug: string;
-  description?: string;
-  teamId: string;
-  ownerId: string;
-  colorTheme?: string;
-}) {
-  const [project] = await db.insert(projects).values(projectData).returning();
-  return project;
-}
-
-// Get project by ID
-export async function getProjectById(id: string) {
-  const [project] = await db.select().from(projects).where(eq(projects.id, id));
-  return project;
-}
-
-// Get projects by team ID
-export async function getProjectsByTeamId(teamId: string) {
-  return await db
-    .select()
-    .from(projects)
-    .where(and(eq(projects.teamId, teamId), eq(projects.isArchived, false)))
-    .orderBy(asc(projects.name));
-}
-
-// Update project
-export async function updateProject(
-  id: string,
-  projectData: Partial<typeof projects.$inferInsert>
-) {
-  const [project] = await db
-    .update(projects)
-    .set({ ...projectData, updatedAt: new Date() })
-    .where(eq(projects.id, id))
-    .returning();
-  return project;
-}
-
-// Archive project
-export async function archiveProject(id: string) {
-  const [project] = await db
-    .update(projects)
-    .set({ isArchived: true, updatedAt: new Date() })
-    .where(eq(projects.id, id))
-    .returning();
-  return project;
-}
-
-// Delete project
-export async function deleteProject(id: string) {
-  await db.delete(projects).where(eq(projects.id, id));
-}
-
-// =============================================================================
-// COLUMNS CRUD
-// =============================================================================
-
-// Create column
-export async function createColumn(columnData: {
-  projectId: string;
-  name: string;
-  position: number;
-  color?: string;
-}) {
-  const [column] = await db.insert(columns).values(columnData).returning();
-  return column;
-}
-
-// Get columns by project ID
-export async function getColumnsByProjectId(projectId: string) {
-  return await db
-    .select()
-    .from(columns)
-    .where(eq(columns.projectId, projectId))
-    .orderBy(asc(columns.position));
-}
-
-// Update column
-export async function updateColumn(
-  id: string,
-  columnData: Partial<typeof columns.$inferInsert>
-) {
-  const [column] = await db
-    .update(columns)
-    .set({ ...columnData, updatedAt: new Date() })
-    .where(eq(columns.id, id))
-    .returning();
-  return column;
-}
-
-// Delete column
-export async function deleteColumn(id: string) {
-  await db.delete(columns).where(eq(columns.id, id));
-}
-
-// Reorder columns
-export async function reorderColumns(
-  projectId: string,
-  columnUpdates: Array<{ id: string; position: number }>
-) {
-  const promises = columnUpdates.map(({ id, position }) =>
-    db
-      .update(columns)
-      .set({ position, updatedAt: new Date() })
-      .where(eq(columns.id, id))
-  );
-  await Promise.all(promises);
-}
-
-// =============================================================================
-// CARDS CRUD
-// =============================================================================
-
-// Create card
-export async function createCard(cardData: {
-  columnId: string;
-  title: string;
-  description?: string;
-  assigneeId?: string;
-  priority?: "high" | "medium" | "low";
-  startDate?: Date;
-  dueDate?: Date;
-  position: number;
-  status?: string;
-}) {
-  const [card] = await db.insert(cards).values(cardData).returning();
-  return card;
-}
-
-// Get card by ID
-export async function getCardById(id: string) {
-  const [card] = await db.select().from(cards).where(eq(cards.id, id));
-  return card;
-}
-
-// Get cards by column ID
-export async function getCardsByColumnId(columnId: string) {
-  return await db
-    .select()
-    .from(cards)
-    .where(and(eq(cards.columnId, columnId), eq(cards.isArchived, false)))
-    .orderBy(asc(cards.position));
-}
-
-// Update card
-export async function updateCard(
-  id: string,
-  cardData: Partial<typeof cards.$inferInsert>
-) {
-  const [card] = await db
-    .update(cards)
-    .set({ ...cardData, updatedAt: new Date() })
-    .where(eq(cards.id, id))
-    .returning();
-  return card;
-}
-
-// Move card to different column
-export async function moveCardToColumn(
-  id: string,
-  columnId: string,
-  position: number
-) {
-  const [card] = await db
-    .update(cards)
-    .set({ columnId, position, updatedAt: new Date() })
-    .where(eq(cards.id, id))
-    .returning();
-  return card;
-}
-
-// Archive card
-export async function archiveCard(id: string) {
-  const [card] = await db
-    .update(cards)
-    .set({ isArchived: true, updatedAt: new Date() })
-    .where(eq(cards.id, id))
-    .returning();
-  return card;
-}
-
-// Delete card
-export async function deleteCard(id: string) {
-  await db.delete(cards).where(eq(cards.id, id));
-}
-
-// =============================================================================
-// LABELS CRUD
-// =============================================================================
-
-// Create label
-export async function createLabel(labelData: {
-  name: string;
-  color: string;
-  teamId: string;
-}) {
-  const [label] = await db.insert(labels).values(labelData).returning();
-  return label;
-}
-
-// Get labels by team ID
-export async function getLabelsByTeamId(teamId: string) {
-  return await db
-    .select()
-    .from(labels)
-    .where(eq(labels.teamId, teamId))
-    .orderBy(asc(labels.name));
-}
-
-// Update label
-export async function updateLabel(
-  id: string,
-  labelData: Partial<typeof labels.$inferInsert>
-) {
-  const [label] = await db
-    .update(labels)
-    .set(labelData)
-    .where(eq(labels.id, id))
-    .returning();
-  return label;
-}
-
-// Delete label
-export async function deleteLabel(id: string) {
-  await db.delete(labels).where(eq(labels.id, id));
-}
-
-// =============================================================================
-// TEAM MEMBERS CRUD
-// =============================================================================
-
-// Add member to team
-export async function addTeamMember(memberData: {
-  teamId: string;
-  userId: string;
-  role?: "owner" | "admin" | "member" | "viewer";
-}) {
-  const [member] = await db.insert(teamMembers).values(memberData).returning();
-  return member;
-}
-
-// Get team members
-export async function getTeamMembersByTeamId(teamId: string) {
-  return await db
-    .select({
-      membership: teamMembers,
-      user: users,
-    })
-    .from(teamMembers)
-    .innerJoin(users, eq(teamMembers.userId, users.id))
-    .where(eq(teamMembers.teamId, teamId))
-    .orderBy(asc(users.firstName));
-}
-
-// Update member role
-export async function updateTeamMemberRole(
-  teamId: string,
-  userId: string,
-  role: "owner" | "admin" | "member" | "viewer"
-) {
-  const [member] = await db
-    .update(teamMembers)
-    .set({ role })
-    .where(and(eq(teamMembers.teamId, teamId), eq(teamMembers.userId, userId)))
-    .returning();
-  return member;
-}
-
-// Remove member from team
-export async function removeTeamMember(teamId: string, userId: string) {
-  await db
-    .delete(teamMembers)
-    .where(and(eq(teamMembers.teamId, teamId), eq(teamMembers.userId, userId)));
-}
-
-// =============================================================================
-// CARD LABELS CRUD
-// =============================================================================
-
-// Add label to card
-export async function addCardLabel(cardId: string, labelId: string) {
-  const [cardLabel] = await db
-    .insert(cardLabels)
-    .values({ cardId, labelId })
-    .returning();
-  return cardLabel;
-}
-
-// Get labels for card
-export async function getCardLabelsByCardId(cardId: string) {
-  return await db
-    .select({
-      cardLabel: cardLabels,
-      label: labels,
-    })
-    .from(cardLabels)
-    .innerJoin(labels, eq(cardLabels.labelId, labels.id))
-    .where(eq(cardLabels.cardId, cardId));
-}
-
-// Remove label from card
-export async function removeCardLabel(cardId: string, labelId: string) {
-  await db
-    .delete(cardLabels)
-    .where(and(eq(cardLabels.cardId, cardId), eq(cardLabels.labelId, labelId)));
-}
-
-// =============================================================================
-// CARD COMMENTS CRUD
-// =============================================================================
-
-// Create comment
-export async function createCardComment(commentData: {
-  cardId: string;
-  userId: string;
-  content: string;
-}) {
-  const [comment] = await db
-    .insert(cardComments)
-    .values(commentData)
-    .returning();
-  return comment;
-}
-
-// Get comments by card ID
-export async function getCardCommentsByCardId(cardId: string) {
-  return await db
-    .select({
-      comment: cardComments,
-      user: users,
-    })
-    .from(cardComments)
-    .innerJoin(users, eq(cardComments.userId, users.id))
-    .where(eq(cardComments.cardId, cardId))
-    .orderBy(desc(cardComments.createdAt));
-}
-
-// Update comment
-export async function updateCardComment(id: number, content: string) {
-  const [comment] = await db
-    .update(cardComments)
-    .set({ content, updatedAt: new Date() })
-    .where(eq(cardComments.id, id))
-    .returning();
-  return comment;
-}
-
-// Delete comment
-export async function deleteCardComment(id: number) {
-  await db.delete(cardComments).where(eq(cardComments.id, id));
-}
-
-// =============================================================================
-// NOTIFICATIONS CRUD
-// =============================================================================
-
-// Create notification
-export async function createNotification(notificationData: {
-  userId: string;
-  type:
-    | "task_assigned"
-    | "task_updated"
-    | "comment_added"
-    | "mention"
-    | "due_date_reminder"
-    | "team_invitation";
-  title: string;
-  message?: string;
-  cardId?: string;
-  projectId?: string;
-}) {
-  const [notification] = await db
-    .insert(notifications)
-    .values(notificationData)
-    .returning();
-  return notification;
-}
-
-// Get notifications for user
-export async function getNotificationsByUserId(userId: string, limit = 50) {
-  return await db
-    .select()
-    .from(notifications)
-    .where(eq(notifications.userId, userId))
-    .orderBy(desc(notifications.createdAt))
-    .limit(limit);
-}
-
-// Mark notification as read
-export async function markNotificationAsRead(id: number) {
-  const [notification] = await db
-    .update(notifications)
-    .set({ isRead: true })
-    .where(eq(notifications.id, id))
-    .returning();
-  return notification;
-}
-
-// Mark all notifications as read for user
-export async function markAllNotificationsAsRead(userId: string) {
-  await db
-    .update(notifications)
-    .set({ isRead: true })
-    .where(
-      and(eq(notifications.userId, userId), eq(notifications.isRead, false))
-    );
-}
-
-// Delete notification
-export async function deleteNotification(id: number) {
-  await db.delete(notifications).where(eq(notifications.id, id));
-}
-
-// =============================================================================
-// ACTIVITY LOG CRUD
-// =============================================================================
-
-// Log activity
-export async function createActivityLog(activityData: {
-  projectId?: string;
-  cardId?: string;
-  userId: string;
-  actionType: string;
-  oldValue?: string;
-  newValue?: string;
-}) {
-  const [activity] = await db
-    .insert(activityLog)
-    .values(activityData)
-    .returning();
-  return activity;
-}
-
-// Get activity by project
-export async function getActivityLogByProjectId(
-  projectId: string,
-  limit = 100
-) {
-  return await db
-    .select({
-      activity: activityLog,
-      user: users,
-    })
-    .from(activityLog)
-    .innerJoin(users, eq(activityLog.userId, users.id))
-    .where(eq(activityLog.projectId, projectId))
-    .orderBy(desc(activityLog.createdAt))
-    .limit(limit);
-}
-
-// Get activity by card
-export async function getActivityLogByCardId(cardId: string, limit = 50) {
-  return await db
-    .select({
-      activity: activityLog,
-      user: users,
-    })
-    .from(activityLog)
-    .innerJoin(users, eq(activityLog.userId, users.id))
-    .where(eq(activityLog.cardId, cardId))
-    .orderBy(desc(activityLog.createdAt))
-    .limit(limit);
-}
-
-// =============================================================================
-// UTILITY FUNCTIONS
-// =============================================================================
-
-// Get full project with all related data
-export async function getProjectWithData(projectId: string) {
-  const project = await getProjectById(projectId);
-  if (!project) return null;
-
-  const projectColumns = await getColumnsByProjectId(projectId);
-  const columnsWithCards = await Promise.all(
-    projectColumns.map(async (column) => {
-      const columnCards = await getCardsByColumnId(column.id);
-      return { ...column, cards: columnCards };
-    })
-  );
-
-  return { ...project, columns: columnsWithCards };
-}
-
-// Get user's teams with projects
-export async function getUserTeamsWithProjects(userId: string) {
-  const userTeams = await getTeamsByUserId(userId);
-  const teamsWithProjects = await Promise.all(
-    userTeams.map(async ({ team }) => {
-      const teamProjects = await getProjectsByTeamId(team.id);
-      return { ...team, projects: teamProjects };
-    })
-  );
-  return teamsWithProjects;
-}
-
-export async function createTeamAction(formData: {
-  name: string;
-  slug: string;
-  description: string;
-  members: string[];
-  createdBy: string;
-}) {
-  try {
-    // Basic validation
-    if (!formData.name.trim()) {
-      throw new Error("Team name is required");
+type CreateTeamResult =
+  | {
+      success: true;
+      team: Team;
+      invitationResults?: Array<{
+        email?: string;
+        success?: boolean;
+        invitationId?: string;
+        error?: string;
+      }>;
     }
-    if (!formData.slug.trim()) {
-      throw new Error("Team slug is required");
-    }
-    if (formData.slug.length < 3) {
-      throw new Error("Team slug must be at least 3 characters");
-    }
-
-    // Prepare team data for API
-    const teamData = {
-      name: formData.name.trim(),
-      slug: formData.slug.trim(),
-      description: formData.description.trim(),
-      isPersonal: false,
-      createdBy: formData.createdBy,
+  | {
+      success: false;
+      error: string;
     };
 
-    // Create the team
-    const createdTeam = await createTeam(teamData);
+/**
+ * Create a new team with members
+ * @param teamData - Team creation data
+ * @returns Creation result with team and invitation status
+ */
+export async function createTeamAction(
+  teamData: CreateTeamData
+): Promise<CreateTeamResult> {
+  try {
+    const { name, slug, description, members, createdBy } = teamData;
 
-    if (createdTeam) {
-      // Add the creator as the owner of the team
-      await addTeamMember({
-        teamId: createdTeam.id,
-        userId: formData.createdBy,
-        role: "owner",
-      });
+    // Check if slug already exists
+    const existingTeam = await db.query.teams.findFirst({
+      where: eq(teams.slug, slug),
+    });
 
-      // TODO: Handle member invitations
-      // For now, we're just logging the members to invite
-      if (formData.members.length > 0) {
-        console.log("Members to invite:", formData.members);
-        // You'll need to implement invitation logic here
-      }
-
-      // Revalidate the teams page to show the new team
-      revalidatePath("/teams");
-
-      return { success: true, team: createdTeam };
-    } else {
-      throw new Error("Failed to create team");
+    if (existingTeam) {
+      return {
+        success: false,
+        error:
+          "A team with this URL already exists. Please choose a different one.",
+      };
     }
+
+    // Create the team
+    const [newTeam] = await db
+      .insert(teams)
+      .values({
+        name,
+        slug,
+        description,
+        createdBy,
+        isPersonal: false,
+        isArchived: false,
+      })
+      .returning();
+
+    if (!newTeam) {
+      return {
+        success: false,
+        error: "Failed to create team",
+      };
+    }
+
+    // Add the creator as the owner
+    await db.insert(teamMembers).values({
+      teamId: newTeam.id,
+      userId: createdBy,
+      role: "owner",
+    });
+
+    let invitationResults: Array<{
+      email: string;
+      success: boolean;
+      invitationId?: string;
+      error?: string;
+    }> = [];
+
+    // Handle member invitations if any
+    if (members && members.length > 0) {
+      try {
+        // Check which users already exist
+        const existingUsers = await getUsersByEmailsAction(members);
+        const existingEmails = new Set(existingUsers.map((u) => u.email));
+
+        // Add existing users directly to the team
+        if (existingUsers.length > 0) {
+          const teamMemberInserts = existingUsers.map((user) => ({
+            teamId: newTeam.id,
+            userId: user.id,
+            role: "member" as const,
+          }));
+
+          await db.insert(teamMembers).values(teamMemberInserts);
+
+          // Mark existing users as successfully added
+          existingUsers.forEach((user) => {
+            invitationResults.push({
+              email: user.email,
+              success: true,
+              // No invitationId since they were added directly
+            });
+          });
+        }
+
+        // Send invitations to non-existing users
+        const nonExistingEmails = members.filter(
+          (email) => !existingEmails.has(email)
+        );
+
+        if (nonExistingEmails.length > 0) {
+          const inviteResults = await bulkInviteUsersAction(
+            nonExistingEmails,
+            newTeam.id,
+            newTeam.name,
+            createdBy
+          );
+
+          invitationResults.push(...inviteResults);
+        }
+      } catch (inviteError) {
+        console.error("Error handling member invitations:", inviteError);
+        // Don't fail the team creation if invitations fail
+        invitationResults = members.map((email) => ({
+          email,
+          success: false,
+          error: "Failed to send invitation",
+        }));
+      }
+    }
+
+    // Revalidate relevant paths
+    revalidatePath("/teams");
+    revalidatePath(`/teams/${newTeam.slug}`);
+
+    return {
+      success: true,
+      team: newTeam,
+      invitationResults,
+    };
   } catch (error) {
     console.error("Error creating team:", error);
     return {
@@ -700,12 +162,252 @@ export async function createTeamAction(formData: {
   }
 }
 
-export async function checkTeamSlugAvailability(slug: string) {
+/**
+ * Add members to an existing team
+ * @param teamId - Team ID
+ * @param memberEmails - Array of email addresses
+ * @param invitedBy - User ID of the inviter
+ * @returns Addition result
+ */
+export async function addTeamMembersAction(
+  teamId: string,
+  memberEmails: string[],
+  invitedBy: string
+): Promise<{
+  success: boolean;
+  results: Array<{
+    email: string;
+    success: boolean;
+    invitationId?: string;
+    error?: string;
+  }>;
+}> {
   try {
-    const existingTeam = await getTeamBySlug(slug);
-    return { available: !existingTeam };
+    // Get team details
+    const team = await db.query.teams.findFirst({
+      where: eq(teams.id, teamId),
+    });
+
+    if (!team) {
+      return {
+        success: false,
+        results: memberEmails.map((email) => ({
+          email,
+          success: false,
+          error: "Team not found",
+        })),
+      };
+    }
+
+    // Check which users already exist
+    const existingUsers = await getUsersByEmailsAction(memberEmails);
+    const existingEmails = new Set(existingUsers.map((u) => u.email));
+
+    const results: Array<{
+      email: string;
+      success: boolean;
+      invitationId?: string;
+      error?: string;
+    }> = [];
+
+    // Add existing users directly to the team
+    if (existingUsers.length > 0) {
+      // Filter out users who are already team members
+      const existingMembers = await db
+        .select({ userId: teamMembers.userId })
+        .from(teamMembers)
+        .where(eq(teamMembers.teamId, teamId));
+
+      const existingMemberIds = new Set(existingMembers.map((m) => m.userId));
+      const usersToAdd = existingUsers.filter(
+        (user) => !existingMemberIds.has(user.id)
+      );
+
+      if (usersToAdd.length > 0) {
+        const teamMemberInserts = usersToAdd.map((user) => ({
+          teamId,
+          userId: user.id,
+          role: "member" as const,
+        }));
+
+        await db.insert(teamMembers).values(teamMemberInserts);
+      }
+
+      // Add results for existing users
+      existingUsers.forEach((user) => {
+        const wasAlreadyMember = existingMemberIds.has(user.id);
+        results.push({
+          email: user.email,
+          success: !wasAlreadyMember,
+          error: wasAlreadyMember ? "User is already a team member" : undefined,
+        });
+      });
+    }
+
+    // Send invitations to non-existing users
+    const nonExistingEmails = memberEmails.filter(
+      (email) => !existingEmails.has(email)
+    );
+
+    if (nonExistingEmails.length > 0) {
+      const inviteResults = await bulkInviteUsersAction(
+        nonExistingEmails,
+        teamId,
+        team.name,
+        invitedBy
+      );
+
+      results.push(...inviteResults);
+    }
+
+    // Revalidate team page
+    revalidatePath(`/teams/${team.slug}`);
+
+    return {
+      success: true,
+      results,
+    };
   } catch (error) {
-    console.error("Error checking slug availability:", error);
-    return { available: false, error: "Failed to check slug availability" };
+    console.error("Error adding team members:", error);
+    return {
+      success: false,
+      results: memberEmails.map((email) => ({
+        email,
+        success: false,
+        error: "Failed to add member",
+      })),
+    };
+  }
+}
+
+/**
+ * Remove a member from a team
+ * @param teamId - Team ID
+ * @param userId - User ID to remove
+ * @param removedBy - User ID of the person removing the member
+ * @returns Removal result
+ */
+export async function removeTeamMemberAction(
+  teamId: string,
+  userId: string,
+  removedBy: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    // Check if the remover has permission (is owner or admin)
+    const removerMembership = await db.query.teamMembers.findFirst({
+      where: and(
+        eq(teamMembers.teamId, teamId),
+        eq(teamMembers.userId, removedBy)
+      ),
+    });
+
+    if (
+      !removerMembership ||
+      !["owner", "admin"].includes(removerMembership.role)
+    ) {
+      return {
+        success: false,
+        error: "You don't have permission to remove team members",
+      };
+    }
+
+    // Can't remove the owner
+    const memberToRemove = await db.query.teamMembers.findFirst({
+      where: and(
+        eq(teamMembers.teamId, teamId),
+        eq(teamMembers.userId, userId)
+      ),
+    });
+
+    if (memberToRemove?.role === "owner") {
+      return {
+        success: false,
+        error: "Cannot remove the team owner",
+      };
+    }
+
+    // Remove the member
+    await db
+      .delete(teamMembers)
+      .where(
+        and(eq(teamMembers.teamId, teamId), eq(teamMembers.userId, userId))
+      );
+
+    // Get team for revalidation
+    const team = await db.query.teams.findFirst({
+      where: eq(teams.id, teamId),
+    });
+
+    if (team) {
+      revalidatePath(`/teams/${team.slug}`);
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error removing team member:", error);
+    return {
+      success: false,
+      error: "Failed to remove team member",
+    };
+  }
+}
+
+/**
+ * Update team member role
+ * @param teamId - Team ID
+ * @param userId - User ID whose role to update
+ * @param newRole - New role to assign
+ * @param updatedBy - User ID of the person updating the role
+ * @returns Update result
+ */
+export async function updateTeamMemberRoleAction(
+  teamId: string,
+  userId: string,
+  newRole: "admin" | "member" | "viewer",
+  updatedBy: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    // Check permissions
+    const updaterMembership = await db.query.teamMembers.findFirst({
+      where: and(
+        eq(teamMembers.teamId, teamId),
+        eq(teamMembers.userId, updatedBy)
+      ),
+    });
+
+    if (
+      !updaterMembership ||
+      !["owner", "admin"].includes(updaterMembership.role)
+    ) {
+      return {
+        success: false,
+        error: "You don't have permission to update member roles",
+      };
+    }
+
+    // Update the role
+    await db
+      .update(teamMembers)
+      .set({ role: newRole })
+      .where(
+        and(eq(teamMembers.teamId, teamId), eq(teamMembers.userId, userId))
+      );
+
+    // Get team for revalidation
+    const team = await db.query.teams.findFirst({
+      where: eq(teams.id, teamId),
+    });
+
+    if (team) {
+      revalidatePath(`/teams/${team.slug}`);
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error updating team member role:", error);
+    return {
+      success: false,
+      error: "Failed to update member role",
+    };
   }
 }
