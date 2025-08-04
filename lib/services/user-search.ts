@@ -121,7 +121,7 @@ export async function inviteUserToTeamAction(
     // Send Clerk invitation
     const invitation = await clerkClient.invitations.createInvitation({
       emailAddress: email,
-      redirectUrl: `${process.env.NEXT_PUBLIC_APP_URL}/teams/${teamId}/accept-invitation`,
+      redirectUrl: `${process.env.NEXT_PUBLIC_APP_URL}/team/${teamId}/accept-invitation`,
       publicMetadata: {
         teamId,
         teamName,

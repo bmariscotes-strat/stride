@@ -302,7 +302,7 @@ export default function CreateTeamPage() {
   };
 
   const navigateToTeam = (slug: string) => {
-    router.push(`/teams/${slug}`);
+    router.push(`/team/${slug}`);
   };
 
   const navigateBack = () => {

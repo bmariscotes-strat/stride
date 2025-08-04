@@ -7,12 +7,16 @@ import { eq, and } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { bulkInviteUsersAction, getUsersByEmailsAction } from "./user-search";
 import type { Team, TeamMember, User } from "@/types";
+import type {
+  TeamMemberWithRelations,
+  TeamWithRelations,
+} from "@/types/relations";
 
 interface CreateTeamData {
   name: string;
   slug: string;
   description?: string;
-  members: string[]; // Array of email addresses
+  members: string[];
   createdBy: string;
 }
 
@@ -32,6 +36,12 @@ type CreateTeamResult =
       error: string;
     };
 
+type TeamWithUserDetails = TeamWithRelations & {
+  members: (TeamMemberWithRelations & {
+    user: NonNullable<TeamMemberWithRelations["user"]>;
+  })[];
+  currentUserRole: string;
+};
 /**
  * Create a new team with members
  * @param teamData - Team creation data
@@ -144,8 +154,8 @@ export async function createTeamAction(
     }
 
     // Revalidate relevant paths
-    revalidatePath("/teams");
-    revalidatePath(`/teams/${newTeam.slug}`);
+    revalidatePath("/team");
+    revalidatePath(`/team/${newTeam.slug}`);
 
     return {
       success: true,
@@ -261,7 +271,7 @@ export async function addTeamMembersAction(
     }
 
     // Revalidate team page
-    revalidatePath(`/teams/${team.slug}`);
+    revalidatePath(`/team/${team.slug}`);
 
     return {
       success: true,
@@ -339,7 +349,7 @@ export async function removeTeamMemberAction(
     });
 
     if (team) {
-      revalidatePath(`/teams/${team.slug}`);
+      revalidatePath(`/team/${team.slug}`);
     }
 
     return { success: true };
@@ -399,7 +409,7 @@ export async function updateTeamMemberRoleAction(
     });
 
     if (team) {
-      revalidatePath(`/teams/${team.slug}`);
+      revalidatePath(`/team/${team.slug}`);
     }
 
     return { success: true };
@@ -409,5 +419,150 @@ export async function updateTeamMemberRoleAction(
       success: false,
       error: "Failed to update member role",
     };
+  }
+}
+
+export async function getTeamsForUser(userId: string) {
+  try {
+    const userTeams = await db
+      .select({
+        team: teams,
+        role: teamMembers.role,
+        memberCount: teamMembers.id,
+      })
+      .from(teamMembers)
+      .innerJoin(teams, eq(teamMembers.teamId, teams.id))
+      .where(and(eq(teamMembers.userId, userId), eq(teams.isArchived, false)));
+
+    // Get member counts for each team
+    const teamsWithCounts = await Promise.all(
+      userTeams.map(async (item) => {
+        const memberCount = await db
+          .select({ count: teamMembers.id })
+          .from(teamMembers)
+          .where(eq(teamMembers.teamId, item.team.id));
+
+        return {
+          ...item.team,
+          role: item.role,
+          memberCount: memberCount.length,
+        };
+      })
+    );
+
+    return teamsWithCounts;
+  } catch (error) {
+    console.error("Error fetching teams:", error);
+    return [];
+  }
+}
+
+export async function getTeamBySlug(slug: string, userId: string) {
+  try {
+    const team = await db.query.teams.findFirst({
+      where: (t, { eq }) => eq(t.slug, slug),
+      with: {
+        members: {
+          with: {
+            user: true, // This includes the user data for each member
+          },
+        },
+        // Include other relations you need
+        projects: true,
+        labels: true,
+      },
+    });
+
+    if (!team) {
+      return null;
+    }
+
+    // Find the current user's role in this team
+    const currentUserMembership = team.members.find(
+      (member) => member.user.id === userId
+    );
+
+    // Return team with current user role
+    return {
+      ...team,
+      currentUserRole: currentUserMembership?.role || null,
+    };
+  } catch (error) {
+    console.error("Error fetching team by slug:", error);
+    return null;
+  }
+}
+
+// Alternative approach if you're using joins instead of Drizzle's with:
+export async function getTeamBySlugWithJoins(slug: string, userId: string) {
+  try {
+    const team = await db
+      .select({
+        // Team fields
+        id: teams.id,
+        name: teams.name,
+        slug: teams.slug,
+        description: teams.description,
+        createdAt: teams.createdAt,
+        updatedAt: teams.updatedAt,
+        // Member fields
+        memberId: teamMembers.id,
+        memberRole: teamMembers.role,
+        memberJoinedAt: teamMembers.joinedAt,
+        // User fields
+        userId: users.id,
+        userEmail: users.email,
+        userUsername: users.username,
+        userFirstName: users.firstName,
+        userLastName: users.lastName,
+        userAvatarUrl: users.avatarUrl,
+      })
+      .from(teams)
+      .leftJoin(teamMembers, eq(teams.id, teamMembers.teamId))
+      .leftJoin(users, eq(teamMembers.userId, users.id))
+      .where(eq(teams.slug, slug));
+
+    if (!team.length) {
+      return null;
+    }
+
+    // Transform the flat result into the expected structure
+    const teamData = team[0];
+    const members = team
+      .filter((row) => row.memberId)
+      .map((row) => ({
+        id: row.memberId!,
+        teamId: teamData.id,
+        userId: row.userId!,
+        role: row.memberRole!,
+        joinedAt: row.memberJoinedAt!,
+        user: {
+          id: row.userId!,
+          email: row.userEmail!,
+          username: row.userUsername,
+          firstName: row.userFirstName,
+          lastName: row.userLastName,
+          avatarUrl: row.userAvatarUrl,
+        },
+      }));
+
+    // Find current user's role
+    const currentUserMembership = members.find(
+      (member) => member.user.id === userId
+    );
+
+    return {
+      id: teamData.id,
+      name: teamData.name,
+      slug: teamData.slug,
+      description: teamData.description,
+      createdAt: teamData.createdAt,
+      updatedAt: teamData.updatedAt,
+      members,
+      currentUserRole: currentUserMembership?.role || null,
+    };
+  } catch (error) {
+    console.error("Error fetching team by slug:", error);
+    return null;
   }
 }

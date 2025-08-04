@@ -69,7 +69,7 @@ export default function TeamsPage() {
             </p>
             <div className="mt-6">
               <Link
-                href="/teams/create"
+                href="/team/create"
                 className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
               >
                 <Plus size={16} />
@@ -82,7 +82,7 @@ export default function TeamsPage() {
             {userTeams.map((team) => (
               <Link
                 key={team.id}
-                href={`/teams/${team.slug}`}
+                href={`/team/${team.slug}`}
                 className="block bg-white rounded-lg shadow hover:shadow-md transition-shadow border border-gray-200"
               >
                 <div className="p-6">
