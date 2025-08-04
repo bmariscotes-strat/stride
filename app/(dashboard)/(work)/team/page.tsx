@@ -1,21 +1,51 @@
-import { Plus, Mail, MoreHorizontal } from "lucide-react";
-import Button from "@/components/ui/Button";
+"use client";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
+import { getTeamsForUser } from "@/lib/services/teams";
+import { Users, Plus, Calendar } from "lucide-react";
+import { useUserContext } from "@/contexts/UserContext";
 import AppBreadcrumb from "@/components/shared/AppBreadcrumb";
+import Button from "@/components/ui/Button";
 
-export default function TeamPage() {
+export default function TeamsPage() {
+  const { userData, clerkUser, loading } = useUserContext();
+  const [userTeams, setUserTeams] = useState<any[]>([]);
+  const [loadingTeams, setLoadingTeams] = useState(true);
+
+  const currentUserId = userData?.id || clerkUser?.id;
+
+  useEffect(() => {
+    const fetchTeams = async () => {
+      if (!currentUserId) return;
+      try {
+        const teams = await getTeamsForUser(currentUserId);
+        setUserTeams(teams);
+      } catch (error) {
+        console.error("Failed to fetch teams:", error);
+      } finally {
+        setLoadingTeams(false);
+      }
+    };
+
+    fetchTeams();
+  }, [currentUserId]);
+
+  if (loading || loadingTeams) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-gray-600">Loading...</p>
+      </div>
+    );
+  }
+
   return (
-    <>
-      <AppBreadcrumb />
-
+    <div className="min-h-screen">
       <div className="space-y-6">
-        <div className="flex justify-between items-center">
+        <div className="flex items-center justify-between mt-4 mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-outer_space-500 dark:text-platinum-500">
-              Team
-            </h1>
-            <p className="text-payne's_gray-500 dark:text-french_gray-500 mt-2">
-              Manage team members and permissions
+            <h1 className="text-2xl font-bold text-gray-900">Teams</h1>
+            <p className="mt-1 text-sm text-gray-600">
+              Manage and collaborate with your teams
             </p>
           </div>
           <Link href="/team/create">
@@ -30,86 +60,81 @@ export default function TeamPage() {
           </Link>
         </div>
 
-        {/* Team Members Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {[
-            {
-              name: "John Doe",
-              role: "Project Manager",
-              email: "john@example.com",
-              avatar: "JD",
-            },
-            {
-              name: "Jane Smith",
-              role: "Developer",
-              email: "jane@example.com",
-              avatar: "JS",
-            },
-            {
-              name: "Mike Johnson",
-              role: "Designer",
-              email: "mike@example.com",
-              avatar: "MJ",
-            },
-            {
-              name: "Sarah Wilson",
-              role: "Developer",
-              email: "sarah@example.com",
-              avatar: "SW",
-            },
-            {
-              name: "Tom Brown",
-              role: "QA Engineer",
-              email: "tom@example.com",
-              avatar: "TB",
-            },
-            {
-              name: "Lisa Davis",
-              role: "Designer",
-              email: "lisa@example.com",
-              avatar: "LD",
-            },
-          ].map((member, index) => (
-            <div
-              key={index}
-              className="bg-white dark:bg-outer_space-500 rounded-lg border border-french_gray-300 dark:border-payne's_gray-400 p-6"
-            >
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex items-center space-x-3">
-                  <div className="w-12 h-12 bg-blue_munsell-500 rounded-full flex items-center justify-center text-white font-semibold">
-                    {member.avatar}
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-outer_space-500 dark:text-platinum-500">
-                      {member.name}
-                    </h3>
-                    <p className="text-sm text-payne's_gray-500 dark:text-french_gray-400">
-                      {member.role}
-                    </p>
-                  </div>
-                </div>
-                <button className="p-1 hover:bg-platinum-500 dark:hover:bg-payne's_gray-400 rounded">
-                  <MoreHorizontal size={16} />
-                </button>
-              </div>
-
-              <div className="flex items-center text-sm text-payne's_gray-500 dark:text-french_gray-400 mb-4">
-                <Mail size={16} className="mr-2" />
-                {member.email}
-              </div>
-
-              <div className="flex items-center justify-between">
-                <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">
-                  Active
-                </span>
-                <div className="text-sm text-payne's_gray-500 dark:text-french_gray-400">
-                  {Math.floor(Math.random() * 10) + 1} projects
-                </div>
-              </div>
+        {userTeams.length === 0 ? (
+          <div className="text-center py-12">
+            <Users className="mx-auto h-12 w-12 text-gray-400" />
+            <h3 className="mt-2 text-sm font-medium text-gray-900">No teams</h3>
+            <p className="mt-1 text-sm text-gray-500">
+              Get started by creating your first team.
+            </p>
+            <div className="mt-6">
+              <Link
+                href="/teams/create"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+              >
+                <Plus size={16} />
+                Create Team
+              </Link>
             </div>
-          ))}
-        </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {userTeams.map((team) => (
+              <Link
+                key={team.id}
+                href={`/teams/${team.slug}`}
+                className="block bg-white rounded-lg shadow hover:shadow-md transition-shadow border border-gray-200"
+              >
+                <div className="p-6">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex-1">
+                      <h3 className="text-lg font-semibold text-gray-900 truncate">
+                        {team.name}
+                      </h3>
+                      <p className="text-sm text-gray-500 capitalize">
+                        {team.role}
+                      </p>
+                    </div>
+                  </div>
+
+                  {team.description && (
+                    <p className="text-sm text-gray-600 mb-4 line-clamp-2">
+                      {team.description}
+                    </p>
+                  )}
+
+                  <div className="flex items-center justify-between text-sm text-gray-500">
+                    <div className="flex items-center gap-1">
+                      <Users size={14} />
+                      <span>{team.memberCount} members</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Calendar size={14} />
+                      <span>
+                        Created {new Date(team.createdAt).toLocaleDateString()}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 pt-4 border-t border-gray-100">
+                    <span
+                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                        team.role === "owner"
+                          ? "bg-purple-100 text-purple-800"
+                          : team.role === "admin"
+                            ? "bg-blue-100 text-blue-800"
+                            : "bg-gray-100 text-gray-800"
+                      }`}
+                    >
+                      {team.role}
+                    </span>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
       </div>
-    </>
+    </div>
   );
 }
