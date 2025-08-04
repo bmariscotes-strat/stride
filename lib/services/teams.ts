@@ -2,8 +2,22 @@
 "use server";
 
 import { db } from "@/lib/db/db";
-import { teams, teamMembers, users } from "@/lib/db/schema";
-import { eq, and } from "drizzle-orm";
+import {
+  labels,
+  columns,
+  cards,
+  cardLabels,
+  cardComments,
+  cardAttachments,
+  mentions,
+  activityLog,
+  notifications,
+  projects,
+  teams,
+  teamMembers,
+  users,
+} from "@/lib/db/schema";
+import { eq, and, or } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { bulkInviteUsersAction, getUsersByEmailsAction } from "./user-search";
 import type { Team, TeamMember, User } from "@/types";
@@ -35,13 +49,6 @@ type CreateTeamResult =
       success: false;
       error: string;
     };
-
-type TeamWithUserDetails = TeamWithRelations & {
-  members: (TeamMemberWithRelations & {
-    user: NonNullable<TeamMemberWithRelations["user"]>;
-  })[];
-  currentUserRole: string;
-};
 /**
  * Create a new team with members
  * @param teamData - Team creation data
@@ -564,5 +571,282 @@ export async function getTeamBySlugWithJoins(slug: string, userId: string) {
   } catch (error) {
     console.error("Error fetching team by slug:", error);
     return null;
+  }
+}
+
+// Add these imports to your existing teams.ts file
+
+/**
+ * Archive a team (soft delete)
+ * @param teamId - Team ID to archive
+ * @param archivedBy - User ID who is archiving the team
+ * @returns Archive result
+ */
+export async function archiveTeamAction(
+  teamId: string,
+  archivedBy: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    // Check if user has permission to archive (must be owner)
+    const userMembership = await db.query.teamMembers.findFirst({
+      where: and(
+        eq(teamMembers.teamId, teamId),
+        eq(teamMembers.userId, archivedBy)
+      ),
+    });
+
+    if (!userMembership || userMembership.role !== "owner") {
+      return {
+        success: false,
+        error: "Only team owners can archive teams",
+      };
+    }
+
+    // Get team details for revalidation
+    const team = await db.query.teams.findFirst({
+      where: eq(teams.id, teamId),
+    });
+
+    if (!team) {
+      return {
+        success: false,
+        error: "Team not found",
+      };
+    }
+
+    // Don't allow archiving personal teams
+    if (team.isPersonal) {
+      return {
+        success: false,
+        error: "Cannot archive personal teams",
+      };
+    }
+
+    // Archive the team
+    await db
+      .update(teams)
+      .set({
+        isArchived: true,
+        updatedAt: new Date(),
+      })
+      .where(eq(teams.id, teamId));
+
+    // Revalidate relevant paths
+    revalidatePath("/team");
+    revalidatePath(`/team/${team.slug}`);
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error archiving team:", error);
+    return {
+      success: false,
+      error: "Failed to archive team",
+    };
+  }
+}
+
+/**
+ * Update team details
+ * @param teamId - Team ID to update
+ * @param updateData - Data to update
+ * @param updatedBy - User ID who is updating the team
+ * @returns Update result
+ */
+export async function updateTeamAction(
+  teamId: string,
+  updateData: {
+    name?: string;
+    slug?: string;
+    description?: string;
+  },
+  updatedBy: string
+): Promise<{ success: boolean; error?: string; team?: Team }> {
+  try {
+    // Check if user has permission to update (must be owner or admin)
+    const userMembership = await db.query.teamMembers.findFirst({
+      where: and(
+        eq(teamMembers.teamId, teamId),
+        eq(teamMembers.userId, updatedBy)
+      ),
+    });
+
+    if (!userMembership || !["owner", "admin"].includes(userMembership.role)) {
+      return {
+        success: false,
+        error: "You don't have permission to update this team",
+      };
+    }
+
+    // Get current team details
+    const currentTeam = await db.query.teams.findFirst({
+      where: eq(teams.id, teamId),
+    });
+
+    if (!currentTeam) {
+      return {
+        success: false,
+        error: "Team not found",
+      };
+    }
+
+    // Don't allow updating personal teams' core details
+    if (currentTeam.isPersonal && (updateData.name || updateData.slug)) {
+      return {
+        success: false,
+        error: "Cannot update name or slug of personal teams",
+      };
+    }
+
+    // If updating slug, check if it already exists
+    if (updateData.slug && updateData.slug !== currentTeam.slug) {
+      const existingTeam = await db.query.teams.findFirst({
+        where: eq(teams.slug, updateData.slug),
+      });
+
+      if (existingTeam) {
+        return {
+          success: false,
+          error:
+            "A team with this URL already exists. Please choose a different one.",
+        };
+      }
+    }
+
+    // Prepare update data
+    const updatePayload: any = {
+      updatedAt: new Date(),
+    };
+
+    if (updateData.name !== undefined) {
+      updatePayload.name = updateData.name;
+    }
+    if (updateData.slug !== undefined) {
+      updatePayload.slug = updateData.slug;
+    }
+    if (updateData.description !== undefined) {
+      updatePayload.description = updateData.description;
+    }
+
+    // Update the team
+    const [updatedTeam] = await db
+      .update(teams)
+      .set(updatePayload)
+      .where(eq(teams.id, teamId))
+      .returning();
+
+    if (!updatedTeam) {
+      return {
+        success: false,
+        error: "Failed to update team",
+      };
+    }
+
+    // Revalidate relevant paths
+    revalidatePath("/team");
+    revalidatePath(`/team/${currentTeam.slug}`);
+
+    // If slug changed, also revalidate new path
+    if (updateData.slug && updateData.slug !== currentTeam.slug) {
+      revalidatePath(`/team/${updatedTeam.slug}`);
+    }
+
+    return {
+      success: true,
+      team: updatedTeam,
+    };
+  } catch (error) {
+    console.error("Error updating team:", error);
+    return {
+      success: false,
+      error: "Failed to update team",
+    };
+  }
+}
+
+/**
+ * Delete a team permanently (hard delete)
+ * @param teamId - Team ID to delete
+ * @param deletedBy - User ID who is deleting the team
+ * @param confirmationText - Text that must match team name for confirmation
+ * @returns Delete result
+ */
+export async function deleteTeamAction(
+  teamId: string,
+  deletedBy: string,
+  confirmationText: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    // Check if user has permission to delete (must be owner)
+    const userMembership = await db.query.teamMembers.findFirst({
+      where: and(
+        eq(teamMembers.teamId, teamId),
+        eq(teamMembers.userId, deletedBy)
+      ),
+    });
+
+    if (!userMembership || userMembership.role !== "owner") {
+      return {
+        success: false,
+        error: "Only team owners can delete teams",
+      };
+    }
+
+    // Get team details
+    const team = await db.query.teams.findFirst({
+      where: eq(teams.id, teamId),
+      with: {
+        projects: true,
+      },
+    });
+
+    if (!team) {
+      return {
+        success: false,
+        error: "Team not found",
+      };
+    }
+
+    // Don't allow deleting personal teams
+    if (team.isPersonal) {
+      return {
+        success: false,
+        error: "Cannot delete personal teams",
+      };
+    }
+
+    // Verify confirmation text matches team name
+    if (confirmationText !== team.name) {
+      return {
+        success: false,
+        error: "Confirmation text does not match team name",
+      };
+    }
+
+    // Check if team has active projects
+    if (team.projects && team.projects.length > 0) {
+      const activeProjects = team.projects.filter((p) => !p.isArchived);
+      if (activeProjects.length > 0) {
+        return {
+          success: false,
+          error: `Cannot delete team with ${activeProjects.length} active project(s). Please archive or delete all projects first.`,
+        };
+      }
+    }
+
+    // Delete the team - this should cascade delete all related data
+    // if your database has proper foreign key constraints with CASCADE
+    await db.delete(teams).where(eq(teams.id, teamId));
+
+    // Revalidate relevant paths
+    revalidatePath("/team");
+    revalidatePath(`/team/${team.slug}`);
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error deleting team:", error);
+    return {
+      success: false,
+      error: "Failed to delete team",
+    };
   }
 }
