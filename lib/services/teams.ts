@@ -23,626 +23,619 @@ import { revalidatePath } from "next/cache";
 // USERS CRUD
 // =============================================================================
 
-export const userOperations = {
-  // Create user
-  async create(userData: {
-    clerkUserId: string;
-    email: string;
-    username: string;
-    firstName: string;
-    lastName: string;
-    avatarUrl?: string;
-    personalTeamId?: string;
-  }) {
-    const [user] = await db.insert(users).values(userData).returning();
-    return user;
-  },
+// Create user
+export async function createUser(userData: {
+  clerkUserId: string;
+  email: string;
+  username: string;
+  firstName: string;
+  lastName: string;
+  avatarUrl?: string;
+  personalTeamId?: string;
+}) {
+  const [user] = await db.insert(users).values(userData).returning();
+  return user;
+}
 
-  // Get user by ID
-  async getById(id: string) {
-    const [user] = await db.select().from(users).where(eq(users.id, id));
-    return user;
-  },
+// Get user by ID
+export async function getUserById(id: string) {
+  const [user] = await db.select().from(users).where(eq(users.id, id));
+  return user;
+}
 
-  // Get user by Clerk ID
-  async getByClerkId(clerkUserId: string) {
-    const [user] = await db
-      .select()
-      .from(users)
-      .where(eq(users.clerkUserId, clerkUserId));
-    return user;
-  },
+// Get user by Clerk ID
+export async function getUserByClerkId(clerkUserId: string) {
+  const [user] = await db
+    .select()
+    .from(users)
+    .where(eq(users.clerkUserId, clerkUserId));
+  return user;
+}
 
-  // Update user
-  async update(id: string, userData: Partial<typeof users.$inferInsert>) {
-    const [user] = await db
-      .update(users)
-      .set({ ...userData, updatedAt: new Date() })
-      .where(eq(users.id, id))
-      .returning();
-    return user;
-  },
+// Update user
+export async function updateUser(
+  id: string,
+  userData: Partial<typeof users.$inferInsert>
+) {
+  const [user] = await db
+    .update(users)
+    .set({ ...userData, updatedAt: new Date() })
+    .where(eq(users.id, id))
+    .returning();
+  return user;
+}
 
-  // Delete user
-  async delete(id: string) {
-    await db.delete(users).where(eq(users.id, id));
-  },
+// Delete user
+export async function deleteUser(id: string) {
+  await db.delete(users).where(eq(users.id, id));
+}
 
-  // Get all users
-  async getAll() {
-    return await db.select().from(users).orderBy(asc(users.createdAt));
-  },
-};
+// Get all users
+export async function getAllUsers() {
+  return await db.select().from(users).orderBy(asc(users.createdAt));
+}
 
 // =============================================================================
 // TEAMS CRUD
 // =============================================================================
 
-export const teamOperations = {
-  // Create team
-  async create(teamData: {
-    name: string;
-    slug: string;
-    description?: string;
-    isPersonal?: boolean;
-    createdBy: string;
-  }) {
-    const [team] = await db.insert(teams).values(teamData).returning();
-    return team;
-  },
+// Create team
+export async function createTeam(teamData: {
+  name: string;
+  slug: string;
+  description?: string;
+  isPersonal?: boolean;
+  createdBy: string;
+}) {
+  const [team] = await db.insert(teams).values(teamData).returning();
+  return team;
+}
 
-  // Get team by ID
-  async getById(id: string) {
-    const [team] = await db.select().from(teams).where(eq(teams.id, id));
-    return team;
-  },
+// Get team by ID
+export async function getTeamById(id: string) {
+  const [team] = await db.select().from(teams).where(eq(teams.id, id));
+  return team;
+}
 
-  // Get team by slug
-  async getBySlug(slug: string) {
-    const [team] = await db.select().from(teams).where(eq(teams.slug, slug));
-    return team;
-  },
+// Get team by slug
+export async function getTeamBySlug(slug: string) {
+  const [team] = await db.select().from(teams).where(eq(teams.slug, slug));
+  return team;
+}
 
-  // Update team
-  async update(id: string, teamData: Partial<typeof teams.$inferInsert>) {
-    const [team] = await db
-      .update(teams)
-      .set({ ...teamData, updatedAt: new Date() })
-      .where(eq(teams.id, id))
-      .returning();
-    return team;
-  },
+// Update team
+export async function updateTeam(
+  id: string,
+  teamData: Partial<typeof teams.$inferInsert>
+) {
+  const [team] = await db
+    .update(teams)
+    .set({ ...teamData, updatedAt: new Date() })
+    .where(eq(teams.id, id))
+    .returning();
+  return team;
+}
 
-  // Delete team
-  async delete(id: string) {
-    await db.delete(teams).where(eq(teams.id, id));
-  },
+// Delete team
+export async function deleteTeam(id: string) {
+  await db.delete(teams).where(eq(teams.id, id));
+}
 
-  // Get teams by user ID
-  async getByUserId(userId: string) {
-    return await db
-      .select({
-        team: teams,
-        membership: teamMembers,
-      })
-      .from(teams)
-      .innerJoin(teamMembers, eq(teams.id, teamMembers.teamId))
-      .where(eq(teamMembers.userId, userId))
-      .orderBy(asc(teams.name));
-  },
-};
+// Get teams by user ID
+export async function getTeamsByUserId(userId: string) {
+  return await db
+    .select({
+      team: teams,
+      membership: teamMembers,
+    })
+    .from(teams)
+    .innerJoin(teamMembers, eq(teams.id, teamMembers.teamId))
+    .where(eq(teamMembers.userId, userId))
+    .orderBy(asc(teams.name));
+}
 
 // =============================================================================
 // PROJECTS CRUD
 // =============================================================================
 
-export const projectOperations = {
-  // Create project
-  async create(projectData: {
-    name: string;
-    slug: string;
-    description?: string;
-    teamId: string;
-    ownerId: string;
-    colorTheme?: string;
-  }) {
-    const [project] = await db.insert(projects).values(projectData).returning();
-    return project;
-  },
+// Create project
+export async function createProject(projectData: {
+  name: string;
+  slug: string;
+  description?: string;
+  teamId: string;
+  ownerId: string;
+  colorTheme?: string;
+}) {
+  const [project] = await db.insert(projects).values(projectData).returning();
+  return project;
+}
 
-  // Get project by ID
-  async getById(id: string) {
-    const [project] = await db
-      .select()
-      .from(projects)
-      .where(eq(projects.id, id));
-    return project;
-  },
+// Get project by ID
+export async function getProjectById(id: string) {
+  const [project] = await db.select().from(projects).where(eq(projects.id, id));
+  return project;
+}
 
-  // Get projects by team ID
-  async getByTeamId(teamId: string) {
-    return await db
-      .select()
-      .from(projects)
-      .where(and(eq(projects.teamId, teamId), eq(projects.isArchived, false)))
-      .orderBy(asc(projects.name));
-  },
+// Get projects by team ID
+export async function getProjectsByTeamId(teamId: string) {
+  return await db
+    .select()
+    .from(projects)
+    .where(and(eq(projects.teamId, teamId), eq(projects.isArchived, false)))
+    .orderBy(asc(projects.name));
+}
 
-  // Update project
-  async update(id: string, projectData: Partial<typeof projects.$inferInsert>) {
-    const [project] = await db
-      .update(projects)
-      .set({ ...projectData, updatedAt: new Date() })
-      .where(eq(projects.id, id))
-      .returning();
-    return project;
-  },
+// Update project
+export async function updateProject(
+  id: string,
+  projectData: Partial<typeof projects.$inferInsert>
+) {
+  const [project] = await db
+    .update(projects)
+    .set({ ...projectData, updatedAt: new Date() })
+    .where(eq(projects.id, id))
+    .returning();
+  return project;
+}
 
-  // Archive project
-  async archive(id: string) {
-    const [project] = await db
-      .update(projects)
-      .set({ isArchived: true, updatedAt: new Date() })
-      .where(eq(projects.id, id))
-      .returning();
-    return project;
-  },
+// Archive project
+export async function archiveProject(id: string) {
+  const [project] = await db
+    .update(projects)
+    .set({ isArchived: true, updatedAt: new Date() })
+    .where(eq(projects.id, id))
+    .returning();
+  return project;
+}
 
-  // Delete project
-  async delete(id: string) {
-    await db.delete(projects).where(eq(projects.id, id));
-  },
-};
+// Delete project
+export async function deleteProject(id: string) {
+  await db.delete(projects).where(eq(projects.id, id));
+}
 
 // =============================================================================
 // COLUMNS CRUD
 // =============================================================================
 
-export const columnOperations = {
-  // Create column
-  async create(columnData: {
-    projectId: string;
-    name: string;
-    position: number;
-    color?: string;
-  }) {
-    const [column] = await db.insert(columns).values(columnData).returning();
-    return column;
-  },
+// Create column
+export async function createColumn(columnData: {
+  projectId: string;
+  name: string;
+  position: number;
+  color?: string;
+}) {
+  const [column] = await db.insert(columns).values(columnData).returning();
+  return column;
+}
 
-  // Get columns by project ID
-  async getByProjectId(projectId: string) {
-    return await db
-      .select()
-      .from(columns)
-      .where(eq(columns.projectId, projectId))
-      .orderBy(asc(columns.position));
-  },
+// Get columns by project ID
+export async function getColumnsByProjectId(projectId: string) {
+  return await db
+    .select()
+    .from(columns)
+    .where(eq(columns.projectId, projectId))
+    .orderBy(asc(columns.position));
+}
 
-  // Update column
-  async update(id: string, columnData: Partial<typeof columns.$inferInsert>) {
-    const [column] = await db
+// Update column
+export async function updateColumn(
+  id: string,
+  columnData: Partial<typeof columns.$inferInsert>
+) {
+  const [column] = await db
+    .update(columns)
+    .set({ ...columnData, updatedAt: new Date() })
+    .where(eq(columns.id, id))
+    .returning();
+  return column;
+}
+
+// Delete column
+export async function deleteColumn(id: string) {
+  await db.delete(columns).where(eq(columns.id, id));
+}
+
+// Reorder columns
+export async function reorderColumns(
+  projectId: string,
+  columnUpdates: Array<{ id: string; position: number }>
+) {
+  const promises = columnUpdates.map(({ id, position }) =>
+    db
       .update(columns)
-      .set({ ...columnData, updatedAt: new Date() })
+      .set({ position, updatedAt: new Date() })
       .where(eq(columns.id, id))
-      .returning();
-    return column;
-  },
-
-  // Delete column
-  async delete(id: string) {
-    await db.delete(columns).where(eq(columns.id, id));
-  },
-
-  // Reorder columns
-  async reorder(
-    projectId: string,
-    columnUpdates: Array<{ id: string; position: number }>
-  ) {
-    const promises = columnUpdates.map(({ id, position }) =>
-      db
-        .update(columns)
-        .set({ position, updatedAt: new Date() })
-        .where(eq(columns.id, id))
-    );
-    await Promise.all(promises);
-  },
-};
+  );
+  await Promise.all(promises);
+}
 
 // =============================================================================
 // CARDS CRUD
 // =============================================================================
 
-export const cardOperations = {
-  // Create card
-  async create(cardData: {
-    columnId: string;
-    title: string;
-    description?: string;
-    assigneeId?: string;
-    priority?: "high" | "medium" | "low";
-    startDate?: Date;
-    dueDate?: Date;
-    position: number;
-    status?: string;
-  }) {
-    const [card] = await db.insert(cards).values(cardData).returning();
-    return card;
-  },
+// Create card
+export async function createCard(cardData: {
+  columnId: string;
+  title: string;
+  description?: string;
+  assigneeId?: string;
+  priority?: "high" | "medium" | "low";
+  startDate?: Date;
+  dueDate?: Date;
+  position: number;
+  status?: string;
+}) {
+  const [card] = await db.insert(cards).values(cardData).returning();
+  return card;
+}
 
-  // Get card by ID
-  async getById(id: string) {
-    const [card] = await db.select().from(cards).where(eq(cards.id, id));
-    return card;
-  },
+// Get card by ID
+export async function getCardById(id: string) {
+  const [card] = await db.select().from(cards).where(eq(cards.id, id));
+  return card;
+}
 
-  // Get cards by column ID
-  async getByColumnId(columnId: string) {
-    return await db
-      .select()
-      .from(cards)
-      .where(and(eq(cards.columnId, columnId), eq(cards.isArchived, false)))
-      .orderBy(asc(cards.position));
-  },
+// Get cards by column ID
+export async function getCardsByColumnId(columnId: string) {
+  return await db
+    .select()
+    .from(cards)
+    .where(and(eq(cards.columnId, columnId), eq(cards.isArchived, false)))
+    .orderBy(asc(cards.position));
+}
 
-  // Update card
-  async update(id: string, cardData: Partial<typeof cards.$inferInsert>) {
-    const [card] = await db
-      .update(cards)
-      .set({ ...cardData, updatedAt: new Date() })
-      .where(eq(cards.id, id))
-      .returning();
-    return card;
-  },
+// Update card
+export async function updateCard(
+  id: string,
+  cardData: Partial<typeof cards.$inferInsert>
+) {
+  const [card] = await db
+    .update(cards)
+    .set({ ...cardData, updatedAt: new Date() })
+    .where(eq(cards.id, id))
+    .returning();
+  return card;
+}
 
-  // Move card to different column
-  async moveToColumn(id: string, columnId: string, position: number) {
-    const [card] = await db
-      .update(cards)
-      .set({ columnId, position, updatedAt: new Date() })
-      .where(eq(cards.id, id))
-      .returning();
-    return card;
-  },
+// Move card to different column
+export async function moveCardToColumn(
+  id: string,
+  columnId: string,
+  position: number
+) {
+  const [card] = await db
+    .update(cards)
+    .set({ columnId, position, updatedAt: new Date() })
+    .where(eq(cards.id, id))
+    .returning();
+  return card;
+}
 
-  // Archive card
-  async archive(id: string) {
-    const [card] = await db
-      .update(cards)
-      .set({ isArchived: true, updatedAt: new Date() })
-      .where(eq(cards.id, id))
-      .returning();
-    return card;
-  },
+// Archive card
+export async function archiveCard(id: string) {
+  const [card] = await db
+    .update(cards)
+    .set({ isArchived: true, updatedAt: new Date() })
+    .where(eq(cards.id, id))
+    .returning();
+  return card;
+}
 
-  // Delete card
-  async delete(id: string) {
-    await db.delete(cards).where(eq(cards.id, id));
-  },
-};
+// Delete card
+export async function deleteCard(id: string) {
+  await db.delete(cards).where(eq(cards.id, id));
+}
 
 // =============================================================================
 // LABELS CRUD
 // =============================================================================
 
-export const labelOperations = {
-  // Create label
-  async create(labelData: { name: string; color: string; teamId: string }) {
-    const [label] = await db.insert(labels).values(labelData).returning();
-    return label;
-  },
+// Create label
+export async function createLabel(labelData: {
+  name: string;
+  color: string;
+  teamId: string;
+}) {
+  const [label] = await db.insert(labels).values(labelData).returning();
+  return label;
+}
 
-  // Get labels by team ID
-  async getByTeamId(teamId: string) {
-    return await db
-      .select()
-      .from(labels)
-      .where(eq(labels.teamId, teamId))
-      .orderBy(asc(labels.name));
-  },
+// Get labels by team ID
+export async function getLabelsByTeamId(teamId: string) {
+  return await db
+    .select()
+    .from(labels)
+    .where(eq(labels.teamId, teamId))
+    .orderBy(asc(labels.name));
+}
 
-  // Update label
-  async update(id: string, labelData: Partial<typeof labels.$inferInsert>) {
-    const [label] = await db
-      .update(labels)
-      .set(labelData)
-      .where(eq(labels.id, id))
-      .returning();
-    return label;
-  },
+// Update label
+export async function updateLabel(
+  id: string,
+  labelData: Partial<typeof labels.$inferInsert>
+) {
+  const [label] = await db
+    .update(labels)
+    .set(labelData)
+    .where(eq(labels.id, id))
+    .returning();
+  return label;
+}
 
-  // Delete label
-  async delete(id: string) {
-    await db.delete(labels).where(eq(labels.id, id));
-  },
-};
+// Delete label
+export async function deleteLabel(id: string) {
+  await db.delete(labels).where(eq(labels.id, id));
+}
 
 // =============================================================================
 // TEAM MEMBERS CRUD
 // =============================================================================
 
-export const teamMemberOperations = {
-  // Add member to team
-  async add(memberData: {
-    teamId: string;
-    userId: string;
-    role?: "owner" | "admin" | "member" | "viewer";
-  }) {
-    const [member] = await db
-      .insert(teamMembers)
-      .values(memberData)
-      .returning();
-    return member;
-  },
+// Add member to team
+export async function addTeamMember(memberData: {
+  teamId: string;
+  userId: string;
+  role?: "owner" | "admin" | "member" | "viewer";
+}) {
+  const [member] = await db.insert(teamMembers).values(memberData).returning();
+  return member;
+}
 
-  // Get team members
-  async getByTeamId(teamId: string) {
-    return await db
-      .select({
-        membership: teamMembers,
-        user: users,
-      })
-      .from(teamMembers)
-      .innerJoin(users, eq(teamMembers.userId, users.id))
-      .where(eq(teamMembers.teamId, teamId))
-      .orderBy(asc(users.firstName));
-  },
+// Get team members
+export async function getTeamMembersByTeamId(teamId: string) {
+  return await db
+    .select({
+      membership: teamMembers,
+      user: users,
+    })
+    .from(teamMembers)
+    .innerJoin(users, eq(teamMembers.userId, users.id))
+    .where(eq(teamMembers.teamId, teamId))
+    .orderBy(asc(users.firstName));
+}
 
-  // Update member role
-  async updateRole(
-    teamId: string,
-    userId: string,
-    role: "owner" | "admin" | "member" | "viewer"
-  ) {
-    const [member] = await db
-      .update(teamMembers)
-      .set({ role })
-      .where(
-        and(eq(teamMembers.teamId, teamId), eq(teamMembers.userId, userId))
-      )
-      .returning();
-    return member;
-  },
+// Update member role
+export async function updateTeamMemberRole(
+  teamId: string,
+  userId: string,
+  role: "owner" | "admin" | "member" | "viewer"
+) {
+  const [member] = await db
+    .update(teamMembers)
+    .set({ role })
+    .where(and(eq(teamMembers.teamId, teamId), eq(teamMembers.userId, userId)))
+    .returning();
+  return member;
+}
 
-  // Remove member from team
-  async remove(teamId: string, userId: string) {
-    await db
-      .delete(teamMembers)
-      .where(
-        and(eq(teamMembers.teamId, teamId), eq(teamMembers.userId, userId))
-      );
-  },
-};
+// Remove member from team
+export async function removeTeamMember(teamId: string, userId: string) {
+  await db
+    .delete(teamMembers)
+    .where(and(eq(teamMembers.teamId, teamId), eq(teamMembers.userId, userId)));
+}
 
 // =============================================================================
 // CARD LABELS CRUD
 // =============================================================================
 
-export const cardLabelOperations = {
-  // Add label to card
-  async add(cardId: string, labelId: string) {
-    const [cardLabel] = await db
-      .insert(cardLabels)
-      .values({ cardId, labelId })
-      .returning();
-    return cardLabel;
-  },
+// Add label to card
+export async function addCardLabel(cardId: string, labelId: string) {
+  const [cardLabel] = await db
+    .insert(cardLabels)
+    .values({ cardId, labelId })
+    .returning();
+  return cardLabel;
+}
 
-  // Get labels for card
-  async getByCardId(cardId: string) {
-    return await db
-      .select({
-        cardLabel: cardLabels,
-        label: labels,
-      })
-      .from(cardLabels)
-      .innerJoin(labels, eq(cardLabels.labelId, labels.id))
-      .where(eq(cardLabels.cardId, cardId));
-  },
+// Get labels for card
+export async function getCardLabelsByCardId(cardId: string) {
+  return await db
+    .select({
+      cardLabel: cardLabels,
+      label: labels,
+    })
+    .from(cardLabels)
+    .innerJoin(labels, eq(cardLabels.labelId, labels.id))
+    .where(eq(cardLabels.cardId, cardId));
+}
 
-  // Remove label from card
-  async remove(cardId: string, labelId: string) {
-    await db
-      .delete(cardLabels)
-      .where(
-        and(eq(cardLabels.cardId, cardId), eq(cardLabels.labelId, labelId))
-      );
-  },
-};
+// Remove label from card
+export async function removeCardLabel(cardId: string, labelId: string) {
+  await db
+    .delete(cardLabels)
+    .where(and(eq(cardLabels.cardId, cardId), eq(cardLabels.labelId, labelId)));
+}
 
 // =============================================================================
 // CARD COMMENTS CRUD
 // =============================================================================
 
-export const cardCommentOperations = {
-  // Create comment
-  async create(commentData: {
-    cardId: string;
-    userId: string;
-    content: string;
-  }) {
-    const [comment] = await db
-      .insert(cardComments)
-      .values(commentData)
-      .returning();
-    return comment;
-  },
+// Create comment
+export async function createCardComment(commentData: {
+  cardId: string;
+  userId: string;
+  content: string;
+}) {
+  const [comment] = await db
+    .insert(cardComments)
+    .values(commentData)
+    .returning();
+  return comment;
+}
 
-  // Get comments by card ID
-  async getByCardId(cardId: string) {
-    return await db
-      .select({
-        comment: cardComments,
-        user: users,
-      })
-      .from(cardComments)
-      .innerJoin(users, eq(cardComments.userId, users.id))
-      .where(eq(cardComments.cardId, cardId))
-      .orderBy(desc(cardComments.createdAt));
-  },
+// Get comments by card ID
+export async function getCardCommentsByCardId(cardId: string) {
+  return await db
+    .select({
+      comment: cardComments,
+      user: users,
+    })
+    .from(cardComments)
+    .innerJoin(users, eq(cardComments.userId, users.id))
+    .where(eq(cardComments.cardId, cardId))
+    .orderBy(desc(cardComments.createdAt));
+}
 
-  // Update comment
-  async update(id: number, content: string) {
-    const [comment] = await db
-      .update(cardComments)
-      .set({ content, updatedAt: new Date() })
-      .where(eq(cardComments.id, id))
-      .returning();
-    return comment;
-  },
+// Update comment
+export async function updateCardComment(id: number, content: string) {
+  const [comment] = await db
+    .update(cardComments)
+    .set({ content, updatedAt: new Date() })
+    .where(eq(cardComments.id, id))
+    .returning();
+  return comment;
+}
 
-  // Delete comment
-  async delete(id: number) {
-    await db.delete(cardComments).where(eq(cardComments.id, id));
-  },
-};
+// Delete comment
+export async function deleteCardComment(id: number) {
+  await db.delete(cardComments).where(eq(cardComments.id, id));
+}
 
 // =============================================================================
 // NOTIFICATIONS CRUD
 // =============================================================================
 
-export const notificationOperations = {
-  // Create notification
-  async create(notificationData: {
-    userId: string;
-    type:
-      | "task_assigned"
-      | "task_updated"
-      | "comment_added"
-      | "mention"
-      | "due_date_reminder"
-      | "team_invitation";
-    title: string;
-    message?: string;
-    cardId?: string;
-    projectId?: string;
-  }) {
-    const [notification] = await db
-      .insert(notifications)
-      .values(notificationData)
-      .returning();
-    return notification;
-  },
+// Create notification
+export async function createNotification(notificationData: {
+  userId: string;
+  type:
+    | "task_assigned"
+    | "task_updated"
+    | "comment_added"
+    | "mention"
+    | "due_date_reminder"
+    | "team_invitation";
+  title: string;
+  message?: string;
+  cardId?: string;
+  projectId?: string;
+}) {
+  const [notification] = await db
+    .insert(notifications)
+    .values(notificationData)
+    .returning();
+  return notification;
+}
 
-  // Get notifications for user
-  async getByUserId(userId: string, limit = 50) {
-    return await db
-      .select()
-      .from(notifications)
-      .where(eq(notifications.userId, userId))
-      .orderBy(desc(notifications.createdAt))
-      .limit(limit);
-  },
+// Get notifications for user
+export async function getNotificationsByUserId(userId: string, limit = 50) {
+  return await db
+    .select()
+    .from(notifications)
+    .where(eq(notifications.userId, userId))
+    .orderBy(desc(notifications.createdAt))
+    .limit(limit);
+}
 
-  // Mark notification as read
-  async markAsRead(id: number) {
-    const [notification] = await db
-      .update(notifications)
-      .set({ isRead: true })
-      .where(eq(notifications.id, id))
-      .returning();
-    return notification;
-  },
+// Mark notification as read
+export async function markNotificationAsRead(id: number) {
+  const [notification] = await db
+    .update(notifications)
+    .set({ isRead: true })
+    .where(eq(notifications.id, id))
+    .returning();
+  return notification;
+}
 
-  // Mark all notifications as read for user
-  async markAllAsRead(userId: string) {
-    await db
-      .update(notifications)
-      .set({ isRead: true })
-      .where(
-        and(eq(notifications.userId, userId), eq(notifications.isRead, false))
-      );
-  },
+// Mark all notifications as read for user
+export async function markAllNotificationsAsRead(userId: string) {
+  await db
+    .update(notifications)
+    .set({ isRead: true })
+    .where(
+      and(eq(notifications.userId, userId), eq(notifications.isRead, false))
+    );
+}
 
-  // Delete notification
-  async delete(id: number) {
-    await db.delete(notifications).where(eq(notifications.id, id));
-  },
-};
+// Delete notification
+export async function deleteNotification(id: number) {
+  await db.delete(notifications).where(eq(notifications.id, id));
+}
 
 // =============================================================================
 // ACTIVITY LOG CRUD
 // =============================================================================
 
-export const activityLogOperations = {
-  // Log activity
-  async create(activityData: {
-    projectId?: string;
-    cardId?: string;
-    userId: string;
-    actionType: string;
-    oldValue?: string;
-    newValue?: string;
-  }) {
-    const [activity] = await db
-      .insert(activityLog)
-      .values(activityData)
-      .returning();
-    return activity;
-  },
+// Log activity
+export async function createActivityLog(activityData: {
+  projectId?: string;
+  cardId?: string;
+  userId: string;
+  actionType: string;
+  oldValue?: string;
+  newValue?: string;
+}) {
+  const [activity] = await db
+    .insert(activityLog)
+    .values(activityData)
+    .returning();
+  return activity;
+}
 
-  // Get activity by project
-  async getByProjectId(projectId: string, limit = 100) {
-    return await db
-      .select({
-        activity: activityLog,
-        user: users,
-      })
-      .from(activityLog)
-      .innerJoin(users, eq(activityLog.userId, users.id))
-      .where(eq(activityLog.projectId, projectId))
-      .orderBy(desc(activityLog.createdAt))
-      .limit(limit);
-  },
+// Get activity by project
+export async function getActivityLogByProjectId(
+  projectId: string,
+  limit = 100
+) {
+  return await db
+    .select({
+      activity: activityLog,
+      user: users,
+    })
+    .from(activityLog)
+    .innerJoin(users, eq(activityLog.userId, users.id))
+    .where(eq(activityLog.projectId, projectId))
+    .orderBy(desc(activityLog.createdAt))
+    .limit(limit);
+}
 
-  // Get activity by card
-  async getByCardId(cardId: string, limit = 50) {
-    return await db
-      .select({
-        activity: activityLog,
-        user: users,
-      })
-      .from(activityLog)
-      .innerJoin(users, eq(activityLog.userId, users.id))
-      .where(eq(activityLog.cardId, cardId))
-      .orderBy(desc(activityLog.createdAt))
-      .limit(limit);
-  },
-};
+// Get activity by card
+export async function getActivityLogByCardId(cardId: string, limit = 50) {
+  return await db
+    .select({
+      activity: activityLog,
+      user: users,
+    })
+    .from(activityLog)
+    .innerJoin(users, eq(activityLog.userId, users.id))
+    .where(eq(activityLog.cardId, cardId))
+    .orderBy(desc(activityLog.createdAt))
+    .limit(limit);
+}
 
 // =============================================================================
 // UTILITY FUNCTIONS
 // =============================================================================
 
-export const utilityOperations = {
-  // Get full project with all related data
-  async getProjectWithData(projectId: string) {
-    const project = await projectOperations.getById(projectId);
-    if (!project) return null;
+// Get full project with all related data
+export async function getProjectWithData(projectId: string) {
+  const project = await getProjectById(projectId);
+  if (!project) return null;
 
-    const projectColumns = await columnOperations.getByProjectId(projectId);
-    const columnsWithCards = await Promise.all(
-      projectColumns.map(async (column) => {
-        const columnCards = await cardOperations.getByColumnId(column.id);
-        return { ...column, cards: columnCards };
-      })
-    );
+  const projectColumns = await getColumnsByProjectId(projectId);
+  const columnsWithCards = await Promise.all(
+    projectColumns.map(async (column) => {
+      const columnCards = await getCardsByColumnId(column.id);
+      return { ...column, cards: columnCards };
+    })
+  );
 
-    return { ...project, columns: columnsWithCards };
-  },
+  return { ...project, columns: columnsWithCards };
+}
 
-  // Get user's teams with projects
-  async getUserTeamsWithProjects(userId: string) {
-    const userTeams = await teamOperations.getByUserId(userId);
-    const teamsWithProjects = await Promise.all(
-      userTeams.map(async ({ team }) => {
-        const teamProjects = await projectOperations.getByTeamId(team.id);
-        return { ...team, projects: teamProjects };
-      })
-    );
-    return teamsWithProjects;
-  },
-};
+// Get user's teams with projects
+export async function getUserTeamsWithProjects(userId: string) {
+  const userTeams = await getTeamsByUserId(userId);
+  const teamsWithProjects = await Promise.all(
+    userTeams.map(async ({ team }) => {
+      const teamProjects = await getProjectsByTeamId(team.id);
+      return { ...team, projects: teamProjects };
+    })
+  );
+  return teamsWithProjects;
+}
 
 export async function createTeamAction(formData: {
   name: string;
@@ -673,11 +666,11 @@ export async function createTeamAction(formData: {
     };
 
     // Create the team
-    const createdTeam = await teamOperations.create(teamData);
+    const createdTeam = await createTeam(teamData);
 
     if (createdTeam) {
       // Add the creator as the owner of the team
-      await teamMemberOperations.add({
+      await addTeamMember({
         teamId: createdTeam.id,
         userId: formData.createdBy,
         role: "owner",
@@ -709,7 +702,7 @@ export async function createTeamAction(formData: {
 
 export async function checkTeamSlugAvailability(slug: string) {
   try {
-    const existingTeam = await teamOperations.getBySlug(slug);
+    const existingTeam = await getTeamBySlug(slug);
     return { available: !existingTeam };
   } catch (error) {
     console.error("Error checking slug availability:", error);
