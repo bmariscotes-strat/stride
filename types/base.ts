@@ -32,6 +32,12 @@ export interface Team {
   updatedAt: Date;
 }
 
+export interface TeamSettings {
+  isPrivate: boolean;
+  allowMemberInvites: boolean;
+  requireApproval: boolean;
+}
+
 export interface Project {
   id: string;
   name: string;

@@ -32,7 +32,7 @@ export interface UserWithRelations extends User {
 
 export interface TeamWithRelations extends Team {
   creator?: User;
-  members?: TeamMember[];
+  members?: TeamMemberWithRelations[];
   projects?: Project[];
   labels?: Label[];
 }

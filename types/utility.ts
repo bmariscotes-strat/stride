@@ -137,3 +137,9 @@ export interface RecentActivity {
   cardId?: string;
   projectId?: string;
 }
+
+export interface NavigationItem {
+  id: string;
+  label: string;
+  icon: React.ComponentType<{ size?: number }>;
+}
