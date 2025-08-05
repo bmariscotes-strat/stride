@@ -13,17 +13,12 @@ interface PageProps {
 
 export default async function TeamSettingsPage({ params }: PageProps) {
   const currentUser = await getCurrentUser();
-  const userId = currentUser?.id || null;
 
-  if (!userId) {
-    // Redirect to login or handle unauthorized access
-    notFound();
-  }
-
-  const { slug } = params;
+  // ✅ Await params before accessing its properties
+  const { slug } = await params;
 
   // Fetch the team data using the slug and current user ID
-  const team = await getTeamBySlug(slug, userId);
+  const team = await getTeamBySlug(slug, currentUser!.id);
 
   if (!team) {
     notFound(); // Redirect to 404 if team not found

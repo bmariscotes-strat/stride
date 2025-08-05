@@ -240,9 +240,16 @@ export default function UpdateTeamPage({ team }: UpdateTeamPageProps) {
         setSelectedIndex(-1);
       }
 
-      // Close member dropdown
+      // Close member dropdown - ONLY if clicking outside any dropdown
       if (showMemberDropdown) {
-        setShowMemberDropdown(null);
+        const clickedElement = event.target as Element;
+        const clickedInsideDropdown =
+          clickedElement.closest(".absolute") &&
+          clickedElement.closest(".shadow-lg");
+
+        if (!clickedInsideDropdown) {
+          setShowMemberDropdown(null);
+        }
       }
     };
 
@@ -513,10 +520,6 @@ export default function UpdateTeamPage({ team }: UpdateTeamPageProps) {
       if (result.success) {
         setPendingMembers([]);
         setSuccess(true);
-        // You might want to refresh the team data here
-        setTimeout(() => {
-          window.location.reload(); // Or better, update the team state
-        }, 1000);
       } else {
         setError("Failed to add some members");
       }
@@ -530,24 +533,38 @@ export default function UpdateTeamPage({ team }: UpdateTeamPageProps) {
     memberId: string,
     userId: string
   ): Promise<void> => {
+    console.log("Clicked - removeExistingMember");
+    console.log("Parameters:", {
+      memberId,
+      userId,
+      teamId: team.id,
+      currentUserId,
+    });
+
     try {
+      console.log("About to call removeTeamMemberAction...");
       const result = await removeTeamMemberAction(
         team.id,
         userId,
         currentUserId!
       );
+      console.log("removeTeamMemberAction completed. Result:", result);
 
       if (result.success) {
+        console.log("Success! Setting success state...");
         setSuccess(true);
-        setTimeout(() => {
-          window.location.reload(); // Or better, update the team state
-        }, 1000);
       } else {
+        console.log("Failed with error:", result.error);
         setError(result.error || "Failed to remove member");
       }
     } catch (err) {
+      console.error("Caught error in removeExistingMember:", err);
+      console.error("Error type:", typeof err);
+      console.error(
+        "Error message:",
+        err instanceof Error ? err.message : String(err)
+      );
       setError("Failed to remove member");
-      console.error("Error removing member:", err);
     }
   };
 
@@ -555,25 +572,39 @@ export default function UpdateTeamPage({ team }: UpdateTeamPageProps) {
     userId: string,
     newRole: "admin" | "member" | "viewer"
   ): Promise<void> => {
+    console.log("Update member role function called");
+    console.log("Parameters:", {
+      userId,
+      newRole,
+      teamId: team.id,
+      currentUserId,
+    });
+
     try {
+      console.log("About to call updateTeamMemberRoleAction...");
       const result = await updateTeamMemberRoleAction(
         team.id,
         userId,
         newRole,
         currentUserId!
       );
+      console.log("updateTeamMemberRoleAction completed. Result:", result);
 
       if (result.success) {
+        console.log("Success! Setting success state...");
         setSuccess(true);
-        setTimeout(() => {
-          window.location.reload(); // Or better, update the team state
-        }, 1000);
       } else {
+        console.log("Failed with error:", result.error);
         setError(result.error || "Failed to update member role");
       }
     } catch (err) {
+      console.error("Caught error in updateMemberRole:", err);
+      console.error("Error type:", typeof err);
+      console.error(
+        "Error message:",
+        err instanceof Error ? err.message : String(err)
+      );
       setError("Failed to update member role");
-      console.error("Error updating member role:", err);
     }
   };
 
@@ -885,13 +916,17 @@ export default function UpdateTeamPage({ team }: UpdateTeamPageProps) {
                                 <div className="relative">
                                   <button
                                     type="button"
-                                    onClick={() =>
+                                    onClick={() => {
+                                      console.log(
+                                        "Dropdown button clicked for member:",
+                                        member.id
+                                      );
                                       setShowMemberDropdown(
                                         showMemberDropdown === member.id
                                           ? null
                                           : member.id
-                                      )
-                                    }
+                                      );
+                                    }}
                                     className="p-2 text-gray-400 hover:text-gray-600 rounded-md hover:bg-gray-100"
                                   >
                                     <MoreVertical size={16} />
@@ -910,6 +945,9 @@ export default function UpdateTeamPage({ team }: UpdateTeamPageProps) {
                                             key={role}
                                             type="button"
                                             onClick={() => {
+                                              console.log(
+                                                "TEST: Button clicked"
+                                              );
                                               updateMemberRole(member.id, role);
                                               setShowMemberDropdown(null);
                                             }}
@@ -918,7 +956,7 @@ export default function UpdateTeamPage({ team }: UpdateTeamPageProps) {
                                                 ? "text-blue-600 bg-blue-50"
                                                 : "text-gray-700"
                                             }`}
-                                            disabled={member.role === role}
+                                            // disabled={member.role === role}
                                           >
                                             <div className="flex items-center gap-2">
                                               {getRoleIcon(role)}

@@ -309,59 +309,72 @@ export async function removeTeamMemberAction(
   userId: string,
   removedBy: string
 ): Promise<{ success: boolean; error?: string }> {
+  console.log("🔧 [Action] removeTeamMemberAction called with:", {
+    teamId,
+    userId,
+    removedBy,
+  });
+
   try {
-    // Check if the remover has permission (is owner or admin)
+    // Step 1: Check permissions of remover
+    console.log("🔍 Checking remover's membership...");
     const removerMembership = await db.query.teamMembers.findFirst({
       where: and(
         eq(teamMembers.teamId, teamId),
         eq(teamMembers.userId, removedBy)
       ),
     });
+    console.log("👤 Remover membership found:", removerMembership);
 
     if (
       !removerMembership ||
       !["owner", "admin"].includes(removerMembership.role)
     ) {
+      console.warn("⛔️ Remover does not have permission.");
       return {
         success: false,
         error: "You don't have permission to remove team members",
       };
     }
 
-    // Can't remove the owner
+    // Step 2: Check if trying to remove an owner
+    console.log("🔍 Checking role of member to remove...");
     const memberToRemove = await db.query.teamMembers.findFirst({
-      where: and(
-        eq(teamMembers.teamId, teamId),
-        eq(teamMembers.userId, userId)
-      ),
+      where: and(eq(teamMembers.teamId, teamId), eq(teamMembers.id, userId)),
     });
+    console.log("👤 Member to remove:", memberToRemove);
 
     if (memberToRemove?.role === "owner") {
+      console.warn("⛔️ Attempted to remove a team owner.");
       return {
         success: false,
         error: "Cannot remove the team owner",
       };
     }
 
-    // Remove the member
-    await db
+    // Step 3: Attempt to delete
+    console.log("🗑 Attempting to delete member...");
+    const deleteResult = await db
       .delete(teamMembers)
-      .where(
-        and(eq(teamMembers.teamId, teamId), eq(teamMembers.userId, userId))
-      );
+      .where(and(eq(teamMembers.teamId, teamId), eq(teamMembers.id, userId)));
+    console.log("✅ Delete result:", deleteResult);
 
-    // Get team for revalidation
+    // Step 4: Revalidate the team path
     const team = await db.query.teams.findFirst({
       where: eq(teams.id, teamId),
     });
+    console.log("📦 Team for revalidation:", team);
 
     if (team) {
-      revalidatePath(`/team/${team.slug}`);
+      const path = `/team/${team.slug}`;
+      console.log(`🔁 Revalidating path: ${path}`);
+      revalidatePath(path);
     }
 
+    console.log("🎉 Member successfully removed.");
     return { success: true };
   } catch (error) {
-    console.error("Error removing team member:", error);
+    console.error("❌ Error removing team member:", error);
     return {
       success: false,
       error: "Failed to remove team member",
@@ -406,9 +419,7 @@ export async function updateTeamMemberRoleAction(
     await db
       .update(teamMembers)
       .set({ role: newRole })
-      .where(
-        and(eq(teamMembers.teamId, teamId), eq(teamMembers.userId, userId))
-      );
+      .where(and(eq(teamMembers.teamId, teamId), eq(teamMembers.id, userId)));
 
     // Get team for revalidation
     const team = await db.query.teams.findFirst({
@@ -573,8 +584,6 @@ export async function getTeamBySlugWithJoins(slug: string, userId: string) {
     return null;
   }
 }
-
-// Add these imports to your existing teams.ts file
 
 /**
  * Archive a team (soft delete)
