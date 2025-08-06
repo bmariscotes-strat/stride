@@ -1,21 +1,28 @@
-"use client";
-
-import type React from "react";
-import { useState, Suspense } from "react";
+// app/(dashboard)/layout.tsx
 import Header from "@/components/layout/dashboard/Header";
+import { getCurrentUser } from "@/lib/services/users";
+import { getTeamsForUser } from "@/lib/services/teams";
+import { Suspense } from "react";
 
-export default function DashboardLayout({
+export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const user = await getCurrentUser();
+  const teams = user
+    ? (await getTeamsForUser(user.id)).slice(0, 3).map((team) => ({
+        slug: team.slug,
+        name: team.name,
+        description: team.description,
+      }))
+    : [];
+
   return (
     <div className="min-h-screen">
-      {/* Main content */}
       <div>
-        <Header />
+        <Header teams={teams} />
 
-        {/* Page content */}
         <main className="py-8 px-4 sm:px-6 lg:px-12">
           <Suspense>{children}</Suspense>
         </main>

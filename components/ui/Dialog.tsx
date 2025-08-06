@@ -1,6 +1,5 @@
 import { useState, ReactNode } from "react";
 import { X } from "lucide-react";
-import Button from "@/components/ui/Button";
 
 // Type definitions
 interface DialogProps {
@@ -44,7 +43,7 @@ export const Dialog = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black bg-opacity-50 transition-opacity"
+        className="fixed inset-0 bg-black/10 bg-opacity-50 transition-opacity"
         onClick={onClose}
       />
 
