@@ -16,6 +16,8 @@ import {
   Eye,
   UserCheck,
 } from "lucide-react";
+import Button from "@/components/ui/Button";
+import { Dialog, DialogContent } from "@/components/ui/Dialog";
 import { useUserContext } from "@/contexts/UserContext";
 import {
   updateTeamAction,
@@ -25,22 +27,15 @@ import {
   removeTeamMemberAction,
   updateTeamMemberRoleAction,
 } from "@/lib/services/teams";
-import {
-  searchUsersAction,
-  inviteUserToTeamAction,
-} from "@/lib/services/user-search";
+import { searchUsersAction } from "@/lib/services/user-search";
 import type { UserSearchResult } from "@/lib/services/user-search";
 import { useRouter } from "next/navigation";
 import { useDebounce } from "@/hooks/useDebounce";
 import type {
   TeamSettings,
   NavigationItem,
-  InviteFormMember,
-  TeamMemberWithRelations,
   TeamWithRelations,
-  Team,
   TeamRole,
-  TeamMember,
 } from "@/types";
 
 // TypeScript interfaces
@@ -1459,8 +1454,12 @@ export default function UpdateTeamPage({ team }: UpdateTeamPageProps) {
 
       {/* Delete Confirmation Modal */}
       {showDeleteModal && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+        <Dialog
+          isOpen={showDeleteModal}
+          onClose={closeDeleteModal}
+          maxWidth="max-w-sm"
+        >
+          <DialogContent className="p-5">
             <div className="mt-3">
               {deleteStep === 1 ? (
                 <>
@@ -1549,8 +1548,8 @@ export default function UpdateTeamPage({ team }: UpdateTeamPageProps) {
                 </>
               )}
             </div>
-          </div>
-        </div>
+          </DialogContent>
+        </Dialog>
       )}
     </>
   );

@@ -2,8 +2,8 @@
 
 import { notFound } from "next/navigation";
 import { getCurrentUser } from "@/lib/services/users";
-import { getTeamBySlug } from "@/lib/services/teams"; // Import your function
-import UpdateTeamPage from "./UpdateTeamPage"; // Import your client component
+import { getTeamBySlug } from "@/lib/services/teams";
+import UpdateTeamPage from "./Settings.client";
 
 interface PageProps {
   params: {
@@ -29,8 +29,6 @@ export default async function TeamSettingsPage({ params }: PageProps) {
     !team.currentUserRole ||
     !["owner", "admin"].includes(team.currentUserRole)
   ) {
-    // You might want to redirect to the team page instead of 404
-    // or show an unauthorized message
     notFound();
   }
 
