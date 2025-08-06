@@ -8,12 +8,8 @@ import Notifications from "@/components/shared/Notification";
 import { useState } from "react";
 import NavDropdown from "@/components/shared/NavDropdown";
 import UserDropdown from "@/components/shared/UserDropdown";
-
-interface Team {
-  slug: string;
-  name: string;
-  type?: string;
-}
+import { Team } from "@/types";
+import { mapToNavItem } from "@/lib/utils/map-nav-item";
 
 interface HeaderProps {
   teams: Team[];
@@ -49,6 +45,13 @@ export default function Header({ teams }: HeaderProps) {
 
   const isActive = (path: string) => pathname === path;
 
+  // Mapping Navigation Items
+  const teamNavItems = teams.map((team) =>
+    mapToNavItem(team, {
+      baseHref: "/team",
+    })
+  );
+
   const navLinks = [
     { href: "/", label: "About" },
     { href: "/sign-up", label: "Register" },
@@ -78,7 +81,7 @@ export default function Header({ teams }: HeaderProps) {
             items={workspaceItems}
             viewAllHref="/workspace"
           />
-          <NavDropdown title="Teams" items={teams} viewAllHref="/team" />
+          <NavDropdown title="Teams" items={teamNavItems} viewAllHref="/team" />
           <NavDropdown
             title="Projects"
             items={projectsPlaceholder}
