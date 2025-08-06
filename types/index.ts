@@ -20,7 +20,6 @@ export type {
   CardAttachment,
   ActivityLog,
   Notification,
-  TeamSettings,
   Mention,
 } from "./base";
 
@@ -92,4 +91,9 @@ export type {
 } from "./utility";
 
 // Non-object types
-export type { InviteFormMember } from "./forms/team";
+export type {
+  InviteFormMember,
+  PendingTeamMember,
+  FormData,
+  TeamSettings,
+} from "./forms/team";
