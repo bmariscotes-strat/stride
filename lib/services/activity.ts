@@ -6,7 +6,6 @@ import { db } from "@/lib/db/db"; // Adjust path to your database instance
 import { activityLog, users, cards } from "@/lib/db/schema";
 import {
   ActivityLogParams,
-  ActivityMetadata,
   FieldChange,
   ActivityLogResult,
 } from "@/types/enums/activity";

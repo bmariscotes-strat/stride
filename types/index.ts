@@ -3,9 +3,6 @@
 // MAIN EXPORT FILE - Re-export all types for easy importing
 // =============================================================================
 
-// Enums
-export type { TeamRole, Priority, NotificationType, UserRole } from "./enums";
-
 // Base interfaces
 export type {
   User,
@@ -98,3 +95,9 @@ export type {
   FormData,
   TeamSettings,
 } from "./forms/team";
+
+// Notification
+export type { Priority, NotificationType } from "./enums/notif";
+
+// RBAC
+export type { TeamRole, UserRole } from "./enums/permissions";

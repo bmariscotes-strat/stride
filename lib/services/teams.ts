@@ -6,8 +6,9 @@ import { teams, teamMembers, users } from "@/lib/db/schema";
 import { eq, and, or } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { bulkInviteUsersAction, getUsersByEmailsAction } from "./user-search";
-import { ActivityService } from "./activity"; // Import the activity service
-import type { Team, TeamMember, User } from "@/types";
+import { ActivityService } from "@/lib/services/activity";
+import { NotificationService } from "@/lib/services/notification";
+import type { Team } from "@/types";
 
 interface CreateTeamData {
   name: string;
@@ -278,6 +279,14 @@ export async function addTeamMembersAction(
             null, // Team-level activity
             user.id,
             `${user.firstName} ${user.lastName}` || user.username || user.email,
+            "member"
+          );
+
+          await NotificationService.notifyTeamMemberAdded(
+            invitedBy,
+            teamId,
+            user.id,
+            user.firstName,
             "member"
           );
         }
