@@ -2,29 +2,12 @@
 "use server";
 
 import { db } from "@/lib/db/db";
-import {
-  labels,
-  columns,
-  cards,
-  cardLabels,
-  cardComments,
-  cardAttachments,
-  mentions,
-  activityLog,
-  notifications,
-  projects,
-  teams,
-  teamMembers,
-  users,
-} from "@/lib/db/schema";
+import { teams, teamMembers, users } from "@/lib/db/schema";
 import { eq, and, or } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { bulkInviteUsersAction, getUsersByEmailsAction } from "./user-search";
+import { ActivityService } from "./activity"; // Import the activity service
 import type { Team, TeamMember, User } from "@/types";
-import type {
-  TeamMemberWithRelations,
-  TeamWithRelations,
-} from "@/types/relations";
 
 interface CreateTeamData {
   name: string;
@@ -49,6 +32,7 @@ type CreateTeamResult =
       success: false;
       error: string;
     };
+
 /**
  * Create a new team with members
  * @param teamData - Team creation data
@@ -93,6 +77,19 @@ export async function createTeamAction(
       };
     }
 
+    // Log team creation activity
+    await ActivityService.log({
+      userId: createdBy,
+      actionType: "team_created",
+      projectId: null, // Teams might not have projects yet
+      newValue: name,
+      metadata: {
+        teamId: newTeam.id,
+        slug: slug,
+        description: description,
+      },
+    });
+
     // Add the creator as the owner
     await db.insert(teamMembers).values({
       teamId: newTeam.id,
@@ -124,12 +121,24 @@ export async function createTeamAction(
 
           await db.insert(teamMembers).values(teamMemberInserts);
 
+          // Log each team member addition
+          for (const user of existingUsers) {
+            await ActivityService.logTeamMemberAdded(
+              createdBy,
+              null, // No specific project, this is team-level
+              user.id,
+              `${user.firstName} ${user.lastName}` ||
+                user.username ||
+                user.email,
+              "member"
+            );
+          }
+
           // Mark existing users as successfully added
           existingUsers.forEach((user) => {
             invitationResults.push({
               email: user.email,
               success: true,
-              // No invitationId since they were added directly
             });
           });
         }
@@ -147,11 +156,25 @@ export async function createTeamAction(
             createdBy
           );
 
+          // Log invitations sent
+          for (const email of nonExistingEmails) {
+            await ActivityService.log({
+              userId: createdBy,
+              actionType: "team_member_invited",
+              projectId: null,
+              newValue: email,
+              metadata: {
+                teamId: newTeam.id,
+                teamName: newTeam.name,
+                invitationType: "email",
+              },
+            });
+          }
+
           invitationResults.push(...inviteResults);
         }
       } catch (inviteError) {
         console.error("Error handling member invitations:", inviteError);
-        // Don't fail the team creation if invitations fail
         invitationResults = members.map((email) => ({
           email,
           success: false,
@@ -229,7 +252,6 @@ export async function addTeamMembersAction(
 
     // Add existing users directly to the team
     if (existingUsers.length > 0) {
-      // Filter out users who are already team members
       const existingMembers = await db
         .select({ userId: teamMembers.userId })
         .from(teamMembers)
@@ -248,6 +270,17 @@ export async function addTeamMembersAction(
         }));
 
         await db.insert(teamMembers).values(teamMemberInserts);
+
+        // Log each successful addition
+        for (const user of usersToAdd) {
+          await ActivityService.logTeamMemberAdded(
+            invitedBy,
+            null, // Team-level activity
+            user.id,
+            `${user.firstName} ${user.lastName}` || user.username || user.email,
+            "member"
+          );
+        }
       }
 
       // Add results for existing users
@@ -273,6 +306,21 @@ export async function addTeamMembersAction(
         team.name,
         invitedBy
       );
+
+      // Log invitations
+      for (const email of nonExistingEmails) {
+        await ActivityService.log({
+          userId: invitedBy,
+          actionType: "team_member_invited",
+          projectId: null,
+          newValue: email,
+          metadata: {
+            teamId: teamId,
+            teamName: team.name,
+            invitationType: "email",
+          },
+        });
+      }
 
       results.push(...inviteResults);
     }
@@ -337,14 +385,24 @@ export async function removeTeamMemberAction(
       };
     }
 
-    // Step 2: Check if trying to remove an owner
-    console.log("🔍 Checking role of member to remove...");
+    // Step 2: Get member details before removal for activity logging
+    console.log("🔍 Getting member details for activity logging...");
     const memberToRemove = await db.query.teamMembers.findFirst({
       where: and(eq(teamMembers.teamId, teamId), eq(teamMembers.id, userId)),
+      with: {
+        user: true,
+      },
     });
     console.log("👤 Member to remove:", memberToRemove);
 
-    if (memberToRemove?.role === "owner") {
+    if (!memberToRemove) {
+      return {
+        success: false,
+        error: "Member not found",
+      };
+    }
+
+    if (memberToRemove.role === "owner") {
       console.warn("⛔️ Attempted to remove a team owner.");
       return {
         success: false,
@@ -352,19 +410,35 @@ export async function removeTeamMemberAction(
       };
     }
 
-    // Step 3: Attempt to delete
+    // Step 3: Get team details for activity logging
+    const team = await db.query.teams.findFirst({
+      where: eq(teams.id, teamId),
+    });
+
+    // Step 4: Attempt to delete
     console.log("🗑 Attempting to delete member...");
     const deleteResult = await db
       .delete(teamMembers)
       .where(and(eq(teamMembers.teamId, teamId), eq(teamMembers.id, userId)));
     console.log("✅ Delete result:", deleteResult);
 
-    // Step 4: Revalidate the team path
-    const team = await db.query.teams.findFirst({
-      where: eq(teams.id, teamId),
-    });
-    console.log("📦 Team for revalidation:", team);
+    // Step 5: Log the removal activity
+    if (memberToRemove.user && team) {
+      const memberName =
+        `${memberToRemove.user.firstName} ${memberToRemove.user.lastName}`.trim() ||
+        memberToRemove.user.username ||
+        memberToRemove.user.email;
 
+      await ActivityService.logTeamMemberRemoved(
+        removedBy,
+        null, // Team-level activity
+        memberToRemove.user.id,
+        memberName,
+        memberToRemove.role
+      );
+    }
+
+    // Step 6: Revalidate the team path
     if (team) {
       const path = `/team/${team.slug}`;
       console.log(`🔁 Revalidating path: ${path}`);
@@ -415,11 +489,45 @@ export async function updateTeamMemberRoleAction(
       };
     }
 
+    // Get current member details for activity logging
+    const currentMember = await db.query.teamMembers.findFirst({
+      where: and(eq(teamMembers.teamId, teamId), eq(teamMembers.id, userId)),
+      with: {
+        user: true,
+      },
+    });
+
+    if (!currentMember) {
+      return {
+        success: false,
+        error: "Member not found",
+      };
+    }
+
+    const oldRole = currentMember.role;
+
     // Update the role
     await db
       .update(teamMembers)
       .set({ role: newRole })
       .where(and(eq(teamMembers.teamId, teamId), eq(teamMembers.id, userId)));
+
+    // Log the role change activity
+    if (currentMember.user) {
+      const memberName =
+        `${currentMember.user.firstName} ${currentMember.user.lastName}`.trim() ||
+        currentMember.user.username ||
+        currentMember.user.email;
+
+      await ActivityService.logTeamMemberRoleChanged(
+        updatedBy,
+        null, // Team-level activity
+        currentMember.user.id,
+        memberName,
+        oldRole,
+        newRole
+      );
+    }
 
     // Get team for revalidation
     const team = await db.query.teams.findFirst({
@@ -440,6 +548,7 @@ export async function updateTeamMemberRoleAction(
   }
 }
 
+// ... (keeping all the existing query functions unchanged)
 export async function getTeamsForUser(userId: string) {
   try {
     const userTeams = await db
@@ -482,10 +591,9 @@ export async function getTeamBySlug(slug: string, userId: string) {
       with: {
         members: {
           with: {
-            user: true, // This includes the user data for each member
+            user: true,
           },
         },
-        // Include other relations you need
         projects: true,
         labels: true,
       },
@@ -503,80 +611,6 @@ export async function getTeamBySlug(slug: string, userId: string) {
     // Return team with current user role
     return {
       ...team,
-      currentUserRole: currentUserMembership?.role || null,
-    };
-  } catch (error) {
-    console.error("Error fetching team by slug:", error);
-    return null;
-  }
-}
-
-// Alternative approach if you're using joins instead of Drizzle's with:
-export async function getTeamBySlugWithJoins(slug: string, userId: string) {
-  try {
-    const team = await db
-      .select({
-        // Team fields
-        id: teams.id,
-        name: teams.name,
-        slug: teams.slug,
-        description: teams.description,
-        createdAt: teams.createdAt,
-        updatedAt: teams.updatedAt,
-        // Member fields
-        memberId: teamMembers.id,
-        memberRole: teamMembers.role,
-        memberJoinedAt: teamMembers.joinedAt,
-        // User fields
-        userId: users.id,
-        userEmail: users.email,
-        userUsername: users.username,
-        userFirstName: users.firstName,
-        userLastName: users.lastName,
-        userAvatarUrl: users.avatarUrl,
-      })
-      .from(teams)
-      .leftJoin(teamMembers, eq(teams.id, teamMembers.teamId))
-      .leftJoin(users, eq(teamMembers.userId, users.id))
-      .where(eq(teams.slug, slug));
-
-    if (!team.length) {
-      return null;
-    }
-
-    // Transform the flat result into the expected structure
-    const teamData = team[0];
-    const members = team
-      .filter((row) => row.memberId)
-      .map((row) => ({
-        id: row.memberId!,
-        teamId: teamData.id,
-        userId: row.userId!,
-        role: row.memberRole!,
-        joinedAt: row.memberJoinedAt!,
-        user: {
-          id: row.userId!,
-          email: row.userEmail!,
-          username: row.userUsername,
-          firstName: row.userFirstName,
-          lastName: row.userLastName,
-          avatarUrl: row.userAvatarUrl,
-        },
-      }));
-
-    // Find current user's role
-    const currentUserMembership = members.find(
-      (member) => member.user.id === userId
-    );
-
-    return {
-      id: teamData.id,
-      name: teamData.name,
-      slug: teamData.slug,
-      description: teamData.description,
-      createdAt: teamData.createdAt,
-      updatedAt: teamData.updatedAt,
-      members,
       currentUserRole: currentUserMembership?.role || null,
     };
   } catch (error) {
@@ -611,7 +645,7 @@ export async function archiveTeamAction(
       };
     }
 
-    // Get team details for revalidation
+    // Get team details for revalidation and logging
     const team = await db.query.teams.findFirst({
       where: eq(teams.id, teamId),
     });
@@ -639,6 +673,19 @@ export async function archiveTeamAction(
         updatedAt: new Date(),
       })
       .where(eq(teams.id, teamId));
+
+    // Log the team archival
+    await ActivityService.log({
+      userId: archivedBy,
+      actionType: "team_archived",
+      projectId: null,
+      oldValue: team.name,
+      metadata: {
+        teamId: team.id,
+        slug: team.slug,
+        archivedAt: new Date().toISOString(),
+      },
+    });
 
     // Revalidate relevant paths
     revalidatePath("/team");
@@ -726,13 +773,13 @@ export async function updateTeamAction(
       updatedAt: new Date(),
     };
 
-    if (updateData.name !== undefined) {
+    if (updateData.name !== null) {
       updatePayload.name = updateData.name;
     }
-    if (updateData.slug !== undefined) {
+    if (updateData.slug !== null) {
       updatePayload.slug = updateData.slug;
     }
-    if (updateData.description !== undefined) {
+    if (updateData.description !== null) {
       updatePayload.description = updateData.description;
     }
 
@@ -748,6 +795,46 @@ export async function updateTeamAction(
         success: false,
         error: "Failed to update team",
       };
+    }
+
+    // Log team update activities for changed fields
+    const changes = [];
+    if (updateData.name && updateData.name !== currentTeam.name) {
+      changes.push({
+        field: "name",
+        oldValue: currentTeam.name,
+        newValue: updateData.name,
+      });
+    }
+    if (updateData.slug && updateData.slug !== currentTeam.slug) {
+      changes.push({
+        field: "slug",
+        oldValue: currentTeam.slug,
+        newValue: updateData.slug,
+      });
+    }
+    if (updateData.description !== currentTeam.description) {
+      changes.push({
+        field: "description",
+        oldValue: currentTeam.description || "",
+        newValue: updateData.description || "",
+      });
+    }
+
+    // Log each change
+    for (const change of changes) {
+      await ActivityService.log({
+        userId: updatedBy,
+        actionType: "team_updated",
+        projectId: null,
+        oldValue: String(change.oldValue),
+        newValue: String(change.newValue),
+        metadata: {
+          teamId: updatedTeam.id,
+          field: change.field,
+          teamName: updatedTeam.name,
+        },
+      });
     }
 
     // Revalidate relevant paths
@@ -842,8 +929,22 @@ export async function deleteTeamAction(
       }
     }
 
+    // Log the team deletion before actually deleting it
+    await ActivityService.log({
+      userId: deletedBy,
+      actionType: "team_deleted",
+      projectId: null,
+      oldValue: team.name,
+      metadata: {
+        teamId: team.id,
+        slug: team.slug,
+
+        deletedAt: new Date().toISOString(),
+        confirmationText: confirmationText,
+      },
+    });
+
     // Delete the team - this should cascade delete all related data
-    // if your database has proper foreign key constraints with CASCADE
     await db.delete(teams).where(eq(teams.id, teamId));
 
     // Revalidate relevant paths
