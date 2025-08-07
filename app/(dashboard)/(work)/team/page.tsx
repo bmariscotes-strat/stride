@@ -4,7 +4,6 @@ import Link from "next/link";
 import { getTeamsForUser } from "@/lib/services/teams";
 import { Users, Plus, Calendar } from "lucide-react";
 import { useUserContext } from "@/contexts/UserContext";
-import AppBreadcrumb from "@/components/shared/AppBreadcrumb";
 import Button from "@/components/ui/Button";
 
 export default function TeamsPage() {

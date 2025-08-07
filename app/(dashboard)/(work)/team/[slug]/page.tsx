@@ -5,6 +5,7 @@ import { notFound, redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/services/users";
 import DualPanelLayout from "@/components/layout/shared/DualPanelLayout";
 import AppBreadcrumb from "@/components/shared/AppBreadcrumb";
+import Button from "@/components/ui/Button";
 import {
   Users,
   Settings,
@@ -12,12 +13,14 @@ import {
   Plus,
   FolderOpen,
   MoreVerticalIcon as MoreVertical,
+  Link as LinkIcon,
 } from "lucide-react";
 import { getTeamBySlug } from "@/lib/services/teams";
 import type {
   TeamWithRelations,
   TeamMemberWithRelations,
 } from "@/types/relations";
+import UserAvatar from "@/components/shared/UserAvatar";
 
 // Define the expected team type with members that include user data
 interface TeamPageData extends TeamWithRelations {
@@ -68,7 +71,17 @@ export default async function TeamPage({
                     <Globe size={16} className="text-gray-400" />
                   )} */}
                 </div>
-                <p className="text-sm text-gray-600">/{team.slug}</p>
+                <p className="text-sm text-gray-600 flex items-center gap-1">
+                  <LinkIcon className="w-4 h-4 text-blue-500" />
+                  <Link
+                    href={`${team.slug}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:underline text-blue-500"
+                  >
+                    {`${team.slug}`}
+                  </Link>
+                </p>
               </div>
               {canEdit && (
                 <Link
@@ -103,11 +116,6 @@ export default async function TeamPage({
             <div className="border-t border-gray-200 pt-4">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="font-medium text-gray-900">Members</h3>
-                {canEdit && (
-                  <button className="text-xs text-blue-600 hover:text-blue-700">
-                    Add members
-                  </button>
-                )}
               </div>
 
               <div className="space-y-2 max-h-60 overflow-y-auto">
@@ -124,13 +132,19 @@ export default async function TeamPage({
                           alt=""
                         />
                       ) : (
-                        <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center">
-                          <span className="text-xs font-medium text-gray-600">
-                            {member.user?.firstName?.[0]?.toUpperCase() ||
-                              member.user?.email?.[0]?.toUpperCase() ||
-                              "?"}
-                          </span>
-                        </div>
+                        <UserAvatar
+                          name={
+                            [member.user?.firstName, member.user?.lastName]
+                              .filter(Boolean)
+                              .join(" ") ||
+                            member.user?.email ||
+                            "Unknown"
+                          }
+                          src={member.user?.avatarUrl}
+                          size="32"
+                          useContext={false}
+                          className="h-8 w-8"
+                        />
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
@@ -162,10 +176,14 @@ export default async function TeamPage({
                 Manage your team's projects and collaborations
               </p>
             </div>
-            <button className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+
+            {/* This button should be hidden during empty state.
+             */}
+
+            {/* <button className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
               <Plus size={16} />
               New Project
-            </button>
+            </button> */}
           </div>
 
           {/* Projects Placeholder */}
@@ -178,10 +196,16 @@ export default async function TeamPage({
               Get started by creating your first project for this team.
             </p>
             <div className="mt-6">
-              <button className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
-                <Plus size={16} />
-                Create Project
-              </button>
+              <Link href="/team/create">
+                <Button
+                  leftIcon={<Plus />}
+                  variant="primary"
+                  style="filled"
+                  size="sm"
+                >
+                  Create Project
+                </Button>
+              </Link>
             </div>
           </div>
 

@@ -12,6 +12,7 @@ import {
 import type { UserSearchResult } from "@/lib/services/user-search";
 import { useRouter } from "next/navigation";
 import { useDebounce } from "@/hooks/useDebounce";
+import UserAvatar from "@/components/shared/UserAvatar";
 
 // TypeScript interfaces
 interface TeamSettings {
@@ -628,33 +629,35 @@ export default function CreateTeamPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Add Members
                   </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <Search className="h-4 w-4 text-gray-400" />
-                    </div>
-                    <input
-                      ref={searchInputRef}
-                      type="text"
-                      value={searchQuery}
-                      onChange={(e) => {
-                        setSearchQuery(e.target.value);
-                        setShowDropdown(true);
-                      }}
-                      onKeyDown={handleKeyDown}
-                      onFocus={() =>
-                        setShowDropdown(
-                          searchQuery.trim().length >= 2 ||
-                            searchQuery.includes("@")
-                        )
-                      }
-                      className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="Search users or enter email address..."
-                    />
-                    {isSearching && (
-                      <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                  <div className="space-y-4">
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <Search className="h-4 w-4 text-gray-400" />
                       </div>
-                    )}
+                      <input
+                        ref={searchInputRef}
+                        type="text"
+                        value={searchQuery}
+                        onChange={(e) => {
+                          setSearchQuery(e.target.value);
+                          setShowDropdown(true);
+                        }}
+                        onKeyDown={handleKeyDown}
+                        onFocus={() =>
+                          setShowDropdown(
+                            searchQuery.trim().length >= 2 ||
+                              searchQuery.includes("@")
+                          )
+                        }
+                        className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="Search users or enter email address..."
+                      />
+                      {isSearching && (
+                        <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   {/* Search Dropdown */}
@@ -685,12 +688,19 @@ export default function CreateTeamPage() {
                                     alt=""
                                   />
                                 ) : (
-                                  <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center">
-                                    <span className="text-sm font-medium text-gray-600">
-                                      {user.firstName?.[0]?.toUpperCase() ||
-                                        user.email[0]?.toUpperCase()}
-                                    </span>
-                                  </div>
+                                  <UserAvatar
+                                    name={
+                                      [user?.firstName, user?.lastName]
+                                        .filter(Boolean)
+                                        .join(" ") ||
+                                      user?.email ||
+                                      "Unknown"
+                                    }
+                                    src={user?.avatarUrl}
+                                    size="32"
+                                    useContext={false}
+                                    className="h-8 w-8"
+                                  />
                                 )}
                               </div>
                               <div className="flex-1 min-w-0">
@@ -775,12 +785,19 @@ export default function CreateTeamPage() {
                                   alt=""
                                 />
                               ) : (
-                                <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center">
-                                  <span className="text-sm font-medium text-gray-600">
-                                    {member.firstName?.[0]?.toUpperCase() ||
-                                      member.email[0]?.toUpperCase()}
-                                  </span>
-                                </div>
+                                <UserAvatar
+                                  name={
+                                    [member?.firstName, member?.lastName]
+                                      .filter(Boolean)
+                                      .join(" ") ||
+                                    member?.email ||
+                                    "Unknown"
+                                  }
+                                  src={member?.avatarUrl}
+                                  size="32"
+                                  useContext={false}
+                                  className="h-8 w-8"
+                                />
                               )}
                             </div>
                             <div>

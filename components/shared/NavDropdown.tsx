@@ -262,17 +262,17 @@ const NavDropdown = React.memo<NavDropdownProps>(
                     )}
                     <div className="flex-1 min-w-0">
                       <div className="font-medium truncate">{item.name}</div>
-                      {item.description ||
-                        (item.type && (
-                          <div
-                            className={`text-xs mt-0.5 truncate ${
-                              isActive ? "text-primary" : "text-gray-500"
-                            }`}
-                          >
-                            {item.description}
-                            {item.type}
-                          </div>
-                        ))}
+                      {(item.description || item.type) && (
+                        <div
+                          className={`text-xs mt-0.5 overflow-hidden text-ellipsis whitespace-nowrap ${
+                            isActive ? "text-primary" : "text-gray-500"
+                          }`}
+                          style={{ maxWidth: "100%" }}
+                          title={item.description || item.type} // Show full text on hover
+                        >
+                          {item.description || item.type}
+                        </div>
+                      )}
                     </div>
                   </Link>
                 );

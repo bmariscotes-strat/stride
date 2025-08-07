@@ -2,21 +2,16 @@
 
 import { useState, useRef, useEffect } from "react";
 import { Settings, LogOut, ChevronDown } from "lucide-react";
-import Avatar from "react-avatar";
 import { SignOutButton } from "@clerk/nextjs";
-import {
-  useUserContext,
-  useDisplayName,
-  useUserLoading,
-} from "@/contexts/UserContext";
+import { useUserContext, useUserLoading } from "@/contexts/UserContext";
+import UserAvatar from "@/components/shared/UserAvatar";
 
 export default function UserDropdown() {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Context values
-  const { clerkUser, avatarUrl, error, refetch } = useUserContext();
-  const displayName = useDisplayName();
+  const { clerkUser, error, refetch } = useUserContext();
   const loading = useUserLoading();
 
   // Close dropdown when clicking outside
@@ -73,14 +68,7 @@ export default function UserDropdown() {
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center space-x-2 px-4 py-2 rounded-lg hover:bg-gray-50 focus:outline-none transition-colors duration-200"
       >
-        <Avatar
-          name={displayName}
-          src={avatarUrl}
-          size="28"
-          round={true}
-          className="cursor-pointer"
-        />
-        <span className="text-sm font-medium text-gray-700">{displayName}</span>
+        <UserAvatar size="28" showName={true} />
         <ChevronDown
           className={`w-4 h-4 text-gray-500 transition-transform duration-200 ${
             isOpen ? "rotate-180" : ""

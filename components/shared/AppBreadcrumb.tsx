@@ -29,16 +29,6 @@ export default function AppBreadcrumb() {
   return (
     <Breadcrumb className="pb-2">
       <BreadcrumbList>
-        {/* Home link */}
-        <BreadcrumbItem>
-          <BreadcrumbLink asChild>
-            <Link href="/">Home</Link>
-          </BreadcrumbLink>
-        </BreadcrumbItem>
-
-        {/* Show separator if segments exist */}
-        {segments.length > 0 && <BreadcrumbSeparator />}
-
         {/* Dynamic segments */}
         {segments.map((segment, index) => {
           const href = "/" + segments.slice(0, index + 1).join("/");

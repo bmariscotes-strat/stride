@@ -19,6 +19,7 @@ import {
 import { searchUsersAction } from "@/lib/services/user-search";
 import type { UserSearchResult } from "@/lib/services/user-search";
 import type { TeamWithRelations, TeamRole } from "@/types";
+import UserAvatar from "@/components/shared/UserAvatar";
 
 export interface PendingTeamMember {
   id?: string;
@@ -346,12 +347,19 @@ export default function TeamMembersSection({
                           alt=""
                         />
                       ) : (
-                        <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center">
-                          <span className="text-sm font-medium text-gray-600">
-                            {member.user?.firstName?.[0]?.toUpperCase() ||
-                              member.user?.email[0]?.toUpperCase()}
-                          </span>
-                        </div>
+                        <UserAvatar
+                          name={
+                            [member.user?.firstName, member.user?.lastName]
+                              .filter(Boolean)
+                              .join(" ") ||
+                            member.user?.email ||
+                            "Unknown"
+                          }
+                          src={member.user?.avatarUrl}
+                          size="32"
+                          useContext={false}
+                          className="h-8 w-8"
+                        />
                       )}
                     </div>
                     <div>
@@ -454,7 +462,7 @@ export default function TeamMembersSection({
 
         {/* Add New Members */}
         {canManageMembers && (
-          <div>
+          <div className="mt-6 space-y-6">
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Add New Members
             </label>
@@ -482,8 +490,8 @@ export default function TeamMembersSection({
                   placeholder="Search users or enter email address..."
                 />
                 {isSearching && (
-                  <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                  <div className="inset-y-0 right-0 pr-3 flex items-center">
+                    <div className="animate-spin rounded-full h-4 border-b-2 border-blue-600"></div>
                   </div>
                 )}
               </div>
@@ -492,7 +500,8 @@ export default function TeamMembersSection({
               {showDropdown && (
                 <div
                   ref={dropdownRef}
-                  className="absolute z-10 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none"
+                  className="absolute z-10 bg-white shadow-lg max-h-60 rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none"
+                  style={{ width: searchInputRef.current?.offsetWidth }}
                 >
                   {searchResults.length > 0 && (
                     <>
@@ -516,12 +525,19 @@ export default function TeamMembersSection({
                                 alt=""
                               />
                             ) : (
-                              <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center">
-                                <span className="text-sm font-medium text-gray-600">
-                                  {user.firstName?.[0]?.toUpperCase() ||
-                                    user.email[0]?.toUpperCase()}
-                                </span>
-                              </div>
+                              <UserAvatar
+                                name={
+                                  [user?.firstName, user?.lastName]
+                                    .filter(Boolean)
+                                    .join(" ") ||
+                                  user?.email ||
+                                  "Unknown"
+                                }
+                                src={user?.avatarUrl}
+                                size="32"
+                                useContext={false}
+                                className="h-8 w-8"
+                              />
                             )}
                           </div>
                           <div className="flex-1 min-w-0">
