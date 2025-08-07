@@ -1,17 +1,13 @@
-// app/(dashboard)/(work)/team/[slug]/settings/page.tsx
-
 import { notFound } from "next/navigation";
 import { getCurrentUser } from "@/lib/services/users";
 import { getTeamBySlug } from "@/lib/services/teams";
 import UpdateTeamPage from "./Settings.client";
 
-interface PageProps {
-  params: {
-    slug: string;
-  };
-}
-
-export default async function TeamSettingsPage({ params }: PageProps) {
+export default async function TeamSettingsPage({
+  params,
+}: {
+  params: Promise<{ slug: string }>; // ✅ Updated type to Promise
+}) {
   const currentUser = await getCurrentUser();
 
   // ✅ Await params before accessing its properties

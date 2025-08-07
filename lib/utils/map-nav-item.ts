@@ -1,10 +1,5 @@
 // lib/utils/mapToNavItem.ts
-
-export interface BaseNavSource {
-  name: string;
-  slug: string;
-  description?: string | null;
-}
+import { BaseNavSource } from "@/types";
 
 export function mapToNavItem<T extends BaseNavSource>(
   item: T,

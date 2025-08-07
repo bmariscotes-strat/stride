@@ -3,6 +3,7 @@ import Header from "@/components/layout/dashboard/Header";
 import { getCurrentUser } from "@/lib/services/users";
 import { getTeamsForUser } from "@/lib/services/teams";
 import { Suspense } from "react";
+import { BaseNavSource } from "@/types";
 
 export default async function DashboardLayout({
   children,
@@ -10,7 +11,7 @@ export default async function DashboardLayout({
   children: React.ReactNode;
 }) {
   const user = await getCurrentUser();
-  const teams = user
+  const teams: BaseNavSource[] = user
     ? (await getTeamsForUser(user.id)).slice(0, 3).map((team) => ({
         slug: team.slug,
         name: team.name,

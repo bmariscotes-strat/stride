@@ -88,6 +88,7 @@ export type {
   DashboardStats,
   RecentActivity,
   NavigationItem,
+  BaseNavSource,
 } from "./utility";
 
 // Non-object types

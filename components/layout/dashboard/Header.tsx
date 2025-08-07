@@ -8,11 +8,11 @@ import Notifications from "@/components/shared/Notification";
 import { useState } from "react";
 import NavDropdown from "@/components/shared/NavDropdown";
 import UserDropdown from "@/components/shared/UserDropdown";
-import { Team } from "@/types";
+import { BaseNavSource } from "@/types";
 import { mapToNavItem } from "@/lib/utils/map-nav-item";
 
 interface HeaderProps {
-  teams: Team[];
+  teams: BaseNavSource[];
 }
 
 const projectsPlaceholder = [
