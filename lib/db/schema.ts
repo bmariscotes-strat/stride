@@ -30,6 +30,7 @@ export const notificationTypeEnum = pgEnum("notification_type", [
   "mention",
   "due_date_reminder",
   "team_invitation",
+  "team_role_changed",
   "task_created",
   "task_moved",
   "task_reassigned",
@@ -363,6 +364,11 @@ export const activityLog = pgTable(
       columns: [table.userId],
       foreignColumns: [users.id],
       name: "fk_activity_log_user_id",
+    }).onDelete("cascade"),
+    teamIdFk: foreignKey({
+      columns: [table.teamId],
+      foreignColumns: [teams.id],
+      name: "fk_activity_log_team_id",
     }).onDelete("cascade"),
   })
 );

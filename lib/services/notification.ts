@@ -442,6 +442,32 @@ export class NotificationService {
     });
   }
 
+  static async notifyTeamMemberRoleChanged(
+    teamId: string,
+    memberId: string,
+    oldRole: string,
+    newRole: string
+  ) {
+    const team = await this.getTeam(teamId);
+
+    const updateRoleNotification = createNotificationContent(
+      "team_role_changed",
+      {
+        teamName: team?.name || "a team",
+        oldRole,
+        newRole,
+      }
+    );
+
+    await this.createNotification({
+      userId: memberId,
+      type: "team_role_changed",
+      title: updateRoleNotification.title,
+      message: updateRoleNotification.message,
+      teamId,
+    });
+  }
+
   // =============================================================================
   // NOTIFICATION QUERIES
   // =============================================================================

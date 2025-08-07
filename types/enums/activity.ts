@@ -130,6 +130,7 @@ export type ActivityLogParams = {
   oldValue?: string | null;
   newValue?: string | null;
   metadata?: ActivityMetadata;
+  teamId?: string;
 };
 
 // Type for field changes (used in bulk updates)

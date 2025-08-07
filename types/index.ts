@@ -97,7 +97,11 @@ export type {
 } from "./forms/team";
 
 // Notification
-export type { Priority, NotificationType } from "./enums/notif";
+export type {
+  Priority,
+  NotificationType,
+  NotificationTemplate,
+} from "./enums/notif";
 
 // RBAC
 export type { TeamRole, UserRole } from "./enums/permissions";

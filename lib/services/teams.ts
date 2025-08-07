@@ -131,7 +131,8 @@ export async function createTeamAction(
               `${user.firstName} ${user.lastName}` ||
                 user.username ||
                 user.email,
-              "member"
+              "member",
+              newTeam.id
             );
           }
 
@@ -279,7 +280,8 @@ export async function addTeamMembersAction(
             null, // Team-level activity
             user.id,
             `${user.firstName} ${user.lastName}` || user.username || user.email,
-            "member"
+            "member",
+            teamId
           );
 
           await NotificationService.notifyTeamMemberAdded(
@@ -533,6 +535,14 @@ export async function updateTeamMemberRoleAction(
         null, // Team-level activity
         currentMember.user.id,
         memberName,
+        oldRole,
+        newRole,
+        teamId
+      );
+
+      await NotificationService.notifyTeamMemberRoleChanged(
+        teamId,
+        currentMember.user.id,
         oldRole,
         newRole
       );

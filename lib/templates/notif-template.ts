@@ -1,10 +1,4 @@
-import { NotificationType } from "@/types";
-
-// Template function type for dynamic messages
-export type NotificationTemplate = {
-  title: string;
-  message: (params: any) => string;
-};
+import { NotificationType, NotificationTemplate } from "@/types";
 
 // Notification templates with dynamic message generation
 export const NOTIFICATION_TEMPLATES: Record<
@@ -124,5 +118,18 @@ export const NOTIFICATION_TEMPLATES: Record<
       teamName: string;
       role: string;
     }) => `${actorName} added you to "${teamName}" as ${role}`,
+  },
+
+  team_role_changed: {
+    title: "Changed role",
+    message: ({
+      teamName,
+      oldRole,
+      newRole,
+    }: {
+      teamName: string;
+      oldRole: string;
+      newRole: string;
+    }) => `Role changed from ${oldRole} to ${newRole} in ${teamName}`,
   },
 };

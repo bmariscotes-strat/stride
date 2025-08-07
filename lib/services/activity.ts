@@ -23,6 +23,7 @@ export class ActivityService {
     oldValue,
     newValue,
     metadata = {},
+    teamId,
   }: ActivityLogParams): Promise<void> {
     try {
       await db.insert(activityLog).values({
@@ -37,6 +38,7 @@ export class ActivityService {
           ? JSON.stringify({ value: newValue, metadata })
           : JSON.stringify({ metadata }),
         createdAt: new Date(),
+        teamId,
       });
     } catch (error) {
       console.error("Failed to log activity:", error);
@@ -442,7 +444,8 @@ export class ActivityService {
     projectId: string | null,
     newMemberId: string,
     newMemberName: string,
-    role: string
+    role: string,
+    teamId: string
   ): Promise<void> {
     await this.log({
       userId,
@@ -450,6 +453,7 @@ export class ActivityService {
       projectId,
       newValue: newMemberName,
       metadata: { newRole: role },
+      teamId,
     });
   }
 
@@ -459,7 +463,8 @@ export class ActivityService {
     memberId: string,
     memberName: string,
     oldRole: string,
-    newRole: string
+    newRole: string,
+    teamId: string
   ): Promise<void> {
     await this.log({
       userId,
@@ -468,6 +473,7 @@ export class ActivityService {
       oldValue: `${memberName} (${oldRole})`,
       newValue: `${memberName} (${newRole})`,
       metadata: { previousRole: oldRole, newRole },
+      teamId,
     });
   }
 
