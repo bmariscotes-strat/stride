@@ -30,6 +30,9 @@ export const notificationTypeEnum = pgEnum("notification_type", [
   "mention",
   "due_date_reminder",
   "team_invitation",
+  "task_created",
+  "task_moved",
+  "task_reassigned",
 ]);
 
 // =============================================================================

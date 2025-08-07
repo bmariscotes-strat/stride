@@ -6,4 +6,7 @@ export type NotificationType =
   | "comment_added"
   | "mention"
   | "due_date_reminder"
-  | "team_invitation";
+  | "team_invitation"
+  | "task_created"
+  | "task_moved"
+  | "task_reassigned";

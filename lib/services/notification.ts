@@ -1,3 +1,4 @@
+// lib/services/notification.ts
 // =============================================================================
 // NOTIFICATION SERVICE - Integrates with ActivityService
 // =============================================================================
@@ -14,6 +15,7 @@ import {
 import { ActivityService } from "@/lib/services/activity";
 import { eq, and, inArray, desc, not } from "drizzle-orm";
 import { NotificationType, CreateNotification } from "@/types";
+import { createNotificationContent } from "@/lib/utils/notif-helper";
 
 export type NotificationRecipient = {
   userId: string;
@@ -63,6 +65,7 @@ export class NotificationService {
     recipients: (NotificationRecipient & {
       cardId?: string;
       projectId?: string;
+      teamId?: string;
     })[]
   ) {
     try {
@@ -73,6 +76,7 @@ export class NotificationService {
         message: recipient.message,
         cardId: recipient.cardId,
         projectId: recipient.projectId,
+        teamId: recipient.teamId,
         isRead: false,
         createdAt: new Date(),
       }));
@@ -108,15 +112,20 @@ export class NotificationService {
       actorUserId,
     ]);
     const actor = await this.getUser(actorUserId);
+    const actorName = `${actor?.firstName} ${actor?.lastName}`;
 
-    const recipients: (NotificationRecipient & {
-      cardId: string;
-      projectId: string;
-    })[] = teamMembersResult.map((member) => ({
+    // Create notification content using template
+    const notificationContent = createNotificationContent("task_created", {
+      actorName,
+      cardTitle,
+      columnName,
+    });
+
+    const recipients = teamMembersResult.map((member) => ({
       userId: member.userId,
-      type: "task_assigned" as const,
-      title: `New card created`,
-      message: `${actor?.firstName} ${actor?.lastName} created "${cardTitle}" in ${columnName}`,
+      type: "task_created" as NotificationType,
+      title: notificationContent.title,
+      message: notificationContent.message,
       cardId,
       projectId,
     }));
@@ -152,6 +161,7 @@ export class NotificationService {
       actorUserId,
     ]);
     const actor = await this.getUser(actorUserId);
+    const actorName = `${actor?.firstName} ${actor?.lastName}`;
 
     const recipients: (NotificationRecipient & {
       cardId: string;
@@ -160,11 +170,18 @@ export class NotificationService {
 
     // Notify assignee if different from actor
     if (card?.assigneeId && card.assigneeId !== actorUserId) {
+      const assigneeNotification = createNotificationContent("task_updated", {
+        actorName,
+        cardTitle,
+        fromColumnName,
+        toColumnName,
+      });
+
       recipients.push({
         userId: card.assigneeId,
         type: "task_updated",
-        title: `Your card was moved`,
-        message: `${actor?.firstName} ${actor?.lastName} moved "${cardTitle}" from ${fromColumnName} to ${toColumnName}`,
+        title: assigneeNotification.title,
+        message: assigneeNotification.message,
         cardId,
         projectId,
       });
@@ -175,11 +192,17 @@ export class NotificationService {
     limitedTeamMembers.forEach((member) => {
       if (member.userId !== card?.assigneeId) {
         // Don't duplicate assignee notification
+        const teamNotification = createNotificationContent("task_moved", {
+          actorName,
+          cardTitle,
+          toColumnName,
+        });
+
         recipients.push({
           userId: member.userId,
-          type: "task_updated",
-          title: `Card moved`,
-          message: `${actor?.firstName} ${actor?.lastName} moved "${cardTitle}" to ${toColumnName}`,
+          type: "task_moved",
+          title: teamNotification.title,
+          message: teamNotification.message,
           cardId,
           projectId,
         });
@@ -212,6 +235,7 @@ export class NotificationService {
     );
 
     const actor = await this.getUser(actorUserId);
+    const actorName = `${actor?.firstName} ${actor?.lastName}`;
     const recipients: (NotificationRecipient & {
       cardId: string;
       projectId: string;
@@ -219,11 +243,19 @@ export class NotificationService {
 
     // Notify new assignee (if not self-assigning)
     if (assigneeId !== actorUserId) {
+      const assignmentNotification = createNotificationContent(
+        "task_assigned",
+        {
+          actorName,
+          cardTitle,
+        }
+      );
+
       recipients.push({
         userId: assigneeId,
         type: "task_assigned",
-        title: `You were assigned to a card`,
-        message: `${actor?.firstName} ${actor?.lastName} assigned you to "${cardTitle}"`,
+        title: assignmentNotification.title,
+        message: assignmentNotification.message,
         cardId,
         projectId,
       });
@@ -235,11 +267,19 @@ export class NotificationService {
       previousAssigneeId !== actorUserId &&
       previousAssigneeId !== assigneeId
     ) {
+      const reassignmentNotification = createNotificationContent(
+        "task_reassigned",
+        {
+          cardTitle,
+          assigneeName,
+        }
+      );
+
       recipients.push({
         userId: previousAssigneeId,
-        type: "task_updated",
-        title: `Card reassigned`,
-        message: `"${cardTitle}" has been reassigned to ${assigneeName}`,
+        type: "task_reassigned",
+        title: reassignmentNotification.title,
+        message: reassignmentNotification.message,
         cardId,
         projectId,
       });
@@ -266,30 +306,34 @@ export class NotificationService {
       previousDueDate
     );
 
-    // Notify assignee and team members about due date change
     const card = await this.getCardWithAssignee(cardId);
     const actor = await this.getUser(actorUserId);
-    const recipients: (NotificationRecipient & {
-      cardId: string;
-      projectId: string;
-    })[] = [];
+    const actorName = `${actor?.firstName} ${actor?.lastName}`;
 
     const dueDateStr = dueDate.toLocaleDateString();
     const actionText = previousDueDate ? "changed" : "set";
 
     // Notify assignee
     if (card?.assigneeId && card.assigneeId !== actorUserId) {
-      recipients.push({
+      const dueDateNotification = createNotificationContent(
+        "due_date_reminder",
+        {
+          actorName,
+          cardTitle,
+          dueDateStr,
+          actionText,
+        }
+      );
+
+      await this.createNotification({
         userId: card.assigneeId,
         type: "due_date_reminder",
-        title: `Due date ${actionText}`,
-        message: `${actor?.firstName} ${actor?.lastName} ${actionText} the due date for "${cardTitle}" to ${dueDateStr}`,
+        title: dueDateNotification.title,
+        message: dueDateNotification.message,
         cardId,
         projectId,
       });
     }
-
-    await this.createBulkNotifications(recipients);
   }
 
   // =============================================================================
@@ -314,6 +358,7 @@ export class NotificationService {
 
     const actor = await this.getUser(actorUserId);
     const card = await this.getCardWithAssignee(cardId);
+    const actorName = `${actor?.firstName} ${actor?.lastName}`;
     const recipients: (NotificationRecipient & {
       cardId: string;
       projectId: string;
@@ -321,13 +366,18 @@ export class NotificationService {
 
     // Notify mentioned users
     if (mentionedUserIds?.length) {
+      const mentionNotification = createNotificationContent("mention", {
+        actorName,
+        cardTitle: card?.title || "a card",
+      });
+
       mentionedUserIds.forEach((userId) => {
         if (userId !== actorUserId) {
           recipients.push({
             userId,
             type: "mention",
-            title: `You were mentioned`,
-            message: `${actor?.firstName} ${actor?.lastName} mentioned you in a comment on "${card?.title}"`,
+            title: mentionNotification.title,
+            message: mentionNotification.message,
             cardId,
             projectId,
           });
@@ -341,11 +391,16 @@ export class NotificationService {
       card.assigneeId !== actorUserId &&
       !mentionedUserIds?.includes(card.assigneeId)
     ) {
+      const commentNotification = createNotificationContent("comment_added", {
+        actorName,
+        cardTitle: card.title,
+      });
+
       recipients.push({
         userId: card.assigneeId,
         type: "comment_added",
-        title: `New comment on your card`,
-        message: `${actor?.firstName} ${actor?.lastName} commented on "${card.title}"`,
+        title: commentNotification.title,
+        message: commentNotification.message,
         cardId,
         projectId,
       });
@@ -367,13 +422,22 @@ export class NotificationService {
   ) {
     const actor = await this.getUser(actorUserId);
     const team = await this.getTeam(teamId);
+    const actorName = `${actor?.firstName} ${actor?.lastName}`;
 
-    // Notify the new member
+    const teamInviteNotification = createNotificationContent(
+      "team_invitation",
+      {
+        actorName,
+        teamName: team?.name || "a team",
+        role,
+      }
+    );
+
     await this.createNotification({
       userId: newMemberId,
       type: "team_invitation",
-      title: `Added to team`,
-      message: `${actor?.firstName} ${actor?.lastName} added you to "${team?.name}" as ${role}`,
+      title: teamInviteNotification.title,
+      message: teamInviteNotification.message,
       teamId,
     });
   }
@@ -394,6 +458,7 @@ export class NotificationService {
         message: notifications.message,
         cardId: notifications.cardId,
         projectId: notifications.projectId,
+        teamId: notifications.teamId,
         createdAt: notifications.createdAt,
         card: {
           id: cards.id,
@@ -430,6 +495,7 @@ export class NotificationService {
         message: notifications.message,
         cardId: notifications.cardId,
         projectId: notifications.projectId,
+        teamId: notifications.teamId,
         isRead: notifications.isRead,
         createdAt: notifications.createdAt,
         card: {
@@ -484,6 +550,58 @@ export class NotificationService {
       );
 
     return result.length;
+  }
+
+  /**
+   * Delete old notifications (cleanup job)
+   */
+  static async deleteOldNotifications(daysOld: number = 30) {
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - daysOld);
+
+    try {
+      await db.delete(notifications).where(
+        and(
+          eq(notifications.isRead, true)
+          // Assuming createdAt is a timestamp column
+          // You might need to adjust this based on your schema
+          // lt(notifications.createdAt, cutoffDate)
+        )
+      );
+    } catch (error) {
+      console.error("Failed to delete old notifications:", error);
+    }
+  }
+
+  /**
+   * Get notification statistics for a user
+   */
+  static async getNotificationStats(userId: string) {
+    const stats = await db
+      .select({
+        type: notifications.type,
+        count: notifications.id,
+        unreadCount: notifications.isRead,
+      })
+      .from(notifications)
+      .where(eq(notifications.userId, userId));
+
+    // Process the results to get counts by type
+    const processed = stats.reduce(
+      (acc, stat) => {
+        if (!acc[stat.type]) {
+          acc[stat.type] = { total: 0, unread: 0 };
+        }
+        acc[stat.type].total++;
+        if (!stat.unreadCount) {
+          acc[stat.type].unread++;
+        }
+        return acc;
+      },
+      {} as Record<string, { total: number; unread: number }>
+    );
+
+    return processed;
   }
 
   // =============================================================================
@@ -604,4 +722,10 @@ await NotificationService.markAsRead([1, 2, 3]);
 
 // Get unread count for badge
 const unreadCount = await NotificationService.getUnreadCount(userId);
+
+// Get notification statistics
+const stats = await NotificationService.getNotificationStats(userId);
+
+// Cleanup old notifications (run as a cron job)
+await NotificationService.deleteOldNotifications(30); // Delete read notifications older than 30 days
 */

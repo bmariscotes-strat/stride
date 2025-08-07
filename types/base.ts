@@ -1,5 +1,6 @@
 // types/base.ts
-import type { TeamRole, Priority, NotificationType } from "./enums";
+import type { TeamRole } from "@/types/enums/permissions";
+import type { Priority, NotificationType } from "@/types/enums/notif";
 
 // =============================================================================
 // CORE ENTITY INTERFACES - Main business entities
