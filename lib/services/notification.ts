@@ -579,6 +579,20 @@ export class NotificationService {
   }
 
   /**
+   * Delete selected notifications
+   */
+  static async deleteNotifications(notificationIds: number[]) {
+    try {
+      return await db
+        .delete(notifications)
+        .where(inArray(notifications.id, notificationIds))
+        .returning();
+    } catch (error) {
+      console.error("Failed to delete notifications:", error);
+      throw error;
+    }
+  }
+  /**
    * Delete old notifications (cleanup job)
    */
   static async deleteOldNotifications(daysOld: number = 30) {

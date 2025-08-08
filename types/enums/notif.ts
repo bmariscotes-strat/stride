@@ -16,3 +16,16 @@ export type NotificationTemplate = {
   title: string;
   message: (params: any) => string;
 };
+
+export interface NotificationStats {
+  [key: string]: {
+    total: number;
+    unread: number;
+  };
+}
+
+export interface NotificationResponse {
+  notifications: Notification[];
+  unreadCount: number;
+  totalCount: number;
+}

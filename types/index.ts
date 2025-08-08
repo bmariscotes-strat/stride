@@ -101,6 +101,8 @@ export type {
   Priority,
   NotificationType,
   NotificationTemplate,
+  NotificationStats,
+  NotificationResponse,
 } from "./enums/notif";
 
 // RBAC
