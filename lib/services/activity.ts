@@ -2,7 +2,7 @@
 // ACTIVITY SERVICE - Business logic for activity logging
 // =============================================================================
 
-import { db } from "@/lib/db/db"; // Adjust path to your database instance
+import { db } from "@/lib/db/db";
 import { activityLog, users, cards } from "@/lib/db/schema";
 import {
   ActivityLogParams,
@@ -694,5 +694,46 @@ export class ActivityService {
       .where(eq(activityLog.userId, userId))
       .orderBy(activityLog.createdAt)
       .limit(limit);
+  }
+
+  /**
+   * Get all activities
+   */
+
+  static async getAllActivities({
+    userId,
+    limit = 20,
+    offset = 0,
+  }: {
+    userId: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<ActivityLogResult[]> {
+    return await db
+      .select({
+        id: activityLog.id,
+        actionType: activityLog.actionType,
+        oldValue: activityLog.oldValue,
+        newValue: activityLog.newValue,
+        createdAt: activityLog.createdAt,
+        user: {
+          id: users.id,
+          username: users.username,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          avatarUrl: users.avatarUrl,
+        },
+        card: {
+          id: cards.id,
+          title: cards.title,
+        },
+      })
+      .from(activityLog)
+      .leftJoin(users, eq(activityLog.userId, users.id))
+      .leftJoin(cards, eq(activityLog.cardId, cards.id))
+      .where(eq(activityLog.userId, userId))
+      .orderBy(activityLog.createdAt)
+      .limit(limit)
+      .offset(offset);
   }
 }

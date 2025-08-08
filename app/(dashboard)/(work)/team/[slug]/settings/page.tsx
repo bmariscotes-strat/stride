@@ -6,7 +6,7 @@ import UpdateTeamPage from "./Settings.client";
 export default async function TeamSettingsPage({
   params,
 }: {
-  params: Promise<{ slug: string }>; // ✅ Updated type to Promise
+  params: Promise<{ slug: string }>;
 }) {
   const currentUser = await getCurrentUser();
 
