@@ -31,17 +31,8 @@ export function useNotifications({
   const [error, setError] = useState<string | null>(null);
   const [hasMoreNotifications, setHasMoreNotifications] = useState(true);
 
-  console.log("[useNotifications] Initialized with:", {
-    userId,
-    limit,
-    autoRefresh,
-    refreshInterval,
-    batchSize,
-  });
-
   // Initial fetch notifications (using getAllNotifications)
   const fetchNotifications = useCallback(async () => {
-    console.log("[useNotifications] Fetching all notifications...");
     try {
       setIsLoading(true);
       setError(null);
@@ -50,11 +41,6 @@ export function useNotifications({
         getAllNotifications(userId!, batchSize), // This returns NotificationResponse
         getUnreadNotificationCount(userId!),
       ]);
-
-      console.log("[useNotifications] Fetched initial data:", {
-        notificationsResponse,
-        count,
-      });
 
       // Handle the response properly
       setNotifications(notificationsResponse.notifications);
@@ -78,15 +64,9 @@ export function useNotifications({
   // Load more notifications for lazy loading (using getAllNotifications)
   const loadMoreNotifications = useCallback(async () => {
     if (isLoadingMore || !hasMoreNotifications || isLoading) {
-      console.log("[useNotifications] Skip load more:", {
-        isLoadingMore,
-        hasMoreNotifications,
-        isLoading,
-      });
       return;
     }
 
-    console.log("[useNotifications] Loading more notifications...");
     setIsLoadingMore(true);
 
     try {
@@ -96,18 +76,7 @@ export function useNotifications({
         batchSize,
         notifications.length
       );
-
-      console.log(
-        "[useNotifications] Loaded more response:",
-        moreNotificationsResponse
-      );
-
       const moreNotifications = moreNotificationsResponse.notifications;
-
-      console.log("[useNotifications] Loaded more notifications:", {
-        count: moreNotifications.length,
-        currentLength: notifications.length,
-      });
 
       if (moreNotifications.length > 0) {
         setNotifications((prev) => [...prev, ...moreNotifications]);
@@ -139,10 +108,8 @@ export function useNotifications({
   // Mark single notification as read (keeps notification in list)
   const markAsRead = useCallback(
     async (notificationId: number) => {
-      console.log(`[useNotifications] Marking as read: ${notificationId}`);
       try {
         const result = await markNotificationsAsRead([notificationId]);
-        console.log("[useNotifications] Mark as read result:", result);
 
         if (result.success) {
           // Update the notification's read status in the list (don't remove it)
@@ -177,10 +144,8 @@ export function useNotifications({
 
   // Mark all notifications as read (keeps all notifications in list)
   const markAllAsRead = useCallback(async () => {
-    console.log("[useNotifications] Marking all notifications as read...");
     try {
       const result = await markAllNotificationsAsRead(userId!);
-      console.log("[useNotifications] Mark all as read result:", result);
 
       if (result.success) {
         // Update all notifications to read status (don't remove any)
@@ -203,12 +168,8 @@ export function useNotifications({
   // Remove notification
   const removeNotification = useCallback(
     async (notificationId: number) => {
-      console.log(
-        `[useNotifications] Removing notification: ${notificationId}`
-      );
       try {
         const result = await deleteNotifications([notificationId]);
-        console.log("[useNotifications] Remove notification result:", result);
 
         if (result.success) {
           const wasUnread =
@@ -235,7 +196,6 @@ export function useNotifications({
 
   // Refresh notifications (reset everything)
   const refresh = useCallback(() => {
-    console.log("[useNotifications] Manual refresh triggered.");
     setNotifications([]);
     setHasMoreNotifications(true);
     fetchNotifications();
@@ -243,24 +203,18 @@ export function useNotifications({
 
   // Initial fetch
   useEffect(() => {
-    console.log("[useNotifications] Initial fetch on mount.");
     fetchNotifications();
   }, [fetchNotifications]);
 
   // Auto refresh
   useEffect(() => {
     if (!autoRefresh) return;
-    console.log(
-      `[useNotifications] Auto-refresh enabled: every ${refreshInterval}ms`
-    );
 
     const interval = setInterval(() => {
-      console.log("[useNotifications] Auto-refresh tick.");
       refresh();
     }, refreshInterval);
 
     return () => {
-      console.log("[useNotifications] Cleaning up auto-refresh interval.");
       clearInterval(interval);
     };
   }, [autoRefresh, refreshInterval, refresh]);
