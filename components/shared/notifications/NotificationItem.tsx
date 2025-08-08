@@ -8,6 +8,7 @@ import {
   Calendar,
   Users,
   Bell,
+  Check,
 } from "lucide-react";
 import { NotificationWithRelations } from "@/types";
 import { formatTimeAgo } from "@/lib/utils/notif-helper";
@@ -48,12 +49,12 @@ export default function NotificationItem({
   return (
     <div
       className={`relative flex items-start p-4 border-b border-gray-100 hover:bg-gray-50 transition-colors ${
-        !notification.isRead ? "bg-blue-50" : ""
+        !notification.isRead ? "bg-blue-50 border-l-2 border-l-blue-500" : ""
       }`}
     >
-      {/* Unread Indicator */}
+      {/* Unread Indicator Dot */}
       {!notification.isRead && (
-        <div className="absolute left-2 top-1/2 transform -translate-y-1/2 w-2 h-2 bg-blue-500 rounded-full"></div>
+        <div className="absolute left-1 top-1/2 transform -translate-y-1/2 w-2 h-2 bg-blue-500 rounded-full"></div>
       )}
 
       {/* Notification Icon */}
@@ -73,29 +74,55 @@ export default function NotificationItem({
               {notification.title}
             </p>
             {notification.message && (
-              <p className="text-sm text-gray-600 mt-1">
+              <p
+                className={`text-sm mt-1 ${
+                  !notification.isRead ? "text-gray-800" : "text-gray-600"
+                }`}
+              >
                 {notification.message}
               </p>
             )}
-            <p className="text-xs text-gray-500 mt-2">
-              {formatTimeAgo(notification.createdAt)}
-            </p>
+
+            {/* Time and Status */}
+            <div className="flex items-center gap-2 mt-2">
+              <p
+                className={`text-xs ${
+                  !notification.isRead ? "text-blue-600" : "text-gray-500"
+                }`}
+              >
+                {formatTimeAgo(notification.createdAt)}
+              </p>
+
+              {/* Read/Unread Status Badge */}
+              <span
+                className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                  !notification.isRead
+                    ? "bg-blue-100 text-blue-700"
+                    : "bg-gray-100 text-gray-500"
+                }`}
+              >
+                {notification.isRead ? "Read" : "Unread"}
+              </span>
+            </div>
           </div>
 
           {/* Action Buttons */}
           <div className="flex items-center space-x-1 ml-2">
+            {/* Mark as Read Button - Only show for unread notifications */}
             {!notification.isRead && (
               <button
                 onClick={() => onMarkAsRead(notification.id)}
-                className="flex items-center justify-center w-6 h-6 text-blue-600 hover:text-blue-800 rounded transition-colors"
+                className="flex items-center justify-center w-7 h-7 text-blue-600 hover:text-blue-800 hover:bg-blue-100 rounded transition-colors"
                 title="Mark as read"
               >
-                <CheckCircle className="w-4 h-4" />
+                <Check className="w-4 h-4" />
               </button>
             )}
+
+            {/* Remove Button */}
             <button
               onClick={() => onRemove(notification.id)}
-              className="flex items-center justify-center w-6 h-6 text-gray-400 hover:text-gray-600 rounded transition-colors"
+              className="flex items-center justify-center w-7 h-7 text-gray-400 hover:text-red-600 hover:bg-red-100 rounded transition-colors"
               title="Remove notification"
             >
               <X className="w-4 h-4" />

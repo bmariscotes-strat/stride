@@ -3,9 +3,9 @@ import React, { useState } from "react";
 import { useNotifications } from "@/hooks/useNotification";
 import NotificationBadge from "./NotificationBadge";
 import NotificationDropdown from "./NotificationDropdown";
-import type { NotificationProps } from "@/types";
+import type { LazyNotificationProps } from "@/hooks/useNotification";
 
-type ExtendedNotificationProps = NotificationProps & {
+type ExtendedNotificationProps = LazyNotificationProps & {
   onViewAll?: () => void;
 };
 
@@ -14,6 +14,7 @@ export default function Notifications({
   limit = 20,
   autoRefresh = true,
   refreshInterval = 30000,
+  batchSize = 5,
   onViewAll,
 }: ExtendedNotificationProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -22,16 +23,20 @@ export default function Notifications({
     notifications,
     unreadCount,
     isLoading,
+    isLoadingMore,
+    hasMoreNotifications,
     error,
     markAsRead,
     markAllAsRead,
     removeNotification,
+    loadMoreNotifications,
     refresh,
   } = useNotifications({
     userId,
     limit,
     autoRefresh,
     refreshInterval,
+    batchSize,
   });
 
   const handleMarkAllAsRead = async () => {
@@ -44,6 +49,10 @@ export default function Notifications({
 
   const handleRemoveNotification = async (notificationId: number) => {
     await removeNotification(notificationId);
+  };
+
+  const handleLoadMore = async () => {
+    await loadMoreNotifications();
   };
 
   const handleClose = () => {
@@ -65,12 +74,15 @@ export default function Notifications({
           notifications={notifications}
           unreadCount={unreadCount}
           isLoading={isLoading}
+          isLoadingMore={isLoadingMore}
+          hasMoreNotifications={hasMoreNotifications}
           error={error}
           onClose={handleClose}
           onMarkAllAsRead={handleMarkAllAsRead}
           onMarkAsRead={handleMarkAsRead}
           onRemoveNotification={handleRemoveNotification}
           onRefresh={refresh}
+          onLoadMore={handleLoadMore}
           onViewAll={onViewAll}
         />
       )}

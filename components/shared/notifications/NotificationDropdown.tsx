@@ -63,7 +63,7 @@ export default function NotificationDropdown({
 
     const observer = new IntersectionObserver(handleIntersection, {
       root: scrollContainerRef.current,
-      rootMargin: "100px", // Trigger 100px before reaching the bottom
+      rootMargin: "100px",
       threshold: 0.1,
     });
 

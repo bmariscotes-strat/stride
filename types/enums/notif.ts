@@ -1,3 +1,5 @@
+import type { NotificationWithRelations } from "../relations";
+
 export type Priority = "high" | "medium" | "low";
 
 export type NotificationType =
@@ -32,7 +34,8 @@ export interface NotificationProps {
 }
 
 export interface NotificationResponse {
-  notifications: Notification[];
+  notifications: NotificationWithRelations[];
   unreadCount: number;
   totalCount: number;
+  length: number;
 }

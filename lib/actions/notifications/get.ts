@@ -44,15 +44,26 @@ export async function getAllNotifications(
       NotificationService.getAllNotifications(userId, limit, offset),
       NotificationService.getUnreadCount(userId),
     ]);
-    const formattedNotifications = notifications.map((notification: any) => ({
-      ...notification,
-      createdAt: notification.createdAt.toISOString(),
-    }));
+    const formattedNotifications: NotificationWithRelations[] =
+      notifications.map((notification: any) => ({
+        id: notification.id,
+        userId: notification.userId,
+        type: notification.type,
+        message: notification.message,
+        isRead: notification.isRead ?? false,
+        createdAt: notification.createdAt.toISOString(),
+        updatedAt:
+          notification.updatedAt?.toISOString() ||
+          notification.createdAt.toISOString(),
+        // Add any other required properties with defaults if needed
+        ...notification,
+      }));
 
     return {
       notifications: formattedNotifications,
       unreadCount,
       totalCount: formattedNotifications.length,
+      length: formattedNotifications.length, // Add the required length property
     };
   } catch (error) {
     console.error("[getAllNotifications] Failed:", error);
@@ -60,6 +71,7 @@ export async function getAllNotifications(
       notifications: [],
       unreadCount: 0,
       totalCount: 0,
+      length: 0, // Add the required length property
     };
   }
 }
