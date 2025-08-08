@@ -7,6 +7,7 @@ import {
   MessageCircle,
   Calendar,
   Users,
+  UserCog,
   Bell,
   Check,
 } from "lucide-react";
@@ -73,6 +74,8 @@ export default function NotificationItem({
         return <Calendar className={`${iconClass} text-red-500`} />;
       case "team_invitation":
         return <Users className={`${iconClass} text-indigo-500`} />;
+      case "team_role_changed":
+        return <UserCog className={`${iconClass} text-amber-500`} />;
       default:
         return <Bell className={`${iconClass} text-gray-500`} />;
     }

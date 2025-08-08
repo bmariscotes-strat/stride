@@ -92,7 +92,7 @@ export default function NotificationDropdown({
   }, [handleIntersection, onLoadMore]);
 
   return (
-    <div className="absolute right-0 top-12 w-96 bg-white rounded-lg shadow-xl border border-gray-200 z-50 max-h-96 overflow-hidden">
+    <div className="absolute custom-scrollbar right-0 top-12 w-96 bg-white rounded-lg shadow-xl border border-gray-200 z-50 max-h-96 overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-gray-200">
         <h3 className="text-lg font-semibold text-gray-900">
@@ -122,13 +122,6 @@ export default function NotificationDropdown({
         </div>
       </div>
 
-      {/* Loading State */}
-      {isLoading && notifications.length === 0 && (
-        <div className="flex items-center justify-center py-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-        </div>
-      )}
-
       {/* Error State */}
       {error && (
         <div className="p-4 bg-red-50 border-l-4 border-red-400">
@@ -144,7 +137,11 @@ export default function NotificationDropdown({
 
       {/* Notifications List */}
       <div ref={scrollContainerRef} className="max-h-80 overflow-y-auto">
-        {!isLoading && notifications.length === 0 ? (
+        {isLoading && notifications.length === 0 ? (
+          <div className="py-8">
+            {/* Just empty space while loading initially */}
+          </div>
+        ) : notifications.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-8 text-gray-500">
             <Bell className="w-12 h-12 mb-2 text-gray-300" />
             <p className="text-sm">No notifications yet</p>
