@@ -158,7 +158,6 @@ export type ActivityLogResult = {
     id: string;
     title: string;
   } | null;
-  // Optional team information for team-level activities
   team?: {
     id: string;
     name: string;

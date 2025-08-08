@@ -5,6 +5,11 @@ import { useNotificationStore } from "@/stores/ui/notif-store";
 import NotificationBadge from "@/components/shared/notifications/NotificationBadge";
 import NotificationDropdown from "@/components/shared/notifications/NotificationDropdown";
 import type { LazyNotificationProps } from "@/hooks/useNotification";
+import {
+  NOTIFICATIONS_LOAD_LIMIT as LIMIT,
+  NOTIFICATIONS_BATCH_LIMIT as BATCH_LIMIT,
+  NOTIFICATIONS_REFRESH_INTERVAL as INTERVAL,
+} from "@/lib/constants/limits";
 
 type ExtendedNotificationProps = LazyNotificationProps & {
   onViewAll?: () => void;
@@ -12,10 +17,10 @@ type ExtendedNotificationProps = LazyNotificationProps & {
 
 export default function Notifications({
   userId,
-  limit = 20,
+  limit = LIMIT,
   autoRefresh = true,
-  refreshInterval = 30000,
-  batchSize = 5,
+  refreshInterval = INTERVAL,
+  batchSize = BATCH_LIMIT,
   onViewAll,
 }: ExtendedNotificationProps) {
   // Zustand store for UI state and preferences
