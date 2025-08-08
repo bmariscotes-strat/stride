@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Settings, LogOut, ChevronDown } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Settings, LogOut, ChevronDown, Activity } from "lucide-react";
 import { SignOutButton } from "@clerk/nextjs";
 import { useUserContext, useUserLoading } from "@/contexts/UserContext";
 import UserAvatar from "@/components/shared/UserAvatar";
@@ -9,6 +10,7 @@ import UserAvatar from "@/components/shared/UserAvatar";
 export default function UserDropdown() {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
 
   // Context values
   const { clerkUser, error, refetch } = useUserContext();
@@ -34,6 +36,10 @@ export default function UserDropdown() {
   const handleSettings = () => {
     console.log("⚙️ Settings clicked");
     setIsOpen(false);
+  };
+
+  const handleActivity = () => {
+    router.push("/activity");
   };
 
   // Handle error state
@@ -90,6 +96,16 @@ export default function UserDropdown() {
             </button>
 
             {/* Divider */}
+            <div className="border-t border-gray-100 my-1" />
+
+            <button
+              onClick={handleActivity}
+              className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900 transition-colors duration-150"
+            >
+              <Activity className="w-4 h-4 mr-3 text-gray-500" />
+              Activity
+            </button>
+
             <div className="border-t border-gray-100 my-1" />
 
             {/* Logout Link */}

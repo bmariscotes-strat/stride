@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef, useCallback } from "react";
-import { ActivityLogResult } from "@/types/enums/activity";
+import { ActivityLogResult } from "@/types";
 import { ACTIVITY_LOGS_LIMIT as LIMIT } from "@/lib/constants/limits";
 
 interface Props {
@@ -51,22 +51,28 @@ export default function ActivityLogsClient({
     <div className="p-4 space-y-4">
       <h1 className="text-xl font-bold">Activity Logs</h1>
 
-      {activities.map((log) => (
-        <div key={log.id} className="border rounded p-3">
-          <p className="text-sm">
-            <strong>
-              {log.user?.firstName} {log.user?.lastName}
-            </strong>{" "}
-            performed <strong>{log.actionType}</strong>
-          </p>
-          {log.card?.title && (
-            <p className="text-xs text-gray-500">Card: {log.card.title}</p>
-          )}
-          <p className="text-xs text-gray-400">
-            {new Date(log.createdAt).toLocaleString()}
-          </p>
+      {activities.length === 0 && !loading ? (
+        <div className="flex flex-col items-center justify-center py-10 text-center text-gray-500">
+          <p className="text-sm">No activity logs yet.</p>
         </div>
-      ))}
+      ) : (
+        activities.map((log) => (
+          <div key={log.id} className="border-gray-200 border rounded p-3">
+            <p className="text-sm">
+              <strong>
+                {log.user?.firstName} {log.user?.lastName}
+              </strong>{" "}
+              performed <strong>{log.actionType}</strong>
+            </p>
+            {log.card?.title && (
+              <p className="text-xs text-gray-500">Card: {log.card.title}</p>
+            )}
+            <p className="text-xs text-gray-400">
+              {new Date(log.createdAt).toLocaleString()}
+            </p>
+          </div>
+        ))
+      )}
 
       {loading && (
         <p className="text-sm text-center text-gray-400">Loading...</p>

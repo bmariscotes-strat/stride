@@ -106,5 +106,7 @@ export type {
   NotificationProps,
 } from "./enums/notif";
 
+// Activity
+export type { ActivityLogResult } from "./enums/activity";
 // RBAC
 export type { TeamRole, UserRole } from "./enums/permissions";
