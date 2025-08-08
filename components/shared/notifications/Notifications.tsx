@@ -3,14 +3,11 @@ import React, { useState } from "react";
 import { useNotifications } from "@/hooks/useNotification";
 import NotificationBadge from "./NotificationBadge";
 import NotificationDropdown from "./NotificationDropdown";
+import type { NotificationProps } from "@/types";
 
-interface NotificationsProps {
-  userId: string;
-  limit?: number;
-  autoRefresh?: boolean;
-  refreshInterval?: number;
+type ExtendedNotificationProps = NotificationProps & {
   onViewAll?: () => void;
-}
+};
 
 export default function Notifications({
   userId,
@@ -18,7 +15,7 @@ export default function Notifications({
   autoRefresh = true,
   refreshInterval = 30000,
   onViewAll,
-}: NotificationsProps) {
+}: ExtendedNotificationProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   const {

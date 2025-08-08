@@ -24,6 +24,13 @@ export interface NotificationStats {
   };
 }
 
+export interface NotificationProps {
+  userId: string | null;
+  limit?: number;
+  autoRefresh?: boolean;
+  refreshInterval?: number;
+}
+
 export interface NotificationResponse {
   notifications: Notification[];
   unreadCount: number;

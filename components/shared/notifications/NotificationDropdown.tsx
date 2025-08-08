@@ -1,6 +1,6 @@
 // components/notifications/NotificationDropdown.tsx
-import React from "react";
-import { X, Bell } from "lucide-react";
+import React, { useCallback, useRef, useEffect } from "react";
+import { X, Bell, Loader2 } from "lucide-react";
 import { NotificationWithRelations } from "@/types";
 import NotificationItem from "./NotificationItem";
 
@@ -8,12 +8,15 @@ interface NotificationDropdownProps {
   notifications: NotificationWithRelations[];
   unreadCount: number;
   isLoading: boolean;
+  isLoadingMore?: boolean;
+  hasMoreNotifications?: boolean;
   error: string | null;
   onClose: () => void;
   onMarkAllAsRead: () => void;
   onMarkAsRead: (id: number) => void;
   onRemoveNotification: (id: number) => void;
   onRefresh: () => void;
+  onLoadMore?: () => void;
   onViewAll?: () => void;
 }
 
@@ -21,14 +24,57 @@ export default function NotificationDropdown({
   notifications,
   unreadCount,
   isLoading,
+  isLoadingMore = false,
+  hasMoreNotifications = false,
   error,
   onClose,
   onMarkAllAsRead,
   onMarkAsRead,
   onRemoveNotification,
   onRefresh,
+  onLoadMore,
   onViewAll,
 }: NotificationDropdownProps) {
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const loadMoreTriggerRef = useRef<HTMLDivElement>(null);
+
+  // Intersection Observer for lazy loading
+  const handleIntersection = useCallback(
+    (entries: IntersectionObserverEntry[]) => {
+      const [entry] = entries;
+      if (
+        entry.isIntersecting &&
+        !isLoading &&
+        !isLoadingMore &&
+        hasMoreNotifications &&
+        onLoadMore
+      ) {
+        console.log("[NotificationDropdown] Loading more notifications...");
+        onLoadMore();
+      }
+    },
+    [isLoading, isLoadingMore, hasMoreNotifications, onLoadMore]
+  );
+
+  // Set up intersection observer
+  useEffect(() => {
+    const trigger = loadMoreTriggerRef.current;
+    if (!trigger || !onLoadMore) return;
+
+    const observer = new IntersectionObserver(handleIntersection, {
+      root: scrollContainerRef.current,
+      rootMargin: "100px", // Trigger 100px before reaching the bottom
+      threshold: 0.1,
+    });
+
+    observer.observe(trigger);
+
+    return () => {
+      observer.unobserve(trigger);
+      observer.disconnect();
+    };
+  }, [handleIntersection, onLoadMore]);
+
   return (
     <div className="absolute right-0 top-12 w-96 bg-white rounded-lg shadow-xl border border-gray-200 z-50 max-h-96 overflow-hidden">
       {/* Header */}
@@ -81,21 +127,47 @@ export default function NotificationDropdown({
       )}
 
       {/* Notifications List */}
-      <div className="max-h-80 overflow-y-auto">
+      <div ref={scrollContainerRef} className="max-h-80 overflow-y-auto">
         {!isLoading && notifications.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-8 text-gray-500">
             <Bell className="w-12 h-12 mb-2 text-gray-300" />
             <p className="text-sm">No notifications yet</p>
           </div>
         ) : (
-          notifications.map((notification) => (
-            <NotificationItem
-              key={notification.id}
-              notification={notification}
-              onMarkAsRead={onMarkAsRead}
-              onRemove={onRemoveNotification}
-            />
-          ))
+          <>
+            {notifications.map((notification) => (
+              <NotificationItem
+                key={notification.id}
+                notification={notification}
+                onMarkAsRead={onMarkAsRead}
+                onRemove={onRemoveNotification}
+              />
+            ))}
+
+            {/* Load More Trigger */}
+            {hasMoreNotifications && onLoadMore && (
+              <div ref={loadMoreTriggerRef} className="h-4" />
+            )}
+
+            {/* Loading More Indicator */}
+            {isLoadingMore && (
+              <div className="flex items-center justify-center py-4 border-t border-gray-100">
+                <Loader2 className="w-4 h-4 animate-spin mr-2 text-blue-600" />
+                <span className="text-sm text-gray-500">Loading more...</span>
+              </div>
+            )}
+
+            {/* No More Notifications Indicator */}
+            {!hasMoreNotifications &&
+              notifications.length > 0 &&
+              notifications.length >= 10 && (
+                <div className="flex items-center justify-center py-4 border-t border-gray-100">
+                  <span className="text-sm text-gray-500">
+                    No more notifications
+                  </span>
+                </div>
+              )}
+          </>
         )}
       </div>
 

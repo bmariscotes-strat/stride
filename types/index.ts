@@ -103,6 +103,7 @@ export type {
   NotificationTemplate,
   NotificationStats,
   NotificationResponse,
+  NotificationProps,
 } from "./enums/notif";
 
 // RBAC

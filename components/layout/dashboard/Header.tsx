@@ -13,7 +13,7 @@ import { mapToNavItem } from "@/lib/utils/map-nav-item";
 
 interface HeaderProps {
   teams: BaseNavSource[];
-  userId: string;
+  userId: string | null;
 }
 
 const projectsPlaceholder = [
