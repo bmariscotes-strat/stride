@@ -56,6 +56,22 @@ export default function NotificationDropdown({
     [isLoading, isLoadingMore, hasMoreNotifications, onLoadMore]
   );
 
+  const fetchSlugs = async (teamId: string, projectId?: string) => {
+    try {
+      const res = await fetch("/api/slugs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ teamId, projectId }),
+      });
+
+      if (!res.ok) throw new Error("Failed to fetch slugs");
+      return await res.json();
+    } catch (err) {
+      console.error("[fetchSlugs] Error:", err);
+      return { teamSlug: "", projectSlug: undefined };
+    }
+  };
+
   // Set up intersection observer
   useEffect(() => {
     const trigger = loadMoreTriggerRef.current;
@@ -141,6 +157,7 @@ export default function NotificationDropdown({
                 notification={notification}
                 onMarkAsRead={onMarkAsRead}
                 onRemove={onRemoveNotification}
+                fetchSlugs={fetchSlugs}
               />
             ))}
 

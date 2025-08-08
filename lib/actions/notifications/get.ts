@@ -55,7 +55,6 @@ export async function getAllNotifications(
         updatedAt:
           notification.updatedAt?.toISOString() ||
           notification.createdAt.toISOString(),
-        // Add any other required properties with defaults if needed
         ...notification,
       }));
 

@@ -2,6 +2,7 @@
 
 import { NotificationType } from "@/types/enums/notif";
 import { NOTIFICATION_TEMPLATES } from "@/lib/templates/notif-template";
+import { NotificationWithRelations } from "@/types";
 
 // Helper function to create notification content
 export function createNotificationContent(
@@ -37,3 +38,35 @@ export const formatTimeAgo = (dateString: Date) => {
   const diffInDays = Math.floor(diffInHours / 24);
   return `${diffInDays}d ago`;
 };
+
+export async function getNotificationUrlById(
+  notification: NotificationWithRelations,
+  fetchSlugs: (
+    teamId: string,
+    projectId?: string
+  ) => Promise<{ teamSlug: string; projectSlug?: string }>
+): Promise<string> {
+  if (!notification.teamId) {
+    return "#";
+  }
+
+  try {
+    const { teamSlug, projectSlug } = await fetchSlugs(
+      notification.teamId,
+      notification.projectId || undefined
+    );
+
+    if (notification.cardId && projectSlug) {
+      return `/team/${teamSlug}/project/${projectSlug}/card/${notification.cardId}`;
+    }
+
+    if (notification.projectId && projectSlug) {
+      return `/team/${teamSlug}/project/${projectSlug}`;
+    }
+
+    return `/team/${teamSlug}`;
+  } catch (error) {
+    console.error("Error fetching slugs for notification URL:", error);
+    return "#";
+  }
+}

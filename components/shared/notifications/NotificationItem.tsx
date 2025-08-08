@@ -1,5 +1,5 @@
-// components/notifications/NotificationItem.tsx
-import React from "react";
+import React, { useEffect, useState } from "react";
+import Link from "next/link";
 import {
   X,
   CheckCircle,
@@ -11,20 +11,38 @@ import {
   Check,
 } from "lucide-react";
 import { NotificationWithRelations } from "@/types";
-import { formatTimeAgo } from "@/lib/utils/notif-helper";
+import {
+  formatTimeAgo,
+  getNotificationUrlById,
+} from "@/lib/utils/notif-helper";
 
 interface NotificationItemProps {
   notification: NotificationWithRelations;
   onMarkAsRead: (id: number) => void;
   onRemove: (id: number) => void;
+  fetchSlugs: (
+    teamId: string,
+    projectId?: string
+  ) => Promise<{ teamSlug: string; projectSlug?: string }>;
 }
 
 export default function NotificationItem({
   notification,
   onMarkAsRead,
   onRemove,
+  fetchSlugs,
 }: NotificationItemProps) {
-  // Get notification icon based on type
+  const [notificationUrl, setNotificationUrl] = useState("#");
+
+  useEffect(() => {
+    async function fetchUrl() {
+      const url = await getNotificationUrlById(notification, fetchSlugs);
+      setNotificationUrl(url);
+    }
+
+    fetchUrl();
+  }, [notification, fetchSlugs]);
+
   const getNotificationIcon = (type: NotificationWithRelations["type"]) => {
     const iconClass = "w-4 h-4 flex-shrink-0";
 
@@ -47,22 +65,20 @@ export default function NotificationItem({
   };
 
   return (
-    <div
+    <Link
+      href={notificationUrl}
       className={`relative flex items-start p-4 border-b border-gray-100 hover:bg-gray-50 transition-colors ${
         !notification.isRead ? "bg-blue-50 border-l-2 border-l-blue-500" : ""
       }`}
     >
-      {/* Unread Indicator Dot */}
       {!notification.isRead && (
         <div className="absolute left-1 top-1/2 transform -translate-y-1/2 w-2 h-2 bg-blue-500 rounded-full"></div>
       )}
 
-      {/* Notification Icon */}
       <div className="flex-shrink-0 mr-3 mt-1 ml-2">
         {getNotificationIcon(notification.type)}
       </div>
 
-      {/* Notification Content */}
       <div className="flex-1 min-w-0">
         <div className="flex items-start justify-between">
           <div className="flex-1">
@@ -83,7 +99,6 @@ export default function NotificationItem({
               </p>
             )}
 
-            {/* Time and Status */}
             <div className="flex items-center gap-2 mt-2">
               <p
                 className={`text-xs ${
@@ -92,8 +107,6 @@ export default function NotificationItem({
               >
                 {formatTimeAgo(notification.createdAt)}
               </p>
-
-              {/* Read/Unread Status Badge */}
               <span
                 className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                   !notification.isRead
@@ -106,22 +119,24 @@ export default function NotificationItem({
             </div>
           </div>
 
-          {/* Action Buttons */}
           <div className="flex items-center space-x-1 ml-2">
-            {/* Mark as Read Button - Only show for unread notifications */}
             {!notification.isRead && (
               <button
-                onClick={() => onMarkAsRead(notification.id)}
+                onClick={(e) => {
+                  e.preventDefault();
+                  onMarkAsRead(notification.id);
+                }}
                 className="flex items-center justify-center w-7 h-7 text-blue-600 hover:text-blue-800 hover:bg-blue-100 rounded transition-colors"
                 title="Mark as read"
               >
                 <Check className="w-4 h-4" />
               </button>
             )}
-
-            {/* Remove Button */}
             <button
-              onClick={() => onRemove(notification.id)}
+              onClick={(e) => {
+                e.preventDefault();
+                onRemove(notification.id);
+              }}
               className="flex items-center justify-center w-7 h-7 text-gray-400 hover:text-red-600 hover:bg-red-100 rounded transition-colors"
               title="Remove notification"
             >
@@ -130,6 +145,6 @@ export default function NotificationItem({
           </div>
         </div>
       </div>
-    </div>
+    </Link>
   );
 }

@@ -1,0 +1,187 @@
+// lib/actions/notif-actions.ts
+"use server";
+
+import { NotificationService } from "@/lib/services/notification";
+import { NotificationWithRelations, NotificationResponse } from "@/types";
+import { revalidatePath } from "next/cache";
+
+/**
+ * Get unread notifications for the current user
+ */
+export async function getUnreadNotifications(
+  userId: string | null,
+  limit: number = 20
+): Promise<NotificationWithRelations[]> {
+  console.log("[getUnreadNotifications] called with:", { userId, limit });
+
+  try {
+    const notifications = await NotificationService.getUnreadNotifications(
+      userId!,
+      limit
+    );
+    console.log("[getUnreadNotifications] raw result:", notifications);
+
+    const result = notifications.map((notification: any) => ({
+      ...notification,
+      isRead: false,
+      createdAt: notification.createdAt.toISOString(),
+    }));
+    console.log("[getUnreadNotifications] formatted result:", result);
+
+    return result;
+  } catch (error) {
+    console.error("[getUnreadNotifications] Failed:", error);
+    return [];
+  }
+}
+
+/**
+ * Get all notifications for the current user with pagination
+ */
+export async function getAllNotifications(
+  userId: string,
+  limit: number = 50,
+  offset: number = 0
+): Promise<NotificationResponse> {
+  console.log("[getAllNotifications] called with:", { userId, limit, offset });
+
+  try {
+    const [notifications, unreadCount] = await Promise.all([
+      NotificationService.getAllNotifications(userId, limit, offset),
+      NotificationService.getUnreadCount(userId),
+    ]);
+    console.log("[getAllNotifications] raw notifications:", notifications);
+    console.log("[getAllNotifications] unreadCount:", unreadCount);
+
+    const formattedNotifications = notifications.map((notification: any) => ({
+      ...notification,
+      createdAt: notification.createdAt.toISOString(),
+    }));
+    console.log(
+      "[getAllNotifications] formatted notifications:",
+      formattedNotifications
+    );
+
+    return {
+      notifications: formattedNotifications,
+      unreadCount,
+      totalCount: formattedNotifications.length,
+    };
+  } catch (error) {
+    console.error("[getAllNotifications] Failed:", error);
+    return {
+      notifications: [],
+      unreadCount: 0,
+      totalCount: 0,
+    };
+  }
+}
+
+/**
+ * Mark specific notifications as read
+ */
+export async function markNotificationsAsRead(
+  notificationIds: number[]
+): Promise<{ success: boolean; error?: string }> {
+  console.log("[markNotificationsAsRead] called with IDs:", notificationIds);
+
+  try {
+    await NotificationService.markAsRead(notificationIds);
+    console.log("[markNotificationsAsRead] marked successfully");
+
+    revalidatePath("/dashboard");
+    revalidatePath("/notifications");
+
+    return { success: true };
+  } catch (error) {
+    console.error("[markNotificationsAsRead] Failed:", error);
+    return {
+      success: false,
+      error: "Failed to mark notifications as read",
+    };
+  }
+}
+
+/**
+ * Mark all notifications as read for a user
+ */
+export async function markAllNotificationsAsRead(
+  userId: string
+): Promise<{ success: boolean; error?: string }> {
+  console.log("[markAllNotificationsAsRead] called with userId:", userId);
+
+  try {
+    await NotificationService.markAllAsRead(userId);
+    console.log("[markAllNotificationsAsRead] all marked successfully");
+
+    revalidatePath("/dashboard");
+    revalidatePath("/notifications");
+
+    return { success: true };
+  } catch (error) {
+    console.error("[markAllNotificationsAsRead] Failed:", error);
+    return {
+      success: false,
+      error: "Failed to mark all notifications as read",
+    };
+  }
+}
+
+/**
+ * Get unread notification count
+ */
+export async function getUnreadNotificationCount(
+  userId: string
+): Promise<number> {
+  console.log("[getUnreadNotificationCount] called with userId:", userId);
+
+  try {
+    const count = await NotificationService.getUnreadCount(userId);
+    console.log("[getUnreadNotificationCount] count:", count);
+    return count;
+  } catch (error) {
+    console.error("[getUnreadNotificationCount] Failed:", error);
+    return 0;
+  }
+}
+
+/**
+ * Delete specific notifications
+ */
+export async function deleteNotifications(
+  notificationIds: number[]
+): Promise<{ success: boolean; error?: string }> {
+  console.log("[deleteNotifications] called with IDs:", notificationIds);
+
+  try {
+    await NotificationService.deleteNotifications(notificationIds);
+    console.log("[deleteNotifications] deleted successfully");
+
+    revalidatePath("/dashboard");
+    revalidatePath("/notifications");
+
+    return { success: true };
+  } catch (error) {
+    console.error("[deleteNotifications] Failed:", error);
+    return {
+      success: false,
+      error: "Failed to delete notifications",
+    };
+  }
+}
+
+/**
+ * Get notification statistics for a user
+ */
+export async function getNotificationStats(userId: string) {
+  console.log("[getNotificationStats] called with userId:", userId);
+
+  try {
+    const stats = await NotificationService.getNotificationStats(userId);
+    console.log("[getNotificationStats] result:", stats);
+    return stats;
+  } catch (error) {
+    console.error("[getNotificationStats] Failed:", error);
+    return {};
+  }
+}
