@@ -143,7 +143,7 @@ export type FieldChange = {
 // Type for activity log query results
 export type ActivityLogResult = {
   id: number;
-  actionType: typeof activityActionEnum.enumValues;
+  actionType: string;
   oldValue: string | null;
   newValue: string | null;
   createdAt: Date;
