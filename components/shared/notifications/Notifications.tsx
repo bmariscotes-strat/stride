@@ -1,8 +1,9 @@
 // components/notifications/Notifications.tsx
-import React, { useState } from "react";
+import React, { useEffect } from "react";
 import { useNotifications } from "@/hooks/useNotification";
-import NotificationBadge from "./NotificationBadge";
-import NotificationDropdown from "./NotificationDropdown";
+import { useNotificationStore } from "@/stores/ui/notif-store";
+import NotificationBadge from "@/components/shared/notifications/NotificationBadge";
+import NotificationDropdown from "@/components/shared/notifications/NotificationDropdown";
 import type { LazyNotificationProps } from "@/hooks/useNotification";
 
 type ExtendedNotificationProps = LazyNotificationProps & {
@@ -17,8 +18,16 @@ export default function Notifications({
   batchSize = 5,
   onViewAll,
 }: ExtendedNotificationProps) {
-  const [isOpen, setIsOpen] = useState(false);
+  // Zustand store for UI state and preferences
+  const {
+    isOpen,
+    toggleDropdown,
+    closeDropdown,
+    setHasNewNotifications,
+    setLastNotificationTime,
+  } = useNotificationStore();
 
+  // Keep the useNotifications hook for data operations
   const {
     notifications,
     unreadCount,
@@ -39,8 +48,32 @@ export default function Notifications({
     batchSize,
   });
 
+  // Track new notifications for animations/badges
+  useEffect(() => {
+    if (notifications.length > 0) {
+      const latestNotification = notifications[0];
+      const isNewNotification =
+        latestNotification &&
+        !latestNotification.isRead &&
+        Date.now() - new Date(latestNotification.createdAt).getTime() < 60000; // Within last minute
+
+      if (isNewNotification) {
+        setHasNewNotifications(true);
+        setLastNotificationTime(Date.now());
+
+        // Auto-clear the "new" indicator after a few seconds
+        const timer = setTimeout(() => {
+          setHasNewNotifications(false);
+        }, 5000);
+
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [notifications, setHasNewNotifications, setLastNotificationTime]);
+
   const handleMarkAllAsRead = async () => {
     await markAllAsRead();
+    setHasNewNotifications(false);
   };
 
   const handleMarkAsRead = async (notificationId: number) => {
@@ -55,8 +88,12 @@ export default function Notifications({
     await loadMoreNotifications();
   };
 
-  const handleClose = () => {
-    setIsOpen(false);
+  const handleBadgeClick = () => {
+    toggleDropdown();
+    // Clear new notification indicator when opening
+    if (!isOpen) {
+      setHasNewNotifications(false);
+    }
   };
 
   return (
@@ -64,7 +101,7 @@ export default function Notifications({
       {/* Notification Bell Button */}
       <NotificationBadge
         count={unreadCount}
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={handleBadgeClick}
         isOpen={isOpen}
       />
 
@@ -77,7 +114,7 @@ export default function Notifications({
           isLoadingMore={isLoadingMore}
           hasMoreNotifications={hasMoreNotifications}
           error={error}
-          onClose={handleClose}
+          onClose={closeDropdown}
           onMarkAllAsRead={handleMarkAllAsRead}
           onMarkAsRead={handleMarkAsRead}
           onRemoveNotification={handleRemoveNotification}
@@ -88,7 +125,7 @@ export default function Notifications({
       )}
 
       {/* Backdrop to close dropdown */}
-      {isOpen && <div className="fixed inset-0 z-40" onClick={handleClose} />}
+      {isOpen && <div className="fixed inset-0 z-40" onClick={closeDropdown} />}
     </div>
   );
 }
