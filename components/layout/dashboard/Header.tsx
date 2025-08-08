@@ -8,24 +8,12 @@ import Notifications from "@/components/shared/Notification";
 import { useState } from "react";
 import NavDropdown from "@/components/shared/NavDropdown";
 import UserDropdown from "@/components/shared/UserDropdown";
+import { BaseNavSource } from "@/types";
+import { mapToNavItem } from "@/lib/utils/map-nav-item";
 
-const teamsPlaceholder = [
-  {
-    slug: "getting-started-with-nextjs",
-    name: "Getting Started with Next.js",
-    type: "Software Project Team",
-  },
-  {
-    slug: "typescript-best-practices",
-    name: "TypeScript Best Practices",
-    type: "Business Team",
-  },
-  {
-    slug: "react-performance-tips",
-    name: "React Performance Tips",
-    type: "Main Team",
-  },
-];
+interface HeaderProps {
+  teams: BaseNavSource[];
+}
 
 const projectsPlaceholder = [
   {
@@ -51,11 +39,18 @@ const workspaceItems = [
   { href: "/analytics", name: "Analytics" },
 ];
 
-export default function Header() {
+export default function Header({ teams }: HeaderProps) {
   const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const isActive = (path: string) => pathname === path;
+
+  // Mapping Navigation Items
+  const teamNavItems = teams.map((team) =>
+    mapToNavItem(team, {
+      baseHref: "/team",
+    })
+  );
 
   const navLinks = [
     { href: "/", label: "About" },
@@ -63,11 +58,10 @@ export default function Header() {
   ];
 
   return (
-    <header className="w-full px-6 py-1 bg-background sm:px-6 lg:px-10 sticky top-0 z-50 border-b border-border">
+    <header className="w-full sticky top-0 z-50 border-b border-border bg-background px-6 py-1 sm:px-6 lg:px-10">
       <nav className="flex items-center justify-between max-w-10xl mx-auto">
-        {/* Left Side Nav */}
+        {/* Brand + Dropdowns */}
         <section className="flex items-center space-x-6">
-          {/* Brand */}
           <Link href="/" className="flex items-center space-x-1 group">
             <div className="w-10 h-10 rounded-lg flex items-center justify-center">
               <Image
@@ -82,21 +76,12 @@ export default function Header() {
             </span>
           </Link>
 
-          {/* Workspace */}
           <NavDropdown
             title="My Workspace"
             items={workspaceItems}
             viewAllHref="/workspace"
           />
-
-          {/* Teams */}
-          <NavDropdown
-            title="Teams"
-            items={teamsPlaceholder}
-            viewAllHref="/work/team"
-          />
-
-          {/* Projects */}
+          <NavDropdown title="Teams" items={teamNavItems} viewAllHref="/team" />
           <NavDropdown
             title="Projects"
             items={projectsPlaceholder}
@@ -110,18 +95,6 @@ export default function Header() {
           <Notifications />
           <UserDropdown />
         </section>
-
-        {/* Mobile Menu Button */}
-        <div className="md:hidden">
-          <button
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="text-muted-foreground hover:text-primary p-2 rounded-lg hover:bg-accent transition-colors"
-            aria-expanded={isMobileMenuOpen}
-            aria-label="Toggle mobile menu"
-          >
-            {/* SVG content */}
-          </button>
-        </div>
       </nav>
 
       {/* Mobile Menu */}

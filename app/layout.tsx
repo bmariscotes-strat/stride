@@ -6,6 +6,8 @@ import { UserProvider } from "@/contexts/UserContext";
 import "@/styles/globals.css";
 import { Providers } from "@/components/theme/ThemeProvider";
 
+console.log("Logging enabled?", process.env.NODE_ENV === "development");
+
 export const metadata: Metadata = {
   title: "Project Management Tool",
   icons: {
@@ -28,7 +30,7 @@ export default function RootLayout({
         suppressHydrationWarning
       >
         <body className={inclusive_sans.className}>
-          <UserProvider enableLogging={process.env.NODE_ENV === "development"}>
+          <UserProvider enableLogging={process.env.NODE_ENV != "development"}>
             <Providers>{children}</Providers>
           </UserProvider>
         </body>

@@ -9,6 +9,7 @@ import {
   pgEnum,
   unique,
   index,
+  foreignKey,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
@@ -34,6 +35,8 @@ export const notificationTypeEnum = pgEnum("notification_type", [
 // =============================================================================
 // CORE ENTITY TABLES - Main business entities
 // =============================================================================
+
+// Users table - defined first without foreign key references
 export const users = pgTable(
   "users",
   {
@@ -44,7 +47,7 @@ export const users = pgTable(
     firstName: varchar("first_name", { length: 255 }).notNull(),
     lastName: varchar("last_name", { length: 255 }).notNull(),
     avatarUrl: text("avatar_url"),
-    personalTeamId: uuid("personal_team_id"),
+    personalTeamId: uuid("personal_team_id"), // No foreign key constraint here to avoid circular dependency
     schemaVersion: integer("schema_version").default(1).notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -54,6 +57,7 @@ export const users = pgTable(
   })
 );
 
+// Teams table - now can reference users
 export const teams = pgTable(
   "teams",
   {
@@ -71,6 +75,12 @@ export const teams = pgTable(
   (table) => ({
     slugIdx: index("teams_slug_idx").on(table.slug),
     createdByIdx: index("teams_created_by_idx").on(table.createdBy),
+    // Add foreign key constraint with proper cascade behavior
+    createdByFk: foreignKey({
+      columns: [table.createdBy],
+      foreignColumns: [users.id],
+      name: "fk_teams_created_by",
+    }).onDelete("restrict"),
   })
 );
 
@@ -94,6 +104,17 @@ export const projects = pgTable(
     teamSlugUnique: unique("team_slug_unique").on(table.teamId, table.slug),
     teamIdIdx: index("projects_team_id_idx").on(table.teamId),
     ownerIdIdx: index("projects_owner_id_idx").on(table.ownerId),
+    // Foreign key constraints
+    teamIdFk: foreignKey({
+      columns: [table.teamId],
+      foreignColumns: [teams.id],
+      name: "fk_projects_team_id",
+    }).onDelete("cascade"),
+    ownerIdFk: foreignKey({
+      columns: [table.ownerId],
+      foreignColumns: [users.id],
+      name: "fk_projects_owner_id",
+    }).onDelete("restrict"),
   })
 );
 
@@ -115,6 +136,11 @@ export const columns = pgTable(
       table.projectId,
       table.position
     ),
+    projectIdFk: foreignKey({
+      columns: [table.projectId],
+      foreignColumns: [projects.id],
+      name: "fk_columns_project_id",
+    }).onDelete("cascade"),
   })
 );
 
@@ -143,6 +169,16 @@ export const cards = pgTable(
     dueDateIdx: index("cards_due_date_idx").on(table.dueDate),
     priorityIdx: index("cards_priority_idx").on(table.priority),
     positionIdx: index("cards_position_idx").on(table.columnId, table.position),
+    columnIdFk: foreignKey({
+      columns: [table.columnId],
+      foreignColumns: [columns.id],
+      name: "fk_cards_column_id",
+    }).onDelete("cascade"),
+    assigneeIdFk: foreignKey({
+      columns: [table.assigneeId],
+      foreignColumns: [users.id],
+      name: "fk_cards_assignee_id",
+    }).onDelete("set null"),
   })
 );
 
@@ -158,6 +194,11 @@ export const labels = pgTable(
   },
   (table) => ({
     teamIdIdx: index("labels_team_id_idx").on(table.teamId),
+    teamIdFk: foreignKey({
+      columns: [table.teamId],
+      foreignColumns: [teams.id],
+      name: "fk_labels_team_id",
+    }).onDelete("cascade"),
   })
 );
 
@@ -179,6 +220,16 @@ export const teamMembers = pgTable(
     teamUserUnique: unique("team_user_unique").on(table.teamId, table.userId),
     teamIdIdx: index("team_members_team_id_idx").on(table.teamId),
     userIdIdx: index("team_members_user_id_idx").on(table.userId),
+    teamIdFk: foreignKey({
+      columns: [table.teamId],
+      foreignColumns: [teams.id],
+      name: "fk_team_members_team_id",
+    }).onDelete("cascade"),
+    userIdFk: foreignKey({
+      columns: [table.userId],
+      foreignColumns: [users.id],
+      name: "fk_team_members_user_id",
+    }).onDelete("cascade"),
   })
 );
 
@@ -197,6 +248,16 @@ export const cardLabels = pgTable(
     ),
     cardIdIdx: index("card_labels_card_id_idx").on(table.cardId),
     labelIdIdx: index("card_labels_label_id_idx").on(table.labelId),
+    cardIdFk: foreignKey({
+      columns: [table.cardId],
+      foreignColumns: [cards.id],
+      name: "fk_card_labels_card_id",
+    }).onDelete("cascade"),
+    labelIdFk: foreignKey({
+      columns: [table.labelId],
+      foreignColumns: [labels.id],
+      name: "fk_card_labels_label_id",
+    }).onDelete("cascade"),
   })
 );
 
@@ -218,6 +279,16 @@ export const cardComments = pgTable(
   (table) => ({
     cardIdIdx: index("card_comments_card_id_idx").on(table.cardId),
     userIdIdx: index("card_comments_user_id_idx").on(table.userId),
+    cardIdFk: foreignKey({
+      columns: [table.cardId],
+      foreignColumns: [cards.id],
+      name: "fk_card_comments_card_id",
+    }).onDelete("cascade"),
+    userIdFk: foreignKey({
+      columns: [table.userId],
+      foreignColumns: [users.id],
+      name: "fk_card_comments_user_id",
+    }).onDelete("cascade"),
   })
 );
 
@@ -238,6 +309,16 @@ export const cardAttachments = pgTable(
     uploadedByIdx: index("card_attachments_uploaded_by_idx").on(
       table.uploadedBy
     ),
+    cardIdFk: foreignKey({
+      columns: [table.cardId],
+      foreignColumns: [cards.id],
+      name: "fk_card_attachments_card_id",
+    }).onDelete("cascade"),
+    uploadedByFk: foreignKey({
+      columns: [table.uploadedBy],
+      foreignColumns: [users.id],
+      name: "fk_card_attachments_uploaded_by",
+    }).onDelete("restrict"),
   })
 );
 
@@ -263,6 +344,21 @@ export const activityLog = pgTable(
     cardIdIdx: index("activity_log_card_id_idx").on(table.cardId),
     userIdIdx: index("activity_log_user_id_idx").on(table.userId),
     createdAtIdx: index("activity_log_created_at_idx").on(table.createdAt),
+    projectIdFk: foreignKey({
+      columns: [table.projectId],
+      foreignColumns: [projects.id],
+      name: "fk_activity_log_project_id",
+    }).onDelete("cascade"),
+    cardIdFk: foreignKey({
+      columns: [table.cardId],
+      foreignColumns: [cards.id],
+      name: "fk_activity_log_card_id",
+    }).onDelete("cascade"),
+    userIdFk: foreignKey({
+      columns: [table.userId],
+      foreignColumns: [users.id],
+      name: "fk_activity_log_user_id",
+    }).onDelete("cascade"),
   })
 );
 
@@ -286,6 +382,21 @@ export const notifications = pgTable(
       table.isRead
     ),
     createdAtIdx: index("notifications_created_at_idx").on(table.createdAt),
+    userIdFk: foreignKey({
+      columns: [table.userId],
+      foreignColumns: [users.id],
+      name: "fk_notifications_user_id",
+    }).onDelete("cascade"),
+    cardIdFk: foreignKey({
+      columns: [table.cardId],
+      foreignColumns: [cards.id],
+      name: "fk_notifications_card_id",
+    }).onDelete("cascade"),
+    projectIdFk: foreignKey({
+      columns: [table.projectId],
+      foreignColumns: [projects.id],
+      name: "fk_notifications_project_id",
+    }).onDelete("cascade"),
   })
 );
 
@@ -294,7 +405,7 @@ export const mentions = pgTable(
   "mentions",
   {
     id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
-    commentId: uuid("comment_id").notNull(),
+    commentId: integer("comment_id").notNull(), // Changed from uuid to integer
     mentionedUserId: uuid("mentioned_user_id").notNull(),
     mentionedBy: uuid("mentioned_by").notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -304,6 +415,21 @@ export const mentions = pgTable(
     mentionedUserIdIdx: index("mentions_mentioned_user_id_idx").on(
       table.mentionedUserId
     ),
+    commentIdFk: foreignKey({
+      columns: [table.commentId],
+      foreignColumns: [cardComments.id],
+      name: "fk_mentions_comment_id",
+    }).onDelete("cascade"),
+    mentionedUserIdFk: foreignKey({
+      columns: [table.mentionedUserId],
+      foreignColumns: [users.id],
+      name: "fk_mentions_mentioned_user_id",
+    }).onDelete("cascade"),
+    mentionedByFk: foreignKey({
+      columns: [table.mentionedBy],
+      foreignColumns: [users.id],
+      name: "fk_mentions_mentioned_by",
+    }).onDelete("cascade"),
   })
 );
 

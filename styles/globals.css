@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:is(.dark *));
+
 /* Light theme (default) */
 @theme {
   --color-background: oklch(100% 0 0);
