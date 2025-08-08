@@ -18,8 +18,9 @@ import {
 
 interface NotificationItemProps {
   notification: NotificationWithRelations;
-  onMarkAsRead: (id: number) => void;
+  onMarkAsRead: (id: number) => Promise<void> | void;
   onRemove: (id: number) => void;
+  onClose?: () => void; // Add close function prop
   fetchSlugs: (
     teamId: string,
     projectId?: string
@@ -30,6 +31,7 @@ export default function NotificationItem({
   notification,
   onMarkAsRead,
   onRemove,
+  onClose,
   fetchSlugs,
 }: NotificationItemProps) {
   const [notificationUrl, setNotificationUrl] = useState("#");
@@ -42,6 +44,18 @@ export default function NotificationItem({
 
     fetchUrl();
   }, [notification, fetchSlugs]);
+
+  const handleLinkClick = () => {
+    // Mark as read when clicking the link (happens before navigation)
+    if (!notification.isRead) {
+      onMarkAsRead(notification.id);
+    }
+
+    // Close the notifications dropdown
+    if (onClose) {
+      onClose();
+    }
+  };
 
   const getNotificationIcon = (type: NotificationWithRelations["type"]) => {
     const iconClass = "w-4 h-4 flex-shrink-0";
@@ -67,6 +81,7 @@ export default function NotificationItem({
   return (
     <Link
       href={notificationUrl}
+      onClick={handleLinkClick}
       className={`relative flex items-start p-4 border-b border-gray-100 hover:bg-gray-50 transition-colors ${
         !notification.isRead ? "bg-blue-50 border-l-2 border-l-blue-500" : ""
       }`}
@@ -124,6 +139,7 @@ export default function NotificationItem({
               <button
                 onClick={(e) => {
                   e.preventDefault();
+                  e.stopPropagation();
                   onMarkAsRead(notification.id);
                 }}
                 className="flex items-center justify-center w-7 h-7 text-blue-600 hover:text-blue-800 hover:bg-blue-100 rounded transition-colors"
@@ -135,6 +151,7 @@ export default function NotificationItem({
             <button
               onClick={(e) => {
                 e.preventDefault();
+                e.stopPropagation();
                 onRemove(notification.id);
               }}
               className="flex items-center justify-center w-7 h-7 text-gray-400 hover:text-red-600 hover:bg-red-100 rounded transition-colors"

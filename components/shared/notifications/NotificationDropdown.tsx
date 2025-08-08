@@ -158,6 +158,7 @@ export default function NotificationDropdown({
                 onMarkAsRead={onMarkAsRead}
                 onRemove={onRemoveNotification}
                 fetchSlugs={fetchSlugs}
+                onClose={onClose}
               />
             ))}
 
