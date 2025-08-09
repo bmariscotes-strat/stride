@@ -1,5 +1,5 @@
 // components/notifications/Notifications.tsx
-import React, { useEffect } from "react";
+import React, { useEffect, useMemo } from "react";
 import { useNotifications } from "@/hooks/useNotification";
 import { useNotificationStore } from "@/stores/ui/notif-store";
 import NotificationBadge from "@/components/shared/notifications/NotificationBadge";
@@ -45,6 +45,7 @@ export default function Notifications({
     removeNotification,
     loadMoreNotifications,
     refresh,
+    fetchNewNotifications, // New method from optimized hook
   } = useNotifications({
     userId,
     limit,
@@ -53,18 +54,26 @@ export default function Notifications({
     batchSize,
   });
 
-  // Track new notifications for animations/badges
+  // Memoize the latest unread notification for better performance
+  const latestUnreadNotification = useMemo(() => {
+    return notifications.find((notification) => !notification.isRead) || null;
+  }, [notifications]);
+
+  // Enhanced new notification detection
   useEffect(() => {
-    if (notifications.length > 0) {
-      const latestNotification = notifications[0];
+    if (latestUnreadNotification) {
+      const notificationTime = new Date(
+        latestUnreadNotification.createdAt
+      ).getTime();
+      const isRecentNotification = Date.now() - notificationTime < 60000; // Within last minute
+
+      // Check if this is actually a new notification we haven't seen before
       const isNewNotification =
-        latestNotification &&
-        !latestNotification.isRead &&
-        Date.now() - new Date(latestNotification.createdAt).getTime() < 60000; // Within last minute
+        isRecentNotification && !latestUnreadNotification.isRead;
 
       if (isNewNotification) {
         setHasNewNotifications(true);
-        setLastNotificationTime(Date.now());
+        setLastNotificationTime(notificationTime);
 
         // Auto-clear the "new" indicator after a few seconds
         const timer = setTimeout(() => {
@@ -74,7 +83,11 @@ export default function Notifications({
         return () => clearTimeout(timer);
       }
     }
-  }, [notifications, setHasNewNotifications, setLastNotificationTime]);
+  }, [
+    latestUnreadNotification,
+    setHasNewNotifications,
+    setLastNotificationTime,
+  ]);
 
   const handleMarkAllAsRead = async () => {
     await markAllAsRead();
@@ -101,6 +114,17 @@ export default function Notifications({
     }
   };
 
+  // Enhanced refresh that can use the optimized polling
+  const handleRefresh = async () => {
+    if (notifications.length > 0) {
+      // If we have notifications, try the optimized fetch first
+      await fetchNewNotifications();
+    } else {
+      // If no notifications, do a full refresh
+      refresh();
+    }
+  };
+
   return (
     <div className="relative">
       {/* Notification Bell Button */}
@@ -123,7 +147,7 @@ export default function Notifications({
           onMarkAllAsRead={handleMarkAllAsRead}
           onMarkAsRead={handleMarkAsRead}
           onRemoveNotification={handleRemoveNotification}
-          onRefresh={refresh}
+          onRefresh={handleRefresh} // Use the enhanced refresh
           onLoadMore={handleLoadMore}
           onViewAll={onViewAll}
         />

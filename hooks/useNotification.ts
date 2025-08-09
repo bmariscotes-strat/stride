@@ -1,18 +1,20 @@
-// hooks/useNotification.ts
-import { useState, useEffect, useCallback } from "react";
+// hooks/useNotification.ts - Ultra-optimized version
+import { useState, useEffect, useCallback, useRef } from "react";
 import { NotificationWithRelations, NotificationProps } from "@/types";
 import {
-  getUnreadNotifications,
   getAllNotifications,
   markNotificationsAsRead,
   markAllNotificationsAsRead,
   getUnreadNotificationCount,
   deleteNotifications,
+  // New optimized methods
+  getUnreadNotificationsSince,
+  hasNewNotificationsSince,
+  getUnreadCountWithTimestamp,
 } from "@/lib/actions/notifications";
 
-// Extended props for lazy loading
 export interface LazyNotificationProps extends NotificationProps {
-  batchSize?: number; // How many notifications to load at once
+  batchSize?: number;
 }
 
 export function useNotifications({
@@ -20,7 +22,7 @@ export function useNotifications({
   limit = 20,
   autoRefresh = true,
   refreshInterval = 30000,
-  batchSize = 10, // Load 10 more notifications each time
+  batchSize = 10,
 }: LazyNotificationProps) {
   const [notifications, setNotifications] = useState<
     NotificationWithRelations[]
@@ -31,25 +33,38 @@ export function useNotifications({
   const [error, setError] = useState<string | null>(null);
   const [hasMoreNotifications, setHasMoreNotifications] = useState(true);
 
-  // Initial fetch notifications (using getAllNotifications)
+  // Track timestamps for optimized polling
+  const lastPollTimestamp = useRef<Date | null>(null);
+  const mostRecentNotificationTimestamp = useRef<Date | null>(null);
+  const isInitialLoad = useRef(true);
+
+  // Initial fetch notifications
   const fetchNotifications = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
 
-      const [notificationsResponse, count] = await Promise.all([
-        getAllNotifications(userId!, batchSize), // This returns NotificationResponse
-        getUnreadNotificationCount(userId!),
+      const [notificationsResponse, countData] = await Promise.all([
+        getAllNotifications(userId!, batchSize),
+        getUnreadCountWithTimestamp(userId!),
       ]);
 
-      // Handle the response properly
       setNotifications(notificationsResponse.notifications);
-      setUnreadCount(count);
+      setUnreadCount(countData.count);
 
-      // If we got fewer notifications than batchSize, there might not be more
+      // Track timestamps
+      if (notificationsResponse.notifications.length > 0) {
+        mostRecentNotificationTimestamp.current = new Date(
+          notificationsResponse.notifications[0].createdAt
+        );
+      }
+      lastPollTimestamp.current = new Date();
+
       setHasMoreNotifications(
         notificationsResponse.notifications.length === batchSize
       );
+
+      isInitialLoad.current = false;
     } catch (err) {
       console.error("[useNotifications] Error fetching notifications:", err);
       setError("Failed to fetch notifications");
@@ -61,7 +76,74 @@ export function useNotifications({
     }
   }, [userId, batchSize]);
 
-  // Load more notifications for lazy loading (using getAllNotifications)
+  // Ultra-optimized polling - minimal database hits
+  const fetchNewNotifications = useCallback(async () => {
+    if (isInitialLoad.current || !lastPollTimestamp.current) return;
+
+    try {
+      setError(null);
+
+      // First, do a very lightweight check if there are any new notifications
+      const hasNew = await hasNewNotificationsSince(
+        userId!,
+        lastPollTimestamp.current
+      );
+
+      if (!hasNew) {
+        // No new notifications, update poll timestamp and return
+        lastPollTimestamp.current = new Date();
+        return;
+      }
+
+      // There are new notifications, fetch them
+      const newNotificationsResponse = await getUnreadNotificationsSince(
+        userId!,
+        lastPollTimestamp.current,
+        50 // Get more to ensure we don't miss any
+      );
+
+      if (newNotificationsResponse.notifications.length > 0) {
+        // Add new notifications to the beginning and remove duplicates
+        setNotifications((prev) => {
+          const existingIds = new Set(prev.map((n) => n.id));
+          const newNotifications =
+            newNotificationsResponse.notifications.filter(
+              (n) => !existingIds.has(n.id)
+            );
+
+          return [...newNotifications, ...prev];
+        });
+
+        // Update unread count
+        const currentCountData = await getUnreadCountWithTimestamp(userId!);
+        setUnreadCount(currentCountData.count);
+
+        // Update most recent timestamp
+        mostRecentNotificationTimestamp.current = new Date(
+          newNotificationsResponse.notifications[0].createdAt
+        );
+      }
+
+      // Update poll timestamp
+      lastPollTimestamp.current = new Date();
+    } catch (err) {
+      console.error("[useNotifications] Error in optimized polling:", err);
+      // Fallback to simple count check on error
+      try {
+        const currentCount = await getUnreadNotificationCount(userId!);
+        if (currentCount !== unreadCount) {
+          setUnreadCount(currentCount);
+        }
+      } catch (fallbackErr) {
+        console.error(
+          "[useNotifications] Fallback polling also failed:",
+          fallbackErr
+        );
+      }
+    }
+  }, [userId, unreadCount]);
+
+  // Load more notifications (unchanged but optimized)
   const loadMoreNotifications = useCallback(async () => {
     if (isLoadingMore || !hasMoreNotifications || isLoading) {
       return;
@@ -70,7 +152,6 @@ export function useNotifications({
     setIsLoadingMore(true);
 
     try {
-      // Get all notifications (read + unread) starting from the current length (offset)
       const moreNotificationsResponse = await getAllNotifications(
         userId!,
         batchSize,
@@ -80,8 +161,6 @@ export function useNotifications({
 
       if (moreNotifications.length > 0) {
         setNotifications((prev) => [...prev, ...moreNotifications]);
-
-        // If we got fewer notifications than requested, we've reached the end
         setHasMoreNotifications(moreNotifications.length === batchSize);
       } else {
         setHasMoreNotifications(false);
@@ -105,33 +184,47 @@ export function useNotifications({
     isLoading,
   ]);
 
-  // Mark single notification as read (keeps notification in list)
+  // Optimistic mark as read
   const markAsRead = useCallback(
     async (notificationId: number) => {
+      // Optimistic update first
+      const notification = notifications.find((n) => n.id === notificationId);
+      const wasUnread = notification && !notification.isRead;
+
+      if (wasUnread) {
+        setNotifications((prev) =>
+          prev.map((n) =>
+            n.id === notificationId ? { ...n, isRead: true } : n
+          )
+        );
+        setUnreadCount((prev) => Math.max(0, prev - 1));
+      }
+
       try {
         const result = await markNotificationsAsRead([notificationId]);
 
-        if (result.success) {
-          // Update the notification's read status in the list (don't remove it)
-          setNotifications((prev) =>
-            prev.map((notification) =>
-              notification.id === notificationId
-                ? { ...notification, isRead: true }
-                : notification
-            )
-          );
-
-          // Only decrease unread count if it was previously unread
-          const wasUnread =
-            notifications.find((n) => n.id === notificationId)?.isRead ===
-            false;
+        if (!result.success) {
+          // Revert optimistic update on failure
           if (wasUnread) {
-            setUnreadCount((prev) => Math.max(0, prev - 1));
+            setNotifications((prev) =>
+              prev.map((n) =>
+                n.id === notificationId ? { ...n, isRead: false } : n
+              )
+            );
+            setUnreadCount((prev) => prev + 1);
           }
-        } else {
           setError(result.error || "Failed to mark as read");
         }
       } catch (err) {
+        // Revert optimistic update on error
+        if (wasUnread) {
+          setNotifications((prev) =>
+            prev.map((n) =>
+              n.id === notificationId ? { ...n, isRead: false } : n
+            )
+          );
+          setUnreadCount((prev) => prev + 1);
+        }
         console.error(
           "[useNotifications] Error marking notification as read:",
           err
@@ -142,51 +235,71 @@ export function useNotifications({
     [notifications]
   );
 
-  // Mark all notifications as read (keeps all notifications in list)
+  // Optimistic mark all as read
   const markAllAsRead = useCallback(async () => {
+    const previousNotifications = notifications;
+    const previousUnreadCount = unreadCount;
+
+    // Optimistic update
+    setNotifications((prev) =>
+      prev.map((notification) => ({ ...notification, isRead: true }))
+    );
+    setUnreadCount(0);
+
     try {
       const result = await markAllNotificationsAsRead(userId!);
 
-      if (result.success) {
-        // Update all notifications to read status (don't remove any)
-        setNotifications((prev) =>
-          prev.map((notification) => ({ ...notification, isRead: true }))
-        );
-        setUnreadCount(0);
-      } else {
+      if (!result.success) {
+        // Revert on failure
+        setNotifications(previousNotifications);
+        setUnreadCount(previousUnreadCount);
         setError(result.error || "Failed to mark all as read");
       }
     } catch (err) {
+      // Revert on error
+      setNotifications(previousNotifications);
+      setUnreadCount(previousUnreadCount);
       console.error(
         "[useNotifications] Error marking all notifications as read:",
         err
       );
       setError("Failed to mark all notifications as read");
     }
-  }, [userId]);
+  }, [userId, notifications, unreadCount]);
 
-  // Remove notification
+  // Remove notification with optimistic update
   const removeNotification = useCallback(
     async (notificationId: number) => {
+      const notification = notifications.find((n) => n.id === notificationId);
+      const wasUnread = notification && !notification.isRead;
+
+      // Optimistic update
+      setNotifications((prev) => prev.filter((n) => n.id !== notificationId));
+      if (wasUnread) {
+        setUnreadCount((prev) => Math.max(0, prev - 1));
+      }
+
       try {
         const result = await deleteNotifications([notificationId]);
 
-        if (result.success) {
-          const wasUnread =
-            notifications.find((n) => n.id === notificationId)?.isRead ===
-            false;
-
-          setNotifications((prev) =>
-            prev.filter((notification) => notification.id !== notificationId)
-          );
-
-          if (wasUnread) {
-            setUnreadCount((prev) => Math.max(0, prev - 1));
+        if (!result.success) {
+          // Revert on failure
+          if (notification) {
+            setNotifications((prev) => [notification, ...prev]);
+            if (wasUnread) {
+              setUnreadCount((prev) => prev + 1);
+            }
           }
-        } else {
           setError(result.error || "Failed to remove notification");
         }
       } catch (err) {
+        // Revert on error
+        if (notification) {
+          setNotifications((prev) => [notification, ...prev]);
+          if (wasUnread) {
+            setUnreadCount((prev) => prev + 1);
+          }
+        }
         console.error("[useNotifications] Error removing notification:", err);
         setError("Failed to remove notification");
       }
@@ -194,10 +307,13 @@ export function useNotifications({
     [notifications]
   );
 
-  // Refresh notifications (reset everything)
+  // Full refresh - use sparingly
   const refresh = useCallback(() => {
     setNotifications([]);
     setHasMoreNotifications(true);
+    lastPollTimestamp.current = null;
+    mostRecentNotificationTimestamp.current = null;
+    isInitialLoad.current = true;
     fetchNotifications();
   }, [fetchNotifications]);
 
@@ -206,18 +322,18 @@ export function useNotifications({
     fetchNotifications();
   }, [fetchNotifications]);
 
-  // Auto refresh
+  // Ultra-optimized auto refresh
   useEffect(() => {
     if (!autoRefresh) return;
 
     const interval = setInterval(() => {
-      refresh();
+      fetchNewNotifications();
     }, refreshInterval);
 
     return () => {
       clearInterval(interval);
     };
-  }, [autoRefresh, refreshInterval, refresh]);
+  }, [autoRefresh, refreshInterval, fetchNewNotifications]);
 
   return {
     notifications,
@@ -231,24 +347,18 @@ export function useNotifications({
     removeNotification,
     loadMoreNotifications,
     refresh,
+    fetchNewNotifications,
   };
 }
 
-// Hook for just getting unread count (unchanged)
+// Simplified unread count hook
 export function useUnreadCount(userId: string, refreshInterval = 30000) {
   const [count, setCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
 
-  console.log("[useUnreadCount] Initialized with:", {
-    userId,
-    refreshInterval,
-  });
-
   const fetchCount = useCallback(async () => {
-    console.log("[useUnreadCount] Fetching unread count...");
     try {
       const unreadCount = await getUnreadNotificationCount(userId);
-      console.log("[useUnreadCount] Unread count fetched:", unreadCount);
       setCount(unreadCount);
     } catch (err) {
       console.error("[useUnreadCount] Error fetching unread count:", err);
@@ -258,18 +368,9 @@ export function useUnreadCount(userId: string, refreshInterval = 30000) {
   }, [userId]);
 
   useEffect(() => {
-    console.log("[useUnreadCount] Initial fetch on mount.");
     fetchCount();
-
-    const interval = setInterval(() => {
-      console.log("[useUnreadCount] Auto-refresh tick.");
-      fetchCount();
-    }, refreshInterval);
-
-    return () => {
-      console.log("[useUnreadCount] Cleaning up auto-refresh interval.");
-      clearInterval(interval);
-    };
+    const interval = setInterval(fetchCount, refreshInterval);
+    return () => clearInterval(interval);
   }, [fetchCount, refreshInterval]);
 
   return { count, isLoading, refresh: fetchCount };

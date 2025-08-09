@@ -13,7 +13,7 @@ import {
   teamMembers,
 } from "@/lib/db/schema";
 import { ActivityService } from "@/lib/services/activity";
-import { eq, and, inArray, desc, not } from "drizzle-orm";
+import { eq, gt, and, inArray, desc, not } from "drizzle-orm";
 import { NotificationType, CreateNotification } from "@/types";
 import { createNotificationContent } from "@/lib/utils/notif-helper";
 
@@ -731,6 +731,116 @@ export class NotificationService {
       })
       .from(teamMembers)
       .where(and(...whereConditions));
+  }
+
+  // Add these methods to your NotificationService class
+
+  /**
+   * Get unread notifications created after a specific timestamp
+   * This is more efficient for polling scenarios
+   */
+  static async getUnreadNotificationsSince(
+    userId: string,
+    since: Date,
+    limit: number = 20
+  ) {
+    return await db
+      .select({
+        id: notifications.id,
+        type: notifications.type,
+        title: notifications.title,
+        message: notifications.message,
+        cardId: notifications.cardId,
+        projectId: notifications.projectId,
+        teamId: notifications.teamId,
+        isRead: notifications.isRead,
+        createdAt: notifications.createdAt,
+        card: {
+          id: cards.id,
+          title: cards.title,
+        },
+        project: {
+          id: projects.id,
+          name: projects.name,
+        },
+      })
+      .from(notifications)
+      .leftJoin(cards, eq(notifications.cardId, cards.id))
+      .leftJoin(projects, eq(notifications.projectId, projects.id))
+      .where(
+        and(
+          eq(notifications.userId, userId),
+          eq(notifications.isRead, false),
+          gt(notifications.createdAt, since) // Only get notifications after the timestamp
+        )
+      )
+      .orderBy(desc(notifications.createdAt))
+      .limit(limit);
+  }
+
+  /**
+   * Check if there are any new unread notifications since a timestamp
+   * Very lightweight query for quick polling checks
+   */
+  static async hasNewNotificationsSince(
+    userId: string,
+    since: Date
+  ): Promise<boolean> {
+    const result = await db
+      .select({ id: notifications.id })
+      .from(notifications)
+      .where(
+        and(
+          eq(notifications.userId, userId),
+          eq(notifications.isRead, false),
+          gt(notifications.createdAt, since)
+        )
+      )
+      .limit(1);
+
+    return result.length > 0;
+  }
+
+  /**
+   * Get the timestamp of the most recent notification for a user
+   * Useful for establishing a baseline for polling
+   */
+  static async getMostRecentNotificationTimestamp(
+    userId: string
+  ): Promise<Date | null> {
+    const result = await db
+      .select({ createdAt: notifications.createdAt })
+      .from(notifications)
+      .where(eq(notifications.userId, userId))
+      .orderBy(desc(notifications.createdAt))
+      .limit(1);
+
+    return result[0]?.createdAt || null;
+  }
+
+  /**
+   * Lightweight method to check unread count with caching potential
+   * Returns both count and the timestamp of the most recent unread notification
+   */
+  static async getUnreadCountWithTimestamp(userId: string): Promise<{
+    count: number;
+    mostRecentUnread: Date | null;
+  }> {
+    const result = await db
+      .select({
+        id: notifications.id,
+        createdAt: notifications.createdAt,
+      })
+      .from(notifications)
+      .where(
+        and(eq(notifications.userId, userId), eq(notifications.isRead, false))
+      )
+      .orderBy(desc(notifications.createdAt));
+
+    return {
+      count: result.length,
+      mostRecentUnread: result[0]?.createdAt || null,
+    };
   }
 }
 
