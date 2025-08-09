@@ -1,10 +1,10 @@
 // components/notifications/Notifications.tsx
 import React, { useEffect } from "react";
-import { useNotifications } from "@/hooks/useNotification";
+import { useNotifications } from "@/hooks/notif/useNotification";
 import { useNotificationStore } from "@/stores/ui/notif-store";
 import NotificationBadge from "@/components/shared/notifications/NotificationBadge";
 import NotificationDropdown from "@/components/shared/notifications/NotificationDropdown";
-import type { LazyNotificationProps } from "@/hooks/useNotification";
+import type { LazyNotificationProps } from "@/hooks/notif/useNotification";
 import {
   NOTIFICATIONS_LOAD_LIMIT as LIMIT,
   NOTIFICATIONS_BATCH_LIMIT as BATCH_LIMIT,
@@ -18,7 +18,7 @@ type ExtendedNotificationProps = LazyNotificationProps & {
 export default function Notifications({
   userId,
   limit = LIMIT,
-  autoRefresh = true,
+  autoRefresh = false,
   refreshInterval = INTERVAL,
   batchSize = BATCH_LIMIT,
   onViewAll,

@@ -1,6 +1,6 @@
 import React from "react";
 import { Bell } from "lucide-react";
-import { useUnreadCount } from "@/hooks/useNotification";
+import { useUnreadCount } from "@/hooks/notif/useNotification";
 
 interface NotificationBadgeProps {
   userId: string;

@@ -1,6 +1,6 @@
-// lib/services/notification.ts
+// lib/services/notification.ts - Enhanced with WebSocket integration
 // =============================================================================
-// NOTIFICATION SERVICE - Integrates with ActivityService
+// NOTIFICATION SERVICE - Integrates with ActivityService and WebSocket
 // =============================================================================
 
 import { db } from "@/lib/db/db";
@@ -16,6 +16,7 @@ import { ActivityService } from "@/lib/services/activity";
 import { eq, and, inArray, desc, not } from "drizzle-orm";
 import { NotificationType, CreateNotification } from "@/types";
 import { createNotificationContent } from "@/lib/utils/notif-helper";
+import { getNotificationSocket } from "@/lib/socket/server";
 
 export type NotificationRecipient = {
   userId: string;
@@ -30,7 +31,7 @@ export class NotificationService {
   // =============================================================================
 
   /**
-   * Create a notification for a user
+   * Create a notification for a user with WebSocket support
    */
   private static async createNotification({
     userId,
@@ -42,24 +43,38 @@ export class NotificationService {
     teamId,
   }: CreateNotification) {
     try {
-      await db.insert(notifications).values({
-        userId,
-        type,
-        title,
-        message,
-        cardId,
-        projectId,
-        teamId,
-        isRead: false,
-        createdAt: new Date(),
-      });
+      const [newNotification] = await db
+        .insert(notifications)
+        .values({
+          userId,
+          type,
+          title,
+          message,
+          cardId,
+          projectId,
+          teamId,
+          isRead: false,
+          createdAt: new Date(),
+        })
+        .returning();
+
+      // Emit real-time notification via WebSocket
+      const socket = getNotificationSocket();
+      if (socket) {
+        const enrichedNotification =
+          await this.enrichNotificationData(newNotification);
+        await socket.notifyUser(userId, enrichedNotification);
+      }
+
+      return newNotification;
     } catch (error) {
       console.error("Failed to create notification:", error);
+      throw error;
     }
   }
 
   /**
-   * Create notifications for multiple users
+   * Create notifications for multiple users with WebSocket support
    */
   private static async createBulkNotifications(
     recipients: (NotificationRecipient & {
@@ -68,6 +83,8 @@ export class NotificationService {
       teamId?: string;
     })[]
   ) {
+    if (recipients.length === 0) return [];
+
     try {
       const notificationValues = recipients.map((recipient) => ({
         userId: recipient.userId,
@@ -81,9 +98,95 @@ export class NotificationService {
         createdAt: new Date(),
       }));
 
-      await db.insert(notifications).values(notificationValues);
+      const newNotifications = await db
+        .insert(notifications)
+        .values(notificationValues)
+        .returning();
+
+      // Emit real-time notifications via WebSocket
+      const socket = getNotificationSocket();
+      if (socket && newNotifications.length > 0) {
+        // Enrich all notifications with related data
+        const enrichedNotifications = await Promise.all(
+          newNotifications.map((notification) =>
+            this.enrichNotificationData(notification)
+          )
+        );
+
+        // Group notifications by user with proper typing
+        const notificationsByUser: Record<
+          string,
+          typeof enrichedNotifications
+        > = {};
+
+        enrichedNotifications.forEach((notification) => {
+          if (!notificationsByUser[notification.userId]) {
+            notificationsByUser[notification.userId] = [];
+          }
+          notificationsByUser[notification.userId].push(notification);
+        });
+
+        // Emit to each user - now properly typed
+        for (const [userId, userNotifications] of Object.entries(
+          notificationsByUser
+        )) {
+          for (const notification of userNotifications) {
+            await socket.notifyUser(userId, notification);
+          }
+        }
+      }
+
+      return newNotifications;
     } catch (error) {
       console.error("Failed to create bulk notifications:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Enrich notification with related data for WebSocket emission
+   */
+  private static async enrichNotificationData(notification: any) {
+    try {
+      const enriched: any = { ...notification };
+
+      // Add card data if cardId exists
+      if (notification.cardId) {
+        const card = await this.getCardWithAssignee(notification.cardId);
+        if (card) {
+          enriched.card = {
+            id: card.id,
+            title: card.title,
+          };
+        }
+      }
+
+      // Add project data if projectId exists
+      if (notification.projectId) {
+        const project = await this.getProject(notification.projectId);
+        if (project) {
+          enriched.project = {
+            id: project.id,
+            name: project.name,
+          };
+        }
+      }
+
+      // Add team data if teamId exists
+      if (notification.teamId) {
+        const team = await this.getTeam(notification.teamId);
+        if (team) {
+          enriched.team = {
+            id: team.id,
+            name: team.name,
+          };
+        }
+      }
+
+      return enriched;
+    } catch (error) {
+      console.error("Failed to enrich notification data:", error);
+      return notification;
     }
   }
 
@@ -130,7 +233,7 @@ export class NotificationService {
       projectId,
     }));
 
-    await this.createBulkNotifications(recipients);
+    return await this.createBulkNotifications(recipients);
   }
 
   static async notifyCardMoved(
@@ -188,10 +291,9 @@ export class NotificationService {
     }
 
     // Notify team members (limit to avoid spam)
-    const limitedTeamMembers = teamMembersResult.slice(0, 5); // Only notify first 5 team members
+    const limitedTeamMembers = teamMembersResult.slice(0, 5);
     limitedTeamMembers.forEach((member) => {
       if (member.userId !== card?.assigneeId) {
-        // Don't duplicate assignee notification
         const teamNotification = createNotificationContent("task_moved", {
           actorName,
           cardTitle,
@@ -209,7 +311,7 @@ export class NotificationService {
       }
     });
 
-    await this.createBulkNotifications(recipients);
+    return await this.createBulkNotifications(recipients);
   }
 
   static async notifyCardAssigned(
@@ -285,7 +387,7 @@ export class NotificationService {
       });
     }
 
-    await this.createBulkNotifications(recipients);
+    return await this.createBulkNotifications(recipients);
   }
 
   static async notifyCardDueDateChanged(
@@ -325,7 +427,7 @@ export class NotificationService {
         }
       );
 
-      await this.createNotification({
+      return await this.createNotification({
         userId: card.assigneeId,
         type: "due_date_reminder",
         title: dueDateNotification.title,
@@ -406,7 +508,7 @@ export class NotificationService {
       });
     }
 
-    await this.createBulkNotifications(recipients);
+    return await this.createBulkNotifications(recipients);
   }
 
   // =============================================================================
@@ -433,7 +535,7 @@ export class NotificationService {
       }
     );
 
-    await this.createNotification({
+    return await this.createNotification({
       userId: newMemberId,
       type: "team_invitation",
       title: teamInviteNotification.title,
@@ -459,7 +561,7 @@ export class NotificationService {
       }
     );
 
-    await this.createNotification({
+    return await this.createNotification({
       userId: memberId,
       type: "team_role_changed",
       title: updateRoleNotification.title,
@@ -469,7 +571,7 @@ export class NotificationService {
   }
 
   // =============================================================================
-  // NOTIFICATION QUERIES
+  // NOTIFICATION QUERIES (unchanged but with WebSocket integration on updates)
   // =============================================================================
 
   /**
@@ -543,17 +645,20 @@ export class NotificationService {
   }
 
   /**
-   * Mark notifications as read
+   * Mark notifications as read with WebSocket broadcast
    */
   static async markAsRead(notificationIds: number[]) {
     await db
       .update(notifications)
       .set({ isRead: true })
       .where(inArray(notifications.id, notificationIds));
+
+    // Note: WebSocket emission is handled in the Socket.IO server
+    // when the client emits the mark_read event
   }
 
   /**
-   * Mark all notifications as read for a user
+   * Mark all notifications as read for a user with WebSocket broadcast
    */
   static async markAllAsRead(userId: string) {
     await db
@@ -562,6 +667,9 @@ export class NotificationService {
       .where(
         and(eq(notifications.userId, userId), eq(notifications.isRead, false))
       );
+
+    // Note: WebSocket emission is handled in the Socket.IO server
+    // when the client emits the mark_all_read event
   }
 
   /**
@@ -579,7 +687,7 @@ export class NotificationService {
   }
 
   /**
-   * Delete selected notifications
+   * Delete selected notifications with WebSocket broadcast
    */
   static async deleteNotifications(notificationIds: number[]) {
     try {
@@ -591,7 +699,11 @@ export class NotificationService {
       console.error("Failed to delete notifications:", error);
       throw error;
     }
+
+    // Note: WebSocket emission is handled in the Socket.IO server
+    // when the client emits the delete event
   }
+
   /**
    * Delete old notifications (cleanup job)
    */
@@ -644,6 +756,9 @@ export class NotificationService {
     return processed;
   }
 
+  // =============================================================================
+  // HELPER METHODS (unchanged)
+  // =============================================================================
   // =============================================================================
   // HELPER METHODS
   // =============================================================================
