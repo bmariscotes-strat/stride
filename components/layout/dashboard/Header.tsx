@@ -3,8 +3,8 @@
 import type React from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname } from "next/navigation";
-import Notifications from "@/components/shared/Notification";
+import { usePathname, useRouter } from "next/navigation";
+import { Notifications } from "@/components/shared/notifications";
 import { useState } from "react";
 import NavDropdown from "@/components/shared/NavDropdown";
 import UserDropdown from "@/components/shared/UserDropdown";
@@ -13,6 +13,7 @@ import { mapToNavItem } from "@/lib/utils/map-nav-item";
 
 interface HeaderProps {
   teams: BaseNavSource[];
+  userId: string | null;
 }
 
 const projectsPlaceholder = [
@@ -39,8 +40,9 @@ const workspaceItems = [
   { href: "/analytics", name: "Analytics" },
 ];
 
-export default function Header({ teams }: HeaderProps) {
+export default function Header({ teams, userId }: HeaderProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const isActive = (path: string) => pathname === path;
@@ -92,7 +94,13 @@ export default function Header({ teams }: HeaderProps) {
 
         {/* Right Side Nav */}
         <section className="flex items-center space-x-4">
-          <Notifications />
+          <Notifications
+            userId={userId}
+            limit={15}
+            onViewAll={() => {
+              router.push("/notifications");
+            }}
+          />
           <UserDropdown />
         </section>
       </nav>

@@ -1,5 +1,5 @@
 // types/update.ts
-import type { TeamRole, Priority, NotificationType } from "./enums";
+import type { TeamRole, Priority, NotificationType } from "@/types";
 
 // =============================================================================
 // UPDATE INTERFACES - For updating existing records (all fields optional except id)

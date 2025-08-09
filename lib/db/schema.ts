@@ -30,6 +30,10 @@ export const notificationTypeEnum = pgEnum("notification_type", [
   "mention",
   "due_date_reminder",
   "team_invitation",
+  "team_role_changed",
+  "task_created",
+  "task_moved",
+  "task_reassigned",
 ]);
 
 // =============================================================================
@@ -332,6 +336,7 @@ export const activityLog = pgTable(
   {
     id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
     projectId: uuid("project_id"),
+    teamId: uuid("team_id"),
     cardId: uuid("card_id"),
     userId: uuid("user_id").notNull(),
     actionType: varchar("action_type", { length: 100 }).notNull(),
@@ -341,6 +346,7 @@ export const activityLog = pgTable(
   },
   (table) => ({
     projectIdIdx: index("activity_log_project_id_idx").on(table.projectId),
+    teamIdIdx: index("activity_log_team_id_idx").on(table.teamId),
     cardIdIdx: index("activity_log_card_id_idx").on(table.cardId),
     userIdIdx: index("activity_log_user_id_idx").on(table.userId),
     createdAtIdx: index("activity_log_created_at_idx").on(table.createdAt),
@@ -359,6 +365,11 @@ export const activityLog = pgTable(
       foreignColumns: [users.id],
       name: "fk_activity_log_user_id",
     }).onDelete("cascade"),
+    teamIdFk: foreignKey({
+      columns: [table.teamId],
+      foreignColumns: [teams.id],
+      name: "fk_activity_log_team_id",
+    }).onDelete("cascade"),
   })
 );
 
@@ -373,6 +384,7 @@ export const notifications = pgTable(
     message: text("message"),
     cardId: uuid("card_id"),
     projectId: uuid("project_id"),
+    teamId: uuid("team_id"),
     isRead: boolean("is_read").default(false).notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
@@ -396,6 +408,11 @@ export const notifications = pgTable(
       columns: [table.projectId],
       foreignColumns: [projects.id],
       name: "fk_notifications_project_id",
+    }).onDelete("cascade"),
+    teamIdFk: foreignKey({
+      columns: [table.teamId],
+      foreignColumns: [teams.id],
+      name: "fk_notifications_team_id",
     }).onDelete("cascade"),
   })
 );

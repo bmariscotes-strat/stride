@@ -96,6 +96,7 @@ export interface NotificationWithRelations extends Notification {
   user?: User;
   card?: Card;
   project?: Project;
+  team?: Team;
 }
 
 export interface MentionWithRelations extends Mention {

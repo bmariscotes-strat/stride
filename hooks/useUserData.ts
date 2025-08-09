@@ -98,8 +98,8 @@ export function useUserData(
       userData.username ||
       "Unknown User"
     : fallbackToClerk
-    ? clerkUser?.fullName || clerkUser?.username || "User"
-    : "User";
+      ? clerkUser?.fullName || clerkUser?.username || "User"
+      : "User";
 
   const displayEmail =
     userData?.email ||
@@ -107,17 +107,17 @@ export function useUserData(
 
   const avatarUrl = userData?.avatarUrl || "";
 
-  if (enableLogging) {
-    console.log("🖥️ Display Values:", {
-      displayName,
-      displayEmail,
-      avatarUrl,
-      usingUserData: !!userData,
-      usingClerkData: !userData && !!clerkUser && fallbackToClerk,
-      loading,
-      error: error?.message,
-    });
-  }
+  // if (enableLogging) {
+  //   console.log("🖥️ Display Values:", {
+  //     displayName,
+  //     displayEmail,
+  //     avatarUrl,
+  //     usingUserData: !!userData,
+  //     usingClerkData: !userData && !!clerkUser && fallbackToClerk,
+  //     loading,
+  //     error: error?.message,
+  //   });
+  // }
 
   return {
     // Data
