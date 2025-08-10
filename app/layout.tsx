@@ -1,3 +1,4 @@
+// app/layout.tsx
 import type React from "react";
 import type { Metadata } from "next";
 import { sen, inclusive_sans } from "@/lib/ui/fonts";
@@ -5,6 +6,7 @@ import { ClerkProvider } from "@clerk/nextjs";
 import { UserProvider } from "@/contexts/UserContext";
 import "@/styles/globals.css";
 import { Providers } from "@/components/theme/ThemeProvider";
+import { ReactQueryProvider } from "@/components/providers/ReactQueryProvider"; // You'll need to create this
 
 console.log("Logging enabled?", process.env.NODE_ENV === "development");
 
@@ -30,9 +32,11 @@ export default function RootLayout({
         suppressHydrationWarning
       >
         <body className={inclusive_sans.className}>
-          <UserProvider enableLogging={process.env.NODE_ENV != "development"}>
-            <Providers>{children}</Providers>
-          </UserProvider>
+          <ReactQueryProvider>
+            <UserProvider enableLogging={process.env.NODE_ENV != "development"}>
+              <Providers>{children}</Providers>
+            </UserProvider>
+          </ReactQueryProvider>
         </body>
       </html>
     </ClerkProvider>
