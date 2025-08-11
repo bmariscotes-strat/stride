@@ -50,7 +50,7 @@ export default function ProjectsPage() {
               View and manage projects from your teams
             </p>
           </div>
-          <Link href="/project/create">
+          <Link href="/projects/create">
             <Button
               leftIcon={<Plus />}
               variant="primary"
@@ -73,7 +73,7 @@ export default function ProjectsPage() {
             </p>
             <div className="mt-6">
               <Link
-                href="/project/create"
+                href="/projects/create"
                 className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
               >
                 <Plus size={16} />
@@ -86,7 +86,7 @@ export default function ProjectsPage() {
             {userProjects.map((project) => (
               <Link
                 key={project.id}
-                href={`/project/${project.slug}`}
+                href={`/projects/${project.slug}`}
                 className="block bg-white rounded-lg shadow hover:shadow-md transition-shadow border border-gray-200"
               >
                 <div className="p-6">

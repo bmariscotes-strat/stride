@@ -122,7 +122,7 @@ export default function ProjectCreationForm({
   };
 
   const navigateToProject = (teamSlug: string, projectSlug: string) => {
-    router.push(`/team/${teamSlug}/project/${projectSlug}`);
+    router.push(`${projectSlug}`);
   };
 
   const handleSubmit = async (

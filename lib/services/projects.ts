@@ -5,6 +5,8 @@ import { projects, teams, users, teamMembers, columns } from "@/lib/db/schema";
 import { eq, and, like, desc, asc, inArray } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { revalidatePath } from "next/cache";
+import { ActivityService } from "@/lib/services/activity";
+import { NotificationService } from "@/lib/services/notification";
 
 import type {
   CreateProject,
@@ -154,6 +156,25 @@ export async function createProjectAction(data: CreateProject) {
 
     // Create default columns for the new project
     await createDefaultColumns(newProject.id);
+
+    // =============================================================================
+    // ACTIVITY & NOTIFICATION LOGGING
+    // =============================================================================
+
+    // Log project creation activity
+    await ActivityService.logProjectCreated(
+      ownerId,
+      newProject.id,
+      newProject.name
+    );
+
+    // Notify team members about the new project
+    await NotificationService.notifyProjectCreated(
+      ownerId,
+      newProject.id,
+      newProject.name,
+      teamId
+    );
 
     // Revalidate related pages
     revalidatePath(`/team/${teamId}`);
@@ -496,9 +517,12 @@ export async function getProjectsForUser(
 /**
  * Update an existing project
  */
-export async function updateProjectAction(data: UpdateProject) {
+export async function updateProjectAction(
+  data: UpdateProject & { userId: string }
+) {
   try {
-    const { id, name, slug, description, colorTheme, isArchived } = data;
+    const { id, userId, name, slug, description, colorTheme, isArchived } =
+      data;
 
     if (!id) {
       return {
@@ -508,13 +532,47 @@ export async function updateProjectAction(data: UpdateProject) {
       };
     }
 
+    // Get current project for comparison and permission check
+    const currentProject = await db
+      .select({
+        id: projects.id,
+        name: projects.name,
+        slug: projects.slug,
+        description: projects.description,
+        colorTheme: projects.colorTheme,
+        isArchived: projects.isArchived,
+        teamId: projects.teamId,
+        ownerId: projects.ownerId,
+      })
+      .from(projects)
+      .where(eq(projects.id, id))
+      .limit(1);
+
+    if (currentProject.length === 0) {
+      return {
+        success: false,
+        error: "Project not found",
+        project: null,
+      };
+    }
+
+    const current = currentProject[0];
+
     // Build update object with only provided fields
     const updateData: Partial<typeof projects.$inferInsert> = {
       updatedAt: new Date(),
     };
 
-    if (name !== undefined) {
+    // Track changes for activity logging
+    const changes: Array<{ field: string; oldValue: any; newValue: any }> = [];
+
+    if (name !== undefined && name.trim() !== current.name) {
       updateData.name = name.trim();
+      changes.push({
+        field: "name",
+        oldValue: current.name,
+        newValue: name.trim(),
+      });
     }
 
     if (slug !== undefined) {
@@ -526,28 +584,15 @@ export async function updateProjectAction(data: UpdateProject) {
           .replace(/\s+/g, "-")
           .trim();
 
-        // Get current project to check team
-        const currentProject = await db
-          .select({ teamId: projects.teamId, slug: projects.slug })
-          .from(projects)
-          .where(eq(projects.id, id))
-          .limit(1);
-
-        if (currentProject.length === 0) {
-          return {
-            success: false,
-            error: "Project not found",
-            project: null,
-          };
-        }
-
         // Only check for uniqueness if slug is actually changing
-        if (baseSlug !== currentProject[0].slug) {
-          const uniqueSlug = await generateUniqueSlug(
-            baseSlug,
-            currentProject[0].teamId
-          );
+        if (baseSlug !== current.slug) {
+          const uniqueSlug = await generateUniqueSlug(baseSlug, current.teamId);
           updateData.slug = uniqueSlug;
+          changes.push({
+            field: "slug",
+            oldValue: current.slug,
+            newValue: uniqueSlug,
+          });
         }
       } else {
         return {
@@ -559,15 +604,33 @@ export async function updateProjectAction(data: UpdateProject) {
     }
 
     if (description !== undefined) {
-      updateData.description = description?.trim() || null;
+      const newDesc = description?.trim() || null;
+      if (newDesc !== current.description) {
+        updateData.description = newDesc;
+        changes.push({
+          field: "description",
+          oldValue: current.description,
+          newValue: newDesc,
+        });
+      }
     }
 
-    if (colorTheme !== undefined) {
+    if (colorTheme !== undefined && colorTheme !== current.colorTheme) {
       updateData.colorTheme = colorTheme;
+      changes.push({
+        field: "colorTheme",
+        oldValue: current.colorTheme,
+        newValue: colorTheme,
+      });
     }
 
-    if (isArchived !== undefined) {
+    if (isArchived !== undefined && isArchived !== current.isArchived) {
       updateData.isArchived = isArchived;
+      changes.push({
+        field: "isArchived",
+        oldValue: current.isArchived,
+        newValue: isArchived,
+      });
     }
 
     const [updatedProject] = await db
@@ -582,6 +645,54 @@ export async function updateProjectAction(data: UpdateProject) {
         error: "Project not found",
         project: null,
       };
+    }
+
+    // =============================================================================
+    // ACTIVITY & NOTIFICATION LOGGING
+    // =============================================================================
+
+    // Log project updates
+    if (changes.length > 0) {
+      await ActivityService.logProjectUpdated(userId, id, changes);
+
+      // Check if project was archived/unarchived for special notification
+      const archiveChange = changes.find((c) => c.field === "isArchived");
+      if (archiveChange) {
+        if (archiveChange.newValue) {
+          await ActivityService.logProjectArchived(
+            userId,
+            id,
+            updatedProject.name
+          );
+          await NotificationService.notifyProjectArchived(
+            userId,
+            id,
+            updatedProject.name,
+            current.teamId
+          );
+        } else {
+          // Project was unarchived
+          await NotificationService.notifyProjectUpdated(
+            userId,
+            id,
+            updatedProject.name,
+            current.teamId,
+            "Project was restored from archive"
+          );
+        }
+      } else {
+        // Regular project update notification
+        const changesSummary = changes
+          .map((c) => `${c.field}: ${c.oldValue} → ${c.newValue}`)
+          .join(", ");
+        await NotificationService.notifyProjectUpdated(
+          userId,
+          id,
+          updatedProject.name,
+          current.teamId,
+          `Updated: ${changesSummary}`
+        );
+      }
     }
 
     // Revalidate related pages
@@ -619,6 +730,7 @@ export async function deleteProjectAction(projectId: string, userId: string) {
     const projectWithTeam = await db
       .select({
         id: projects.id,
+        name: projects.name,
         ownerId: projects.ownerId,
         teamId: projects.teamId,
         slug: projects.slug,
@@ -670,6 +782,21 @@ export async function deleteProjectAction(projectId: string, userId: string) {
       })
       .where(eq(projects.id, projectId));
 
+    // =============================================================================
+    // ACTIVITY & NOTIFICATION LOGGING
+    // =============================================================================
+
+    // Log project archival activity
+    await ActivityService.logProjectArchived(userId, projectId, project.name);
+
+    // Notify team members about project archival
+    await NotificationService.notifyProjectArchived(
+      userId,
+      projectId,
+      project.name,
+      project.teamId
+    );
+
     // Revalidate related pages
     revalidatePath(`/projects/${project.slug}`);
     revalidatePath(`/team/${project.teamId}`);
@@ -706,6 +833,7 @@ export async function hardDeleteProjectAction(
     const projectWithTeam = await db
       .select({
         id: projects.id,
+        name: projects.name,
         ownerId: projects.ownerId,
         teamId: projects.teamId,
         slug: projects.slug,
@@ -747,6 +875,21 @@ export async function hardDeleteProjectAction(
         error: "You don't have permission to delete this project",
       };
     }
+
+    // =============================================================================
+    // ACTIVITY & NOTIFICATION LOGGING (Before deletion)
+    // =============================================================================
+
+    // Log project deletion activity (before actual deletion)
+    await ActivityService.logProjectDeleted(userId, projectId, project.name);
+
+    // Notify team members about permanent project deletion
+    await NotificationService.notifyProjectDeleted(
+      userId,
+      projectId,
+      project.name,
+      project.teamId
+    );
 
     // Hard delete (CASCADE will handle child records)
     await db.delete(projects).where(eq(projects.id, projectId));
