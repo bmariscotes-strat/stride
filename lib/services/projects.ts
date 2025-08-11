@@ -2,39 +2,16 @@
 
 import { db } from "@/lib/db/db";
 import { projects, teams, users, teamMembers, columns } from "@/lib/db/schema";
-import { eq, and, like, desc, asc } from "drizzle-orm";
+import { eq, and, like, desc, asc, inArray } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { revalidatePath } from "next/cache";
 
-import type { CreateProject, UpdateProject } from "@/types";
-import type { Project } from "@/types";
-
-// Custom interface for API responses (with partial relations)
-export interface ProjectWithPartialRelations extends Project {
-  team?: {
-    id: string;
-    name: string;
-    slug: string;
-  };
-  owner?: {
-    id: string;
-    firstName: string;
-    lastName: string;
-    email: string;
-    avatarUrl: string | null;
-  };
-}
-
-export interface ProjectsListOptions {
-  teamId?: string;
-  ownerId?: string;
-  isArchived?: boolean;
-  search?: string;
-  orderBy?: "name" | "createdAt" | "updatedAt";
-  orderDirection?: "asc" | "desc";
-  limit?: number;
-  offset?: number;
-}
+import type {
+  CreateProject,
+  UpdateProject,
+  ProjectWithPartialRelations,
+  ProjectsListOptions,
+} from "@/types";
 
 // Helper function to generate unique slug
 export async function generateUniqueSlug(
@@ -392,6 +369,126 @@ export async function getTeamProjectsAction(
     return result;
   } catch (error) {
     console.error("Error fetching team projects:", error);
+    return [];
+  }
+}
+
+/**
+ * Get all projects for a user based on their team memberships
+ * This fetches projects from all teams the user is a member of
+ */
+export async function getProjectsForUser(
+  userId: string,
+  options: Omit<ProjectsListOptions, "teamId"> = {}
+): Promise<ProjectWithPartialRelations[]> {
+  try {
+    if (!userId) {
+      return [];
+    }
+
+    const {
+      ownerId,
+      isArchived = false,
+      search,
+      orderBy = "updatedAt",
+      orderDirection = "desc",
+      limit = 50,
+      offset = 0,
+    } = options;
+
+    // First, get all team IDs the user is a member of
+    const userTeams = await db
+      .select({ teamId: teamMembers.teamId })
+      .from(teamMembers)
+      .where(eq(teamMembers.userId, userId));
+
+    if (userTeams.length === 0) {
+      return [];
+    }
+
+    const teamIds = userTeams.map((t) => t.teamId);
+
+    // Now use the same pattern as getTeamProjectsAction but for multiple teams
+    const baseQuery = db
+      .select({
+        // Project fields
+        id: projects.id,
+        name: projects.name,
+        slug: projects.slug,
+        description: projects.description,
+        teamId: projects.teamId,
+        ownerId: projects.ownerId,
+        colorTheme: projects.colorTheme,
+        isArchived: projects.isArchived,
+        schemaVersion: projects.schemaVersion,
+        createdAt: projects.createdAt,
+        updatedAt: projects.updatedAt,
+        // Team fields
+        team: {
+          id: teams.id,
+          name: teams.name,
+          slug: teams.slug,
+        },
+        // Owner fields
+        owner: {
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          email: users.email,
+          avatarUrl: users.avatarUrl,
+        },
+      })
+      .from(projects)
+      .innerJoin(teams, eq(projects.teamId, teams.id))
+      .innerJoin(users, eq(projects.ownerId, users.id));
+
+    // Build where conditions (same pattern as getTeamProjectsAction)
+    const conditions = [
+      inArray(projects.teamId, teamIds), // Instead of eq(projects.teamId, teamId)
+      eq(teams.isArchived, false), // Also filter out archived teams
+    ];
+
+    if (typeof isArchived === "boolean") {
+      conditions.push(eq(projects.isArchived, isArchived));
+    }
+
+    if (ownerId) {
+      conditions.push(eq(projects.ownerId, ownerId));
+    }
+
+    if (search) {
+      conditions.push(like(projects.name, `%${search}%`));
+    }
+
+    // Apply where conditions
+    const queryWithWhere = baseQuery.where(and(...conditions));
+
+    // Apply ordering (same as getTeamProjectsAction)
+    let queryWithOrder;
+    if (orderBy === "name") {
+      queryWithOrder = queryWithWhere.orderBy(
+        orderDirection === "desc" ? desc(projects.name) : asc(projects.name)
+      );
+    } else if (orderBy === "createdAt") {
+      queryWithOrder = queryWithWhere.orderBy(
+        orderDirection === "desc"
+          ? desc(projects.createdAt)
+          : asc(projects.createdAt)
+      );
+    } else {
+      queryWithOrder = queryWithWhere.orderBy(
+        orderDirection === "desc"
+          ? desc(projects.updatedAt)
+          : asc(projects.updatedAt)
+      );
+    }
+
+    // Apply pagination and execute
+    const result = await queryWithOrder.limit(limit).offset(offset);
+
+    return result;
+  } catch (error) {
+    console.error("Error fetching projects for user:", error);
     return [];
   }
 }

@@ -1,5 +1,19 @@
-// components/projects/form/types.ts
-import type { Team } from "@/types";
+// types/forms/project
+import type { Team, User, Project } from "@/types";
+
+// Basic Types
+export type TeamBasic = Pick<Team, "id" | "name" | "slug">;
+export type UserBasic = Pick<
+  User,
+  "id" | "firstName" | "lastName" | "email" | "avatarUrl"
+>;
+
+// Utility types for reusable constraints
+export type SortDirection = "asc" | "desc";
+export type ProjectSortableFields = keyof Pick<
+  Project,
+  "name" | "createdAt" | "updatedAt"
+>;
 
 export interface ProjectSettings {
   colorTheme?: string;
@@ -44,4 +58,25 @@ export interface ProjectFormNavigationProps {
 export interface ProjectFormMessagesProps {
   success: boolean;
   error: string;
+}
+
+export interface ProjectWithPartialRelations extends Project {
+  team?: TeamBasic;
+  owner?: UserBasic;
+}
+
+// Base filtering and pagination options (reusable across entities)
+export interface BaseListOptions {
+  search?: string;
+  orderDirection?: SortDirection;
+  limit?: number;
+  offset?: number;
+}
+
+// Project-specific options using utility types
+export interface ProjectsListOptions extends BaseListOptions {
+  teamId?: string;
+  ownerId?: string;
+  isArchived?: boolean;
+  orderBy?: ProjectSortableFields;
 }

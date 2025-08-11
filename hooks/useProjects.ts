@@ -11,10 +11,13 @@ import {
   getTeamProjectsAction,
   getProjectAction,
   getProjectBySlugAction,
-  type ProjectsListOptions,
-  type ProjectWithPartialRelations,
 } from "@/lib/services/projects";
-import type { CreateProject, UpdateProject } from "@/types";
+import type {
+  CreateProject,
+  UpdateProject,
+  ProjectWithPartialRelations,
+  ProjectsListOptions,
+} from "@/types";
 
 // Query keys for consistent caching
 export const projectKeys = {
@@ -40,7 +43,7 @@ export function useTeamProjects(
     queryKey: projectKeys.list({ teamId, ...options }),
     queryFn: () => getTeamProjectsAction(teamId, options),
     enabled: !!teamId,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 5 * 60 * 1000,
   });
 }
 

@@ -1,118 +1,145 @@
-import { Plus, Search, Filter } from "lucide-react";
+"use client";
+import React, { useEffect, useState } from "react";
+import Link from "next/link";
+import { getProjectsForUser } from "@/lib/services/projects";
+import { FolderKanban, Plus, Calendar, Users } from "lucide-react";
+import { useUserContext } from "@/contexts/UserContext";
+import Button from "@/components/ui/Button";
+import type { ProjectWithPartialRelations } from "@/types";
 
 export default function ProjectsPage() {
+  const { userData, clerkUser, loading } = useUserContext();
+  const [userProjects, setUserProjects] = useState<
+    ProjectWithPartialRelations[]
+  >([]);
+  const [loadingProjects, setLoadingProjects] = useState(true);
+
+  const currentUserId = userData?.id || clerkUser?.id;
+
+  useEffect(() => {
+    const fetchProjects = async () => {
+      if (!currentUserId) return;
+      try {
+        const projects = await getProjectsForUser(currentUserId);
+        setUserProjects(projects);
+      } catch (error) {
+        console.error("Failed to fetch projects:", error);
+      } finally {
+        setLoadingProjects(false);
+      }
+    };
+
+    fetchProjects();
+  }, [currentUserId]);
+
+  if (loading || loadingProjects) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-gray-600">Loading...</p>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold text-outer_space-500 dark:text-platinum-500">
-            Projects
-          </h1>
-          <p className="text-payne's_gray-500 dark:text-french_gray-500 mt-2">
-            Manage and organize your team projects
-          </p>
-        </div>
-        <button className="inline-flex items-center px-4 py-2 bg-blue_munsell-500 text-white rounded-lg hover:bg-blue_munsell-600 transition-colors">
-          <Plus size={20} className="mr-2" />
-          New Project
-        </button>
-      </div>
-
-      {/* Implementation Tasks Banner */}
-      <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
-        <h3 className="text-sm font-medium text-yellow-800 dark:text-yellow-200 mb-2">
-          📋 Projects Page Implementation Tasks
-        </h3>
-        <ul className="text-sm text-yellow-700 dark:text-yellow-300 space-y-1">
-          <li>• Task 4.1: Implement project CRUD operations</li>
-          <li>• Task 4.2: Create project listing and dashboard interface</li>
-          <li>• Task 4.5: Design and implement project cards and layouts</li>
-          <li>
-            • Task 4.6: Add project and task search/filtering capabilities
-          </li>
-        </ul>
-      </div>
-
-      {/* Search and Filter Bar */}
-      <div className="flex flex-col sm:flex-row gap-4">
-        <div className="relative flex-1">
-          <Search
-            className="absolute left-3 top-1/2 transform -translate-y-1/2 text-payne's_gray-500 dark:text-french_gray-400"
-            size={16}
-          />
-          <input
-            type="text"
-            placeholder="Search projects..."
-            className="w-full pl-10 pr-4 py-2 bg-white dark:bg-outer_space-500 border border-french_gray-300 dark:border-payne's_gray-400 rounded-lg text-outer_space-500 dark:text-platinum-500 placeholder-payne's_gray-500 dark:placeholder-french_gray-400 focus:outline-none focus:ring-2 focus:ring-blue_munsell-500"
-          />
-        </div>
-        <button className="inline-flex items-center px-4 py-2 border border-french_gray-300 dark:border-payne's_gray-400 text-outer_space-500 dark:text-platinum-500 rounded-lg hover:bg-platinum-500 dark:hover:bg-payne's_gray-400 transition-colors">
-          <Filter size={16} className="mr-2" />
-          Filter
-        </button>
-      </div>
-
-      {/* Projects Grid Placeholder */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {[1, 2, 3, 4, 5, 6].map((i) => (
-          <div
-            key={i}
-            className="bg-white dark:bg-outer_space-500 rounded-lg border border-french_gray-300 dark:border-payne's_gray-400 p-6 hover:shadow-lg transition-shadow"
-          >
-            <div className="flex items-start justify-between mb-4">
-              <div className="w-3 h-3 bg-blue_munsell-500 rounded-full"></div>
-              <div className="text-sm text-payne's_gray-500 dark:text-french_gray-400">
-                {Math.floor(Math.random() * 30) + 1} days left
-              </div>
-            </div>
-
-            <h3 className="text-lg font-semibold text-outer_space-500 dark:text-platinum-500 mb-2">
-              Sample Project {i}
-            </h3>
-
-            <p className="text-sm text-payne's_gray-500 dark:text-french_gray-400 mb-4">
-              This is a placeholder project description that will be replaced
-              with actual project data.
+    <div className="min-h-screen">
+      <div className="space-y-6">
+        <div className="flex items-center justify-between mt-4 mb-8">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Projects</h1>
+            <p className="mt-1 text-sm text-gray-600">
+              View and manage projects from your teams
             </p>
-
-            <div className="flex items-center justify-between text-sm text-payne's_gray-500 dark:text-french_gray-400 mb-4">
-              <span>{Math.floor(Math.random() * 8) + 2} members</span>
-              <span>{Math.floor(Math.random() * 20) + 5} tasks</span>
-            </div>
-
-            <div className="w-full bg-french_gray-300 dark:bg-payne's_gray-400 rounded-full h-2">
-              <div
-                className="bg-blue_munsell-500 h-2 rounded-full"
-                style={{ width: `${Math.floor(Math.random() * 80) + 20}%` }}
-              ></div>
-            </div>
           </div>
-        ))}
-      </div>
-
-      {/* Component Placeholders */}
-      <div className="mt-8 p-6 bg-gray-50 dark:bg-gray-800/50 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600">
-        <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-4">
-          📁 Components to Implement
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600 dark:text-gray-400">
-          <div>
-            <strong>components/project-card.tsx</strong>
-            <p>Project display component with progress, members, and actions</p>
-          </div>
-          <div>
-            <strong>components/modals/create-project-modal.tsx</strong>
-            <p>Modal for creating new projects with form validation</p>
-          </div>
-          <div>
-            <strong>hooks/use-projects.ts</strong>
-            <p>Custom hook for project data fetching and mutations</p>
-          </div>
-          <div>
-            <strong>lib/db/schema.ts</strong>
-            <p>Database schema for projects, lists, and tasks</p>
-          </div>
+          <Link href="/project/create">
+            <Button
+              leftIcon={<Plus />}
+              variant="primary"
+              style="filled"
+              size="sm"
+            >
+              Create Project
+            </Button>
+          </Link>
         </div>
+
+        {userProjects.length === 0 ? (
+          <div className="text-center py-12">
+            <FolderKanban className="mx-auto h-12 w-12 text-gray-400" />
+            <h3 className="mt-2 text-sm font-medium text-gray-900">
+              No projects
+            </h3>
+            <p className="mt-1 text-sm text-gray-500">
+              Get started by creating your first project or joining a team.
+            </p>
+            <div className="mt-6">
+              <Link
+                href="/project/create"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+              >
+                <Plus size={16} />
+                Create Project
+              </Link>
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {userProjects.map((project) => (
+              <Link
+                key={project.id}
+                href={`/project/${project.slug}`}
+                className="block bg-white rounded-lg shadow hover:shadow-md transition-shadow border border-gray-200"
+              >
+                <div className="p-6">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex-1">
+                      <h3 className="text-lg font-semibold text-gray-900 truncate">
+                        {project.name}
+                      </h3>
+                      <p className="text-sm text-gray-500">
+                        {project.team?.name}
+                      </p>
+                    </div>
+                    {project.colorTheme && (
+                      <div
+                        className="w-4 h-4 rounded-full border border-gray-200"
+                        style={{ backgroundColor: project.colorTheme }}
+                        title="Project color theme"
+                      />
+                    )}
+                  </div>
+
+                  {project.description && (
+                    <p className="text-sm text-gray-600 mb-4 line-clamp-2">
+                      {project.description}
+                    </p>
+                  )}
+
+                  <div className="flex items-center justify-between text-sm text-gray-500">
+                    <div className="flex items-center gap-1">
+                      <Users size={14} />
+                      <span>
+                        {project.owner?.firstName} {project.owner?.lastName}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Calendar size={14} />
+                      <span>
+                        Created{" "}
+                        {new Date(project.createdAt).toLocaleDateString()}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 pt-4 border-t border-gray-100">
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                      {project.team?.name}
+                    </span>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
