@@ -25,6 +25,17 @@ export default function ProjectInformationSection({
     disabled: team.isArchived,
   }));
 
+  // Helper function to transform slug input (only basic cleaning, let server handle uniqueness)
+  const handleSlugChange = (value: string) => {
+    const basicSlug = value
+      .toLowerCase()
+      .replace(/\s+/g, "-") // Replace spaces with hyphens
+      .replace(/[^a-z0-9-]/g, "") // Remove invalid characters
+      .replace(/--+/g, "-") // Replace multiple hyphens with single hyphen
+      .replace(/^-+|-+$/g, ""); // Remove leading/trailing hyphens
+    onSlugChange(basicSlug);
+  };
+
   return (
     <section id="information" ref={informationRef} className="scroll-mt-6">
       <div className="border-b border-gray-200 pb-6">
@@ -61,12 +72,12 @@ export default function ProjectInformationSection({
         <Input
           label="Project URL Slug"
           value={formData.slug}
-          onChange={(e) => onSlugChange(e.target.value)}
+          onChange={(e) => handleSlugChange(e.target.value)}
           placeholder="project-url"
           required
           pattern="[a-z0-9-]+"
           maxLength={50}
-          leftAddon="yourapp.com/teams/team-name/projects/"
+          leftAddon="stride-pm.app/.../projects/"
           helperText="Only lowercase letters, numbers, and hyphens. The server will ensure uniqueness."
         />
 
