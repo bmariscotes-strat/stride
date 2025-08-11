@@ -13,26 +13,9 @@ import { mapToNavItem } from "@/lib/utils/map-nav-item";
 
 interface HeaderProps {
   teams: BaseNavSource[];
+  projects: BaseNavSource[];
   userId: string | null;
 }
-
-const projectsPlaceholder = [
-  {
-    slug: "my-team-1",
-    name: "My Team",
-    description: "Lorem ipsum, lorem ipsum.....",
-  },
-  {
-    slug: "my-team-2",
-    name: "ProjectFlow Team",
-    description: "Write better TypeScript code",
-  },
-  {
-    slug: "my-team-3",
-    name: "Stratpoint Team",
-    description: "Optimize your React applications",
-  },
-];
 
 const workspaceItems = [
   { href: "/dashboard", name: "Dashboard" },
@@ -40,7 +23,7 @@ const workspaceItems = [
   { href: "/analytics", name: "Analytics" },
 ];
 
-export default function Header({ teams, userId }: HeaderProps) {
+export default function Header({ teams, projects, userId }: HeaderProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -51,6 +34,12 @@ export default function Header({ teams, userId }: HeaderProps) {
   const teamNavItems = teams.map((team) =>
     mapToNavItem(team, {
       baseHref: "/team",
+    })
+  );
+
+  const projectNavItems = projects.map((team) =>
+    mapToNavItem(team, {
+      baseHref: "/projects",
     })
   );
 
@@ -78,17 +67,21 @@ export default function Header({ teams, userId }: HeaderProps) {
             </span>
           </Link>
 
+          {/* Workspace Items */}
           <NavDropdown
             title="My Workspace"
             items={workspaceItems}
             viewAllHref="/workspace"
           />
+
+          {/* Teams */}
           <NavDropdown title="Teams" items={teamNavItems} viewAllHref="/team" />
+
+          {/* Projects */}
           <NavDropdown
             title="Projects"
-            items={projectsPlaceholder}
-            basePath="/workspace"
-            viewAllHref="/work/projects"
+            items={projectNavItems}
+            viewAllHref="/projects"
           />
         </section>
 
