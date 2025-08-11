@@ -1,4 +1,4 @@
-// components/projects/form/ProjectInformationSection.tsx
+// components/projects/form/ProjectInformationSection.tsx (Updated)
 import React from "react";
 import { Info, FolderOpen } from "lucide-react";
 import { Input } from "@/components/ui/Input";
@@ -8,6 +8,7 @@ import type { ProjectFormSectionProps } from "@/types";
 
 interface ProjectInformationSectionProps extends ProjectFormSectionProps {
   informationRef: React.RefObject<HTMLElement | null>;
+  isEdit?: boolean;
 }
 
 export default function ProjectInformationSection({
@@ -17,6 +18,7 @@ export default function ProjectInformationSection({
   teams,
   error,
   informationRef,
+  isEdit = false,
 }: ProjectInformationSectionProps) {
   // Prepare team options for select
   const teamOptions: SelectOption[] = teams.map((team) => ({
@@ -44,7 +46,9 @@ export default function ProjectInformationSection({
           Project Information
         </h3>
         <p className="mt-1 text-sm text-gray-600">
-          Basic details about your project.
+          {isEdit
+            ? "Update your project details."
+            : "Basic details about your project."}
         </p>
       </div>
 
@@ -58,16 +62,37 @@ export default function ProjectInformationSection({
           maxLength={100}
         />
 
-        <Select
-          label="Team"
-          value={formData.teamId}
-          onChange={(e) => onInputChange("teamId", e.target.value)}
-          options={teamOptions}
-          placeholder="Select a team"
-          required
-          leftIcon={<FolderOpen className="h-4 w-4 text-gray-400" />}
-          helperText="Choose which team this project belongs to"
-        />
+        {!isEdit && (
+          <Select
+            label="Team"
+            value={formData.teamId}
+            onChange={(e) => onInputChange("teamId", e.target.value)}
+            options={teamOptions}
+            placeholder="Select a team"
+            required
+            leftIcon={<FolderOpen className="h-4 w-4 text-gray-400" />}
+            helperText="Choose which team this project belongs to"
+          />
+        )}
+
+        {isEdit && (
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-gray-700">
+              Team
+            </label>
+            <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 border border-gray-300 rounded-md">
+              <FolderOpen className="h-4 w-4 text-gray-400" />
+              <span className="text-sm text-gray-700">
+                {teams.find((t) => t.id === formData.teamId)?.name ||
+                  "Unknown Team"}
+              </span>
+            </div>
+            <p className="text-xs text-gray-500">
+              Team cannot be changed after project creation. Contact your team
+              admin if you need to move this project.
+            </p>
+          </div>
+        )}
 
         <Input
           label="Project URL Slug"

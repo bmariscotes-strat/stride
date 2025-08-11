@@ -1,25 +1,44 @@
-// projects/create/ProjectCreation.client.tsx
+// app/(dashboard)/(work)/projects/[id]/settings/ProjectSettings.client.tsx
 "use client";
 import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import DualPanelLayout from "@/components/layout/shared/DualPanelLayout";
 import AppBreadcrumb from "@/components/shared/AppBreadcrumb";
-import { FolderOpen, Settings, AlertTriangle, Info } from "lucide-react";
+import { Settings, AlertTriangle, Info } from "lucide-react";
 import { useUserContext } from "@/contexts/UserContext";
-import { useRouter } from "next/navigation";
-import { ProjectCreationForm } from "@/components/projects";
-import type { ProjectCreationProps, NavigationItem } from "@/types";
+import { ProjectEditForm } from "@/components/projects";
 import NavigationSidebar from "@/components/layout/shared/NavigationSidebar";
+import type {
+  ProjectWithPartialRelations,
+  NavigationItem,
+  TeamWithRelations,
+} from "@/types";
 
-export default function ProjectCreation({
+interface ProjectSettingsProps {
+  project: ProjectWithPartialRelations;
+  teams: TeamWithRelations[];
+  currentUserId: string;
+}
+
+export default function ProjectSettings({
+  project,
   teams,
-  selectedTeamId,
-}: ProjectCreationProps) {
+  currentUserId,
+}: ProjectSettingsProps) {
   const { userData, clerkUser, loading } = useUserContext();
   const router = useRouter();
   const [activeSection, setActiveSection] = useState<string>("information");
 
   // Use userData if available, otherwise fall back to clerkUser
-  const currentUserId = userData?.id || clerkUser?.id;
+  const user = userData || clerkUser;
+
+  const isProjectOwner = project.ownerId === currentUserId;
+  const userTeam = teams.find((team) => team.id === project.teamId);
+  const userRole = userTeam?.members?.find(
+    (member) => member.userId === currentUserId
+  )?.role;
+  const canManageProject =
+    isProjectOwner || userRole === "owner" || userRole === "admin";
 
   const scrollToSection = (sectionId: string): void => {
     const element = document.getElementById(sectionId);
@@ -28,6 +47,7 @@ export default function ProjectCreation({
     }
   };
 
+  // Navigation items for the sidebar
   const navigationItems: NavigationItem[] = [
     {
       id: "information",
@@ -41,12 +61,21 @@ export default function ProjectCreation({
     },
   ];
 
+  // Add danger zone for project owners - now isProjectOwner is available
+  if (isProjectOwner) {
+    navigationItems.push({
+      id: "danger-zone",
+      label: "Danger Zone",
+      icon: AlertTriangle,
+    });
+  }
+
   const navigateBack = () => {
-    router.back();
+    router.push(`/team/${project.team?.slug}/project/${project.slug}`);
   };
 
   // Show loading if user is not loaded yet
-  if (loading || !currentUserId) {
+  if (loading || !user) {
     return (
       <DualPanelLayout
         left={
@@ -66,34 +95,33 @@ export default function ProjectCreation({
     );
   }
 
-  // Show message if no teams available
-  if (!teams || teams.length === 0) {
+  // Show unauthorized access
+  if (!canManageProject) {
     return (
       <DualPanelLayout
         left={
           <div className="p-4">
             <AppBreadcrumb />
-            <h2 className="font-bold text-lg pt-2">Create Project</h2>
+            <h2 className="font-bold text-lg pt-2">Project Settings</h2>
           </div>
         }
         right={
           <div className="p-6 flex items-center justify-center">
             <div className="text-center">
               <div className="mb-4">
-                <FolderOpen className="h-12 w-12 text-gray-400 mx-auto" />
+                <AlertTriangle className="h-12 w-12 text-red-400 mx-auto" />
               </div>
               <h3 className="text-lg font-medium text-gray-900 mb-2">
-                No Teams Available
+                Access Denied
               </h3>
               <p className="text-gray-600 mb-4">
-                You need to be a member of at least one team to create a
-                project.
+                You don't have permission to manage this project's settings.
               </p>
               <button
-                onClick={() => router.push("/teams/create")}
+                onClick={navigateBack}
                 className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
               >
-                Create a Team
+                Back to Project
               </button>
             </div>
           </div>
@@ -105,20 +133,20 @@ export default function ProjectCreation({
   return (
     <DualPanelLayout
       left={
-        <div className="p-4 h-full">
-          <NavigationSidebar
-            activeSection={activeSection}
-            navigationItems={navigationItems}
-            onScrollToSection={scrollToSection}
-            title="Project Creation"
-            subtitle="Create new project"
-          />
-        </div>
+        <NavigationSidebar
+          activeSection={activeSection}
+          navigationItems={navigationItems}
+          onScrollToSection={scrollToSection}
+          title="Project Settings"
+          subtitle={`Manage ${project.name} settings`}
+        />
       }
       right={
-        <ProjectCreationForm
+        <ProjectEditForm
+          project={project}
           teams={teams}
-          selectedTeamId={selectedTeamId}
+          currentUserId={currentUserId}
+          isProjectOwner={isProjectOwner}
           onNavigateBack={navigateBack}
         />
       }

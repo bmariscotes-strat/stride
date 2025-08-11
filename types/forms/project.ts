@@ -1,5 +1,5 @@
 // types/forms/project
-import type { Team, User, Project } from "@/types";
+import type { Team, User, Project, TeamWithRelations } from "@/types";
 
 // Basic Types
 export type TeamBasic = Pick<Team, "id" | "name" | "slug">;
@@ -53,6 +53,14 @@ export interface ProjectFormSectionProps {
 export interface ProjectFormNavigationProps {
   activeSection: string;
   onSectionClick: (sectionId: string) => void;
+  isEdit?: boolean;
+  canDelete?: boolean;
+}
+
+export interface ProjectEditProps {
+  project: ProjectWithPartialRelations;
+  teams: TeamWithRelations[];
+  currentUserId: string;
 }
 
 export interface ProjectFormMessagesProps {

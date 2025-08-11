@@ -707,3 +707,73 @@ async function createDefaultColumns(projectId: string) {
     }))
   );
 }
+
+/**
+ * Get a project by slug for a specific user (searches across all their teams)
+ * This is more efficient than the loop approach in the component
+ */
+export async function getProjectBySlugForUser(
+  slug: string,
+  userId: string
+): Promise<ProjectWithPartialRelations | null> {
+  try {
+    // First, get all team IDs the user is a member of
+    const userTeams = await db
+      .select({ teamId: teamMembers.teamId })
+      .from(teamMembers)
+      .where(eq(teamMembers.userId, userId));
+
+    if (userTeams.length === 0) {
+      return null;
+    }
+
+    const teamIds = userTeams.map((t) => t.teamId);
+
+    // Find the project with the given slug in any of the user's teams
+    const result = await db
+      .select({
+        // Project fields
+        id: projects.id,
+        name: projects.name,
+        slug: projects.slug,
+        description: projects.description,
+        teamId: projects.teamId,
+        ownerId: projects.ownerId,
+        colorTheme: projects.colorTheme,
+        isArchived: projects.isArchived,
+        schemaVersion: projects.schemaVersion,
+        createdAt: projects.createdAt,
+        updatedAt: projects.updatedAt,
+        // Team fields
+        team: {
+          id: teams.id,
+          name: teams.name,
+          slug: teams.slug,
+        },
+        // Owner fields
+        owner: {
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          email: users.email,
+          avatarUrl: users.avatarUrl,
+        },
+      })
+      .from(projects)
+      .innerJoin(teams, eq(projects.teamId, teams.id))
+      .innerJoin(users, eq(projects.ownerId, users.id))
+      .where(
+        and(
+          eq(projects.slug, slug),
+          inArray(projects.teamId, teamIds),
+          eq(projects.isArchived, false) // Only active projects
+        )
+      )
+      .limit(1);
+
+    return result[0] || null;
+  } catch (error) {
+    console.error("Error fetching project by slug for user:", error);
+    return null;
+  }
+}
