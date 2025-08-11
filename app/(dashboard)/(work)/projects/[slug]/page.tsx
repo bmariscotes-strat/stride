@@ -7,10 +7,8 @@ import DualPanelLayout from "@/components/layout/shared/DualPanelLayout";
 import AppBreadcrumb from "@/components/shared/AppBreadcrumb";
 import { Settings, Calendar, Users, Kanban, List, Table } from "lucide-react";
 import { getProjectBySlugForUser } from "@/lib/services/projects";
-import { getTeamBySlug } from "@/lib/services/teams";
 import type { ProjectWithPartialRelations } from "@/types";
 
-// Define the expected project type
 interface ProjectPageData extends ProjectWithPartialRelations {
   currentUserRole?: string;
 }
@@ -38,10 +36,8 @@ export default async function ProjectPage({
     notFound();
   }
 
-  // Get user's role in the team to determine permissions
-  const team = await getTeamBySlug(project.team?.slug || "", userId);
-  const canEdit =
-    team?.currentUserRole === "owner" || team?.currentUserRole === "admin";
+  // Check if current user is the project owner
+  const isProjectOwner = project.ownerId === userId;
 
   // Views configuration
   const views = [
@@ -69,7 +65,7 @@ export default async function ProjectPage({
                   </p>
                 )}
               </div>
-              {canEdit && (
+              {isProjectOwner && (
                 <Link
                   href={`/projects/${project.slug}/settings`}
                   className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md"
@@ -98,6 +94,14 @@ export default async function ProjectPage({
                 <Calendar size={14} />
                 <span>
                   Created {new Date(project.createdAt).toLocaleDateString()}
+                </span>
+              </div>
+              {/* Show owner info */}
+              <div className="flex items-center gap-2 text-sm text-gray-600">
+                <Users size={14} />
+                <span>
+                  Owner: {project.owner?.firstName} {project.owner?.lastName}
+                  {isProjectOwner && " (You)"}
                 </span>
               </div>
             </div>
