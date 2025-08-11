@@ -688,6 +688,86 @@ export async function deleteProjectAction(projectId: string, userId: string) {
 }
 
 /**
+ * Permanently delete a project (with CASCADE cleanup)
+ */
+export async function hardDeleteProjectAction(
+  projectId: string,
+  userId: string
+) {
+  try {
+    if (!projectId || !userId) {
+      return {
+        success: false,
+        error: "Project ID and user ID are required",
+      };
+    }
+
+    // Fetch project and related team info
+    const projectWithTeam = await db
+      .select({
+        id: projects.id,
+        ownerId: projects.ownerId,
+        teamId: projects.teamId,
+        slug: projects.slug,
+      })
+      .from(projects)
+      .where(eq(projects.id, projectId))
+      .limit(1);
+
+    if (projectWithTeam.length === 0) {
+      return {
+        success: false,
+        error: "Project not found",
+      };
+    }
+
+    const project = projectWithTeam[0];
+
+    // Permission check (same logic as soft delete)
+    const isOwner = project.ownerId === userId;
+    const isTeamAdminOrOwner = await db
+      .select({ role: teamMembers.role })
+      .from(teamMembers)
+      .where(
+        and(
+          eq(teamMembers.teamId, project.teamId),
+          eq(teamMembers.userId, userId)
+        )
+      )
+      .limit(1);
+
+    const hasDeletePermission =
+      isOwner ||
+      (isTeamAdminOrOwner.length > 0 &&
+        ["owner", "admin"].includes(isTeamAdminOrOwner[0].role));
+
+    if (!hasDeletePermission) {
+      return {
+        success: false,
+        error: "You don't have permission to delete this project",
+      };
+    }
+
+    // Hard delete (CASCADE will handle child records)
+    await db.delete(projects).where(eq(projects.id, projectId));
+
+    // Revalidate relevant paths
+    revalidatePath(`/team/${project.teamId}`);
+
+    return {
+      success: true,
+      error: null,
+    };
+  } catch (error) {
+    console.error("Error hard-deleting project:", error);
+    return {
+      success: false,
+      error: "Failed to permanently delete project. Please try again.",
+    };
+  }
+}
+
+/**
  * Create default columns for a new project
  */
 async function createDefaultColumns(projectId: string) {

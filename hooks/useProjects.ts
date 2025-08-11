@@ -8,6 +8,7 @@ import {
   createProjectAction,
   updateProjectAction,
   deleteProjectAction,
+  hardDeleteProjectAction,
   getTeamProjectsAction,
   getProjectAction,
   getProjectBySlugAction,
@@ -193,7 +194,7 @@ export function useProjects(
     }: {
       projectId: string;
       userId: string;
-    }) => deleteProjectAction(projectId, userId),
+    }) => hardDeleteProjectAction(projectId, userId),
     onMutate: async ({ projectId }) => {
       // Cancel any outgoing refetches
       await queryClient.cancelQueries({
@@ -352,6 +353,33 @@ export function useDeleteProject() {
     mutationFn: (projectId: string) => {
       if (!currentUserId) throw new Error("User not authenticated");
       return deleteProjectAction(projectId, currentUserId);
+    },
+    onSuccess: (_result, projectId) => {
+      // Remove from cache
+      queryClient.removeQueries({
+        queryKey: projectKeys.detail(projectId),
+      });
+
+      // Invalidate all project lists
+      queryClient.invalidateQueries({
+        queryKey: projectKeys.lists(),
+      });
+    },
+  });
+}
+
+/**
+ * Hook for hard deletion
+ */
+export function useHardDeleteProject() {
+  const queryClient = useQueryClient();
+  const { userData, clerkUser } = useUserContext();
+  const currentUserId = userData?.id || clerkUser?.id;
+
+  return useMutation({
+    mutationFn: (projectId: string) => {
+      if (!currentUserId) throw new Error("User not authenticated");
+      return hardDeleteProjectAction(projectId, currentUserId);
     },
     onSuccess: (_result, projectId) => {
       // Remove from cache

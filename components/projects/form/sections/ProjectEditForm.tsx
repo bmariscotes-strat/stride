@@ -2,7 +2,7 @@
 "use client";
 import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { useUpdateProject, useDeleteProject } from "@/hooks/useProjects";
+import { useUpdateProject, useHardDeleteProject } from "@/hooks/useProjects";
 import type {
   UpdateProject,
   ProjectWithPartialRelations,
@@ -61,7 +61,7 @@ export default function ProjectEditForm({
   const { mutateAsync: updateProjectAsync, isPending: isUpdating } =
     useUpdateProject();
   const { mutateAsync: deleteProjectAsync, isPending: isDeleting } =
-    useDeleteProject();
+    useHardDeleteProject();
 
   // Auto-generate slug from name (simple client-side generation)
   useEffect(() => {
