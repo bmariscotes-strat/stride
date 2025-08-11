@@ -190,7 +190,7 @@ export default async function TeamPage({
             </div>
 
             {/* Show create button when there are projects or user can edit */}
-            {(projects.length > 0 || canEdit) && (
+            {(projects.length > 0 || canEdit) && projects.length !== 0 && (
               <Link href="/projects/create">
                 <Button
                   leftIcon={<Plus />}
@@ -216,7 +216,7 @@ export default async function TeamPage({
                 Get started by creating your first project for this team.
               </p>
               <div className="mt-6">
-                <Link href="/team/create">
+                <Link href="/projects/create">
                   <Button
                     leftIcon={<Plus />}
                     variant="primary"

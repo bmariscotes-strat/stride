@@ -50,16 +50,19 @@ export default function ProjectsPage() {
               View and manage projects from your teams
             </p>
           </div>
-          <Link href="/projects/create">
-            <Button
-              leftIcon={<Plus />}
-              variant="primary"
-              style="filled"
-              size="sm"
-            >
-              Create Project
-            </Button>
-          </Link>
+
+          {userProjects.length !== 0 && (
+            <Link href="/projects/create">
+              <Button
+                leftIcon={<Plus />}
+                variant="primary"
+                style="filled"
+                size="sm"
+              >
+                Create Project
+              </Button>
+            </Link>
+          )}
         </div>
 
         {userProjects.length === 0 ? (
@@ -72,12 +75,15 @@ export default function ProjectsPage() {
               Get started by creating your first project or joining a team.
             </p>
             <div className="mt-6">
-              <Link
-                href="/projects/create"
-                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-              >
-                <Plus size={16} />
-                Create Project
+              <Link href="/projects/create">
+                <Button
+                  leftIcon={<Plus />}
+                  variant="primary"
+                  style="filled"
+                  size="sm"
+                >
+                  Create Project
+                </Button>
               </Link>
             </div>
           </div>
