@@ -8,11 +8,15 @@ import type {
   ProjectWithPartialRelations,
   TeamWithRelations,
 } from "@/types";
-import AlertMessages from "@/components/projects/form/AlertMessages";
-import ProjectInformationSection from "@/components/projects/form/sections/ProjectInformationSection";
-import ProjectSettingsSection from "@/components/projects/form/sections/ProjectSettingsSection";
-import ProjectDangerZoneSection from "@/components/projects/form/sections/ProjectDangerZoneSection";
-import DeleteProjectModal from "@/components/projects/form/dialog/DeleteProjectDialog";
+
+import {
+  ProjectAlertMessages,
+  ProjectInformationSection,
+  ProjectSettingsSection,
+  ProjectDangerZoneSection,
+  DeleteProjectDialog,
+} from "@/components/projects";
+
 import type { ProjectFormData, ProjectSettings } from "@/types";
 
 interface ProjectEditFormProps {
@@ -266,7 +270,7 @@ export default function ProjectEditForm({
 
   return (
     <div className="p-6 max-w-2xl">
-      <AlertMessages success={success} error={error} />
+      <ProjectAlertMessages success={success} error={error} />
 
       <form onSubmit={handleSubmit} className="space-y-12">
         <ProjectInformationSection
@@ -356,7 +360,7 @@ export default function ProjectEditForm({
 
       {/* Delete Modal */}
       {showDeleteModal && (
-        <DeleteProjectModal
+        <DeleteProjectDialog
           isOpen={showDeleteModal}
           onClose={handleDeleteModalClose}
           project={project}

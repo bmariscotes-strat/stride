@@ -157,7 +157,7 @@ export async function createProjectAction(data: CreateProject) {
 
     // Revalidate related pages
     revalidatePath(`/team/${teamId}`);
-    revalidatePath(`/project/${uniqueSlug}`);
+    revalidatePath(`/projects/${uniqueSlug}`);
 
     return {
       success: true,
@@ -585,7 +585,7 @@ export async function updateProjectAction(data: UpdateProject) {
     }
 
     // Revalidate related pages
-    revalidatePath(`/project/${updatedProject.slug}`);
+    revalidatePath(`/projects/${updatedProject.slug}`);
     revalidatePath(`/team/${updatedProject.teamId}`);
 
     return {
@@ -671,7 +671,7 @@ export async function deleteProjectAction(projectId: string, userId: string) {
       .where(eq(projects.id, projectId));
 
     // Revalidate related pages
-    revalidatePath(`/project/${project.slug}`);
+    revalidatePath(`/projects/${project.slug}`);
     revalidatePath(`/team/${project.teamId}`);
 
     return {
