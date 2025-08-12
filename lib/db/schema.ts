@@ -34,6 +34,11 @@ export const notificationTypeEnum = pgEnum("notification_type", [
   "task_created",
   "task_moved",
   "task_reassigned",
+  "project_created",
+  "project_updated",
+  "project_archived",
+  "project_deleted",
+  "project_restored",
 ]);
 
 // =============================================================================

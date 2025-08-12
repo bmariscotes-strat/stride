@@ -6,16 +6,17 @@ import { getCurrentUser } from "@/lib/services/users";
 import DualPanelLayout from "@/components/layout/shared/DualPanelLayout";
 import AppBreadcrumb from "@/components/shared/AppBreadcrumb";
 import Button from "@/components/ui/Button";
+import { ProjectCard } from "@/components/projects";
 import {
   Users,
   Settings,
   Calendar,
   Plus,
   FolderOpen,
-  MoreVerticalIcon as MoreVertical,
   Link as LinkIcon,
 } from "lucide-react";
 import { getTeamBySlug } from "@/lib/services/teams";
+import { getTeamProjectsAction } from "@/lib/services/projects";
 import type {
   TeamWithRelations,
   TeamMemberWithRelations,
@@ -51,10 +52,17 @@ export default async function TeamPage({
   const canEdit =
     team.currentUserRole === "owner" || team.currentUserRole === "admin";
 
+  // Fetch team projects
+  const projects = await getTeamProjectsAction(team.id, {
+    isArchived: false,
+    orderBy: "updatedAt",
+    orderDirection: "desc",
+  });
+
   return (
     <DualPanelLayout
       left={
-        <div className="p-4 h-full">
+        <>
           <AppBreadcrumb />
 
           {/* Team Info Section */}
@@ -74,12 +82,12 @@ export default async function TeamPage({
                 <p className="text-sm text-gray-600 flex items-center gap-1">
                   <LinkIcon className="w-4 h-4 text-blue-500" />
                   <Link
-                    href={`${team.slug}`}
+                    href={`/team/${team.slug}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="hover:underline text-blue-500"
                   >
-                    {`${team.slug}`}
+                    {team.slug}
                   </Link>
                 </p>
               </div>
@@ -103,6 +111,10 @@ export default async function TeamPage({
               <div className="flex items-center gap-2 text-sm text-gray-600">
                 <Users size={14} />
                 <span>{team.members?.length || 0} members</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm text-gray-600">
+                <FolderOpen size={14} />
+                <span>{projects.length} projects</span>
               </div>
               <div className="flex items-center gap-2 text-sm text-gray-600">
                 <Calendar size={14} />
@@ -164,7 +176,7 @@ export default async function TeamPage({
               </div>
             </div>
           </div>
-        </div>
+        </>
       }
       right={
         <div className="p-6">
@@ -177,44 +189,57 @@ export default async function TeamPage({
               </p>
             </div>
 
-            {/* This button should be hidden during empty state.
-             */}
-
-            {/* <button className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
-              <Plus size={16} />
-              New Project
-            </button> */}
-          </div>
-
-          {/* Projects Placeholder */}
-          <div className="text-center py-12">
-            <FolderOpen className="mx-auto h-12 w-12 text-gray-400" />
-            <h3 className="mt-2 text-sm font-medium text-gray-900">
-              No projects yet
-            </h3>
-            <p className="mt-1 text-sm text-gray-500">
-              Get started by creating your first project for this team.
-            </p>
-            <div className="mt-6">
-              <Link href="/team/create">
+            {/* Show create button when there are projects or user can edit */}
+            {(projects.length > 0 || canEdit) && projects.length !== 0 && (
+              <Link href="/projects/create">
                 <Button
                   leftIcon={<Plus />}
                   variant="primary"
                   style="filled"
                   size="sm"
                 >
-                  Create Project
+                  New Project
                 </Button>
               </Link>
-            </div>
+            )}
           </div>
 
-          {/* Future: Projects will be displayed here */}
-          {/* 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            // Project cards will go here
-          </div>
-          */}
+          {/* Projects Content */}
+          {projects.length === 0 ? (
+            /* Empty State */
+            <div className="text-center py-12">
+              <FolderOpen className="mx-auto h-12 w-12 text-gray-400" />
+              <h3 className="mt-2 text-sm font-medium text-gray-900">
+                No projects yet
+              </h3>
+              <p className="mt-1 text-sm text-gray-500">
+                Get started by creating your first project for this team.
+              </p>
+              <div className="mt-6">
+                <Link href="/projects/create">
+                  <Button
+                    leftIcon={<Plus />}
+                    variant="primary"
+                    style="filled"
+                    size="sm"
+                  >
+                    Create Project
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          ) : (
+            /* Projects Grid */
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {projects.map((project) => (
+                <ProjectCard
+                  key={project.id}
+                  project={project}
+                  canEdit={canEdit}
+                />
+              ))}
+            </div>
+          )}
         </div>
       }
     />

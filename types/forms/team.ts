@@ -18,7 +18,7 @@ export interface PendingTeamMember {
   isExistingUser?: boolean;
 }
 
-export interface FormData {
+export interface TeamFormData {
   name: string;
   slug: string;
   description: string;

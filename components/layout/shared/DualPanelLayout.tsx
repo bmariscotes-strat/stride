@@ -4,12 +4,8 @@ import { ReactNode, useState } from "react";
 /**
  * DualPanelLayout
  *
- * A reusable two-column layout with a collapsible left panel (acts like a sidebar)
- * and a right panel for main content.
- *
- * @param left - Left panel (e.g., sidebar)
- * @param right - Right panel (e.g., main content)
- * @param className - Optional wrapper className
+ * A two-column layout with a fixed left panel (sidebar) that stays in place
+ * while the page scrolls, and a collapsible toggle.
  */
 export default function DualPanelLayout({
   left,
@@ -22,35 +18,31 @@ export default function DualPanelLayout({
 }) {
   const [isCollapsed, setIsCollapsed] = useState(false);
 
+  const sidebarWidth = isCollapsed ? "0" : "20%";
+
   return (
-    <div
-      className={`relative min-h-screen flex flex-col md:flex-row w-full ${className}`}
-    >
+    <div className={`relative min-h-screen w-full ${className}`}>
       {/* Sidebar */}
       <aside
-        className={`
-          transition-all duration-300
-          ${isCollapsed ? "md:w-0" : "md:w-[20%]"}
-          w-full
-          sticky top-0 h-screen overflow-hidden 
-          bg-white
-        `}
+        className={`fixed top-0 left-0 h-screen bg-white flex flex-col w-20 transition-all duration-300 ${
+          isCollapsed ? "opacity-0 overflow-hidden" : "opacity-100"
+        }`}
+        style={{
+          width: sidebarWidth,
+          visibility: isCollapsed ? "hidden" : "visible",
+        }}
       >
-        {left}
+        <div className="h-25" /> {/* Spacer */}
+        <div className="pl-12 pr-5 h-full">{left}</div>
       </aside>
 
       {/* Divider + Toggle Button */}
       <div
-        className={`
-          hidden md:flex fixed top-0 left-0 h-screen  items-center
-          transition-transform duration-300
-          ${isCollapsed ? "translate-x-0" : "translate-x-[20vw]"}
-        `}
+        className="hidden md:flex fixed top-0 h-screen items-center transition-all duration-300"
+        style={{ left: sidebarWidth }}
       >
-        {/* Divider */}
         <div className="w-px h-full bg-gray-300" />
 
-        {/* Toggle Button */}
         {!isCollapsed && (
           <button
             onClick={() => setIsCollapsed(true)}
@@ -95,8 +87,11 @@ export default function DualPanelLayout({
       </div>
 
       {/* Main Content */}
-      <main className="w-full">
-        <div className="pl-10 pr-5">{right}</div>
+      <main
+        className="transition-all duration-300"
+        style={{ marginLeft: sidebarWidth }}
+      >
+        <div className="pr-5">{right}</div>
       </main>
     </div>
   );

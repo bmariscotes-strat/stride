@@ -82,7 +82,7 @@ export async function createTeamAction(
     await ActivityService.log({
       userId: createdBy,
       actionType: "team_created",
-      projectId: null, // Teams might not have projects yet
+      projectId: null,
       newValue: name,
       metadata: {
         teamId: newTeam.id,

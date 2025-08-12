@@ -17,13 +17,16 @@ import type {
 } from "@/types";
 
 // Import components
-import NavigationSidebar from "@/components/team/settings/NavigationSidebar";
-import AlertMessages from "@/components/team/settings/AlertMessages";
-import TeamInformationSection from "@/components/team/settings/sections/InformationSection";
-import TeamMembersSection from "@/components/team/settings/sections/MembersSection";
-import TeamSettingsSection from "@/components/team/settings/sections/SettingsSection";
-import DangerZoneSection from "@/components/team/settings/sections/DangerZoneSection";
-import DeleteTeamModal from "@/components/team/settings/dialog/DeleteTeamDialog";
+import NavigationSidebar from "@/components/layout/shared/NavigationSidebar";
+import {
+  AlertMessages,
+  TeamInformationSection,
+  TeamMembersSection,
+  TeamSettingsSection,
+  DangerZoneSection,
+  DeleteTeamModal,
+  ArchiveTeamDialog,
+} from "@/components/team";
 
 interface FormData {
   name: string;
@@ -73,8 +76,10 @@ export default function UpdateTeamPage({ team }: UpdateTeamPageProps) {
   const [isArchiving, setIsArchiving] = useState<boolean>(false);
   const [isDeleting, setIsDeleting] = useState<boolean>(false);
   const [error, setError] = useState<string>("");
+  const [archiveError, setArchiveError] = useState<string>("");
   const [success, setSuccess] = useState<boolean>(false);
   const [showDeleteModal, setShowDeleteModal] = useState<boolean>(false);
+  const [showArchiveModal, setShowArchiveModal] = useState<boolean>(false);
   const [deleteStep, setDeleteStep] = useState<number>(1);
   const [confirmationText, setConfirmationText] = useState<string>("");
 
@@ -94,33 +99,35 @@ export default function UpdateTeamPage({ team }: UpdateTeamPageProps) {
   const settingsRef = useRef<HTMLDivElement>(null);
   const dangerZoneRef = useRef<HTMLDivElement>(null);
 
-  // Handle scroll to update active section
+  // Optional: Add scroll spy to automatically update active section based on scroll position
   useEffect(() => {
-    const observerOptions: IntersectionObserverInit = {
-      root: null,
-      rootMargin: "-20% 0px -80% 0px",
-      threshold: 0,
-    };
+    const handleScroll = () => {
+      const sections = ["information", "members", "settings", "danger-zone"];
+      let currentSection = "information";
 
-    const observerCallback: IntersectionObserverCallback = (entries) => {
-      entries.forEach((entry) => {
-        if (entry.isIntersecting) {
-          setActiveSection(entry.target.id);
+      for (const sectionId of sections) {
+        const element = document.getElementById(sectionId);
+        if (element) {
+          const rect = element.getBoundingClientRect();
+          // If the section is in the upper half of the viewport, consider it active
+          if (rect.top <= window.innerHeight / 2 && rect.bottom >= 0) {
+            currentSection = sectionId;
+          }
         }
-      });
+      }
+
+      setActiveSection(currentSection);
     };
 
-    const observer = new IntersectionObserver(
-      observerCallback,
-      observerOptions
-    );
+    // Add scroll listener for scroll spy functionality
+    window.addEventListener("scroll", handleScroll);
 
-    if (informationRef.current) observer.observe(informationRef.current);
-    if (membersRef.current) observer.observe(membersRef.current);
-    if (settingsRef.current) observer.observe(settingsRef.current);
-    if (dangerZoneRef.current) observer.observe(dangerZoneRef.current);
+    // Initial check
+    handleScroll();
 
-    return () => observer.disconnect();
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+    };
   }, []);
 
   // Auto-generate slug from name
@@ -152,7 +159,9 @@ export default function UpdateTeamPage({ team }: UpdateTeamPageProps) {
     }));
   };
 
+  // Fixed: Update both scroll and active section
   const scrollToSection = (sectionId: string): void => {
+    setActiveSection(sectionId); // Add this line to update the active section
     const element = document.getElementById(sectionId);
     if (element) {
       element.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -227,27 +236,33 @@ export default function UpdateTeamPage({ team }: UpdateTeamPageProps) {
     }
   };
 
+  const handleArchiveClick = () => {
+    setShowArchiveModal(true);
+    setArchiveError("");
+  };
+
   const handleArchive = async (): Promise<void> => {
     if (!currentUserId) {
-      handleError("You must be logged in to archive a team");
+      setArchiveError("You must be logged in to archive a team");
       return;
     }
 
     setIsArchiving(true);
-    setError("");
+    setArchiveError("");
 
     try {
       const result = await archiveTeamAction(team.id, currentUserId);
 
       if (result.success) {
+        setShowArchiveModal(false);
         router.push("/team");
       } else {
-        handleError(result.error || "Failed to archive team");
+        setArchiveError(result.error || "Failed to archive team");
       }
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : "An unexpected error occurred";
-      handleError(errorMessage);
+      setArchiveError(errorMessage);
       console.error("Error archiving team:", err);
     } finally {
       setIsArchiving(false);
@@ -307,7 +322,11 @@ export default function UpdateTeamPage({ team }: UpdateTeamPageProps) {
     { id: "information", label: "Information", icon: Info },
     { id: "members", label: "Members", icon: Users },
     { id: "settings", label: "Settings", icon: Settings },
-    { id: "danger-zone", label: "Danger Zone", icon: Trash2 },
+    {
+      id: "danger-zone",
+      label: "Danger Zone",
+      icon: AlertTriangle,
+    },
   ];
 
   // Show loading if user is not loaded yet
@@ -342,6 +361,8 @@ export default function UpdateTeamPage({ team }: UpdateTeamPageProps) {
             activeSection={activeSection}
             navigationItems={navigationItems}
             onScrollToSection={scrollToSection}
+            title="Team Settings"
+            subtitle={`Manage ${team.name} settings`}
           />
         }
         right={
@@ -376,7 +397,7 @@ export default function UpdateTeamPage({ team }: UpdateTeamPageProps) {
               {/* Danger Zone Section */}
               <DangerZoneSection
                 team={team}
-                onArchive={handleArchive}
+                onArchive={handleArchiveClick}
                 onDelete={openDeleteModal}
                 isArchiving={isArchiving}
                 sectionRef={dangerZoneRef}
@@ -435,6 +456,16 @@ export default function UpdateTeamPage({ team }: UpdateTeamPageProps) {
             </form>
           </div>
         }
+      />
+
+      {/* Archive Confirmation Modal */}
+      <ArchiveTeamDialog
+        isOpen={showArchiveModal}
+        onClose={() => setShowArchiveModal(false)}
+        team={team}
+        onArchive={handleArchive}
+        isArchiving={isArchiving}
+        error={archiveError}
       />
 
       {/* Delete Confirmation Modal */}

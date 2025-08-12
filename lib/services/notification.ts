@@ -842,40 +842,216 @@ export class NotificationService {
       mostRecentUnread: result[0]?.createdAt || null,
     };
   }
+
+  // Add these methods to your NotificationService class
+
+  // =============================================================================
+  // PROJECT NOTIFICATIONS (Missing Methods)
+  // =============================================================================
+
+  /**
+   * Notify team members when a new project is created
+   */
+  static async notifyProjectCreated(
+    actorUserId: string,
+    projectId: string,
+    projectName: string,
+    teamId: string
+  ) {
+    // Log activity first
+    await ActivityService.logProjectCreated(
+      actorUserId,
+      projectId,
+      projectName
+    );
+
+    // Get team members to notify (exclude the creator)
+    const teamMembers = await this.getTeamMembers(teamId, [actorUserId]);
+    const actor = await this.getUser(actorUserId);
+    const actorName = `${actor?.firstName} ${actor?.lastName}`;
+
+    const projectCreatedNotification = createNotificationContent(
+      "project_created",
+      {
+        actorName,
+        projectName,
+      }
+    );
+
+    const recipients = teamMembers.map((member) => ({
+      userId: member.userId,
+      type: "project_created" as NotificationType,
+      title: projectCreatedNotification.title,
+      message: projectCreatedNotification.message,
+      projectId,
+      teamId,
+    }));
+
+    await this.createBulkNotifications(recipients);
+  }
+
+  /**
+   * Notify team members when a project is updated
+   */
+  static async notifyProjectUpdated(
+    actorUserId: string,
+    projectId: string,
+    projectName: string,
+    teamId: string,
+    updateSummary: string
+  ) {
+    // Get team members to notify (exclude the updater)
+    const teamMembers = await this.getTeamMembers(teamId, [actorUserId]);
+    const actor = await this.getUser(actorUserId);
+    const actorName = `${actor?.firstName} ${actor?.lastName}`;
+
+    const projectUpdatedNotification = createNotificationContent(
+      "project_updated",
+      {
+        actorName,
+        projectName,
+        updateSummary,
+      }
+    );
+
+    const recipients = teamMembers.map((member) => ({
+      userId: member.userId,
+      type: "project_updated" as NotificationType,
+      title: projectUpdatedNotification.title,
+      message: projectUpdatedNotification.message,
+      projectId,
+      teamId,
+    }));
+
+    await this.createBulkNotifications(recipients);
+  }
+
+  /**
+   * Notify team members when a project is archived
+   */
+  static async notifyProjectArchived(
+    actorUserId: string,
+    projectId: string,
+    projectName: string,
+    teamId: string
+  ) {
+    // Get team members to notify (exclude the actor)
+    const teamMembers = await this.getTeamMembers(teamId, [actorUserId]);
+    const actor = await this.getUser(actorUserId);
+    const actorName = `${actor?.firstName} ${actor?.lastName}`;
+
+    const projectArchivedNotification = createNotificationContent(
+      "project_archived",
+      {
+        actorName,
+        projectName,
+      }
+    );
+
+    const recipients = teamMembers.map((member) => ({
+      userId: member.userId,
+      type: "project_archived" as NotificationType,
+      title: projectArchivedNotification.title,
+      message: projectArchivedNotification.message,
+      projectId,
+      teamId,
+    }));
+
+    await this.createBulkNotifications(recipients);
+  }
+
+  /**
+   * Notify team members when a project is permanently deleted
+   */
+  static async notifyProjectDeleted(
+    actorUserId: string,
+    projectId: string,
+    projectName: string,
+    teamId: string
+  ) {
+    // Get team members to notify (exclude the actor)
+    const teamMembers = await this.getTeamMembers(teamId, [actorUserId]);
+    const actor = await this.getUser(actorUserId);
+    const actorName = `${actor?.firstName} ${actor?.lastName}`;
+
+    const projectDeletedNotification = createNotificationContent(
+      "project_deleted",
+      {
+        actorName,
+        projectName,
+      }
+    );
+
+    const recipients = teamMembers.map((member) => ({
+      userId: member.userId,
+      type: "project_deleted" as NotificationType,
+      title: projectDeletedNotification.title,
+      message: projectDeletedNotification.message,
+      projectId,
+      teamId,
+    }));
+
+    await this.createBulkNotifications(recipients);
+  }
+
+  /**
+   * Notify team members when a project is restored from archive
+   */
+  static async notifyProjectRestored(
+    actorUserId: string,
+    projectId: string,
+    projectName: string,
+    teamId: string
+  ) {
+    // Get team members to notify (exclude the actor)
+    const teamMembers = await this.getTeamMembers(teamId, [actorUserId]);
+    const actor = await this.getUser(actorUserId);
+    const actorName = `${actor?.firstName} ${actor?.lastName}`;
+
+    const projectRestoredNotification = createNotificationContent(
+      "project_restored",
+      {
+        actorName,
+        projectName,
+      }
+    );
+
+    const recipients = teamMembers.map((member) => ({
+      userId: member.userId,
+      type: "project_restored" as NotificationType,
+      title: projectRestoredNotification.title,
+      message: projectRestoredNotification.message,
+      projectId,
+      teamId,
+    }));
+
+    await this.createBulkNotifications(recipients);
+  }
+
+  // =============================================================================
+  // MISSING HELPER METHODS
+  // =============================================================================
+
+  /**
+   * Get team members (improved version of getProjectTeamMembers)
+   */
+  private static async getTeamMembers(
+    teamId: string,
+    excludeUserIds: string[] = []
+  ) {
+    // Build the where conditions
+    const whereConditions = [eq(teamMembers.teamId, teamId)];
+
+    if (excludeUserIds.length > 0) {
+      whereConditions.push(not(inArray(teamMembers.userId, excludeUserIds)));
+    }
+
+    return await db
+      .select({
+        userId: teamMembers.userId,
+        role: teamMembers.role,
+      })
+      .from(teamMembers)
+      .where(and(...whereConditions));
+  }
 }
-
-// =============================================================================
-// USAGE EXAMPLES
-// =============================================================================
-
-/*
-// In your card service methods:
-
-// When creating a card
-await NotificationService.notifyCardCreated(
-  userId, projectId, cardId, cardTitle, columnName
-);
-
-// When moving a card
-await NotificationService.notifyCardMoved(
-  userId, projectId, cardId, cardTitle,
-  fromColumnId, toColumnId, fromColumnName, toColumnName
-);
-
-// In your API routes:
-
-// Get unread notifications
-const unreadNotifications = await NotificationService.getUnreadNotifications(userId);
-
-// Mark specific notifications as read
-await NotificationService.markAsRead([1, 2, 3]);
-
-// Get unread count for badge
-const unreadCount = await NotificationService.getUnreadCount(userId);
-
-// Get notification statistics
-const stats = await NotificationService.getNotificationStats(userId);
-
-// Cleanup old notifications (run as a cron job)
-await NotificationService.deleteOldNotifications(30); // Delete read notifications older than 30 days
-*/

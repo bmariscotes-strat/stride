@@ -88,13 +88,24 @@ export type {
   BaseNavSource,
 } from "./utility";
 
-// Non-object types
+// Teams
 export type {
   InviteFormMember,
   PendingTeamMember,
-  FormData,
+  TeamFormData,
   TeamSettings,
 } from "./forms/team";
+
+export type {
+  ProjectSettings,
+  ProjectCreationProps,
+  ProjectFormSectionProps,
+  ProjectFormNavigationProps,
+  ProjectFormMessagesProps,
+  ProjectFormData,
+  ProjectWithPartialRelations,
+  ProjectsListOptions,
+} from "./forms/project";
 
 // Notification
 export type {
