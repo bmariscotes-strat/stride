@@ -421,7 +421,7 @@ export default function CreateTeamPage() {
   return (
     <DualPanelLayout
       left={
-        <div className="p-4 h-full">
+        <>
           <AppBreadcrumb />
           <h2 className="font-bold text-lg pt-2">Create Team</h2>
           <nav className="mt-4">
@@ -444,7 +444,7 @@ export default function CreateTeamPage() {
               ))}
             </ul>
           </nav>
-        </div>
+        </>
       }
       right={
         <div className="p-6 max-w-2xl">

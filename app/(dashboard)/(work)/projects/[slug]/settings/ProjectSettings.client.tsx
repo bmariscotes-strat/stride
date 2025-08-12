@@ -111,9 +111,9 @@ export default function ProjectSettings({
     return (
       <DualPanelLayout
         left={
-          <div className="p-4">
+          <>
             <AppBreadcrumb />
-          </div>
+          </>
         }
         right={
           <div className="p-6 flex items-center justify-center">
@@ -132,10 +132,10 @@ export default function ProjectSettings({
     return (
       <DualPanelLayout
         left={
-          <div className="p-4">
+          <>
             <AppBreadcrumb />
             <h2 className="font-bold text-lg pt-2">Project Settings</h2>
-          </div>
+          </>
         }
         right={
           <div className="p-6 flex items-center justify-center">

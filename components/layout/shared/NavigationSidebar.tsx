@@ -19,7 +19,7 @@ export default function NavigationSidebar({
   subtitle,
 }: NavigationSidebarProps) {
   return (
-    <div>
+    <>
       <AppBreadcrumb />
       <h2 className="font-bold text-lg pt-2">{title}</h2>
       {subtitle && <p className="text-sm text-gray-600 mt-1">{subtitle}</p>}
@@ -52,6 +52,6 @@ export default function NavigationSidebar({
           })}
         </ul>
       </nav>
-    </div>
+    </>
   );
 }

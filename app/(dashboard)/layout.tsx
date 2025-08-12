@@ -33,7 +33,7 @@ export default async function DashboardLayout({
       <div>
         <Header userId={userId} teams={teams} projects={projects} />
 
-        <main className="py-8 px-4 sm:px-6 lg:px-12">
+        <main className="py-3 px-4 sm:px-6 lg:px-12">
           <Suspense>{children}</Suspense>
         </main>
       </div>

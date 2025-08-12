@@ -62,7 +62,7 @@ export default async function TeamPage({
   return (
     <DualPanelLayout
       left={
-        <div className="p-4 h-full">
+        <>
           <AppBreadcrumb />
 
           {/* Team Info Section */}
@@ -176,7 +176,7 @@ export default async function TeamPage({
               </div>
             </div>
           </div>
-        </div>
+        </>
       }
       right={
         <div className="p-6">

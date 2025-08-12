@@ -27,7 +27,7 @@ export default function AppBreadcrumb() {
   const segments = pathname.split("/").filter(Boolean);
 
   return (
-    <Breadcrumb className="pb-2">
+    <Breadcrumb className="pb-4">
       <BreadcrumbList>
         {/* Dynamic segments */}
         {segments.map((segment, index) => {

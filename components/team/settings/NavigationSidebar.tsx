@@ -15,7 +15,7 @@ export default function NavigationSidebar({
   onScrollToSection,
 }: NavigationSidebarProps) {
   return (
-    <div className="p-4 h-full">
+    <>
       <AppBreadcrumb />
       <h2 className="font-bold text-lg pt-2">Update Team</h2>
       <nav className="mt-4">
@@ -38,6 +38,6 @@ export default function NavigationSidebar({
           ))}
         </ul>
       </nav>
-    </div>
+    </>
   );
 }

@@ -105,7 +105,7 @@ export default function ProjectCreation({
   return (
     <DualPanelLayout
       left={
-        <div className="p-4 h-full">
+        <>
           <NavigationSidebar
             activeSection={activeSection}
             navigationItems={navigationItems}
@@ -113,7 +113,7 @@ export default function ProjectCreation({
             title="Project Creation"
             subtitle="Create new project"
           />
-        </div>
+        </>
       }
       right={
         <ProjectCreationForm

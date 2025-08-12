@@ -24,16 +24,10 @@ export default function DualPanelLayout({
     <div className={`relative min-h-screen w-full ${className}`}>
       {/* Sidebar */}
       <aside
-        className={`fixed top-0 left-0 h-screen bg-white flex flex-col w-20 transition-all duration-300 ${
-          isCollapsed ? "opacity-0 overflow-hidden" : "opacity-100"
-        }`}
-        style={{
-          width: sidebarWidth,
-          visibility: isCollapsed ? "hidden" : "visible",
-        }}
+        className="fixed top-0 left-0 h-screen p-10 pt-25 bg-white overflow-hidden transition-all duration-300"
+        style={{ width: sidebarWidth }}
       >
-        <div className="h-25" /> {/* Spacer */}
-        <div className="pl-12 pr-5 h-full">{left}</div>
+        {left}
       </aside>
 
       {/* Divider + Toggle Button */}
@@ -91,7 +85,7 @@ export default function DualPanelLayout({
         className="transition-all duration-300"
         style={{ marginLeft: sidebarWidth }}
       >
-        <div className="pr-5">{right}</div>
+        <div className="pl-10 pr-5">{right}</div>
       </main>
     </div>
   );
