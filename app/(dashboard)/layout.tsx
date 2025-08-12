@@ -1,27 +1,31 @@
-"use client";
-
-import type React from "react";
-import { useState, Suspense } from "react";
+// app/(dashboard)/layout.tsx
 import Header from "@/components/layout/dashboard/Header";
-import Sidebar from "@/components/layout/dashboard/Sidebar";
+import { getCurrentUser } from "@/lib/services/users";
+import { getTeamsForUser } from "@/lib/services/teams";
+import { Suspense } from "react";
+import { BaseNavSource } from "@/types";
 
-export default function DashboardLayout({
+export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const user = await getCurrentUser();
+  const userId = user?.id || null;
+  const teams: BaseNavSource[] = user
+    ? (await getTeamsForUser(user.id)).slice(0, 3).map((team) => ({
+        slug: team.slug,
+        name: team.name,
+        description: team.description,
+      }))
+    : [];
 
   return (
     <div className="min-h-screen">
-      <Sidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
+      <div>
+        <Header userId={userId} teams={teams} />
 
-      {/* Main content */}
-      <div className="lg:pl-64">
-        <Header setSidebarOpen={setSidebarOpen} />
-
-        {/* Page content */}
-        <main className="py-8 px-4 sm:px-6 lg:px-8">
+        <main className="py-8 px-4 sm:px-6 lg:px-12">
           <Suspense>{children}</Suspense>
         </main>
       </div>
