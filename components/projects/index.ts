@@ -6,4 +6,5 @@ export { default as ProjectDangerZoneSection } from "@/components/projects/form/
 export { default as ProjectSettingsSection } from "@/components/projects/form/sections/ProjectSettingsSection";
 export { default as ProjectAlertMessages } from "@/components/projects/form/AlertMessages";
 export { default as DeleteProjectDialog } from "@/components/projects/form/dialog/DeleteProjectDialog";
+export { default as ArchiveProjectDialog } from "@/components/projects/form/dialog/ArchiveProjectDialog";
 export { default as ProjectCard } from "@/components/projects/ui/ProjectCard";

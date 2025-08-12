@@ -15,6 +15,7 @@ import {
   ProjectSettingsSection,
   ProjectDangerZoneSection,
   DeleteProjectDialog,
+  ArchiveProjectDialog,
 } from "@/components/projects";
 
 import type { ProjectFormData, ProjectSettings } from "@/types";
@@ -39,9 +40,11 @@ export default function ProjectEditForm({
   const [activeSection, setActiveSection] = useState<string>("information");
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [error, setError] = useState<string>("");
+  const [archiveError, setArchiveError] = useState<string>("");
   const [success, setSuccess] = useState<boolean>(false);
   const [isManualSlug, setIsManualSlug] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showArchiveModal, setShowArchiveModal] = useState(false);
   const [deleteStep, setDeleteStep] = useState(1);
   const [confirmationText, setConfirmationText] = useState("");
   const [deleteError, setDeleteError] = useState("");
@@ -136,13 +139,14 @@ export default function ProjectEditForm({
     }));
   };
 
-  const handleArchive = async (): Promise<void> => {
-    if (!window.confirm("Are you sure you want to archive this project?")) {
-      return;
-    }
+  const handleArchiveClick = () => {
+    setShowArchiveModal(true);
+    setArchiveError("");
+  };
 
+  const handleArchive = async (): Promise<void> => {
     setIsSubmitting(true);
-    setError("");
+    setArchiveError("");
 
     try {
       const updateData: UpdateProject = {
@@ -153,6 +157,7 @@ export default function ProjectEditForm({
       const result = await updateProjectAsync(updateData);
 
       if (result.success) {
+        setShowArchiveModal(false);
         setSuccess(true);
         setTimeout(() => {
           router.push(`/team/${project.team?.slug}`);
@@ -163,7 +168,7 @@ export default function ProjectEditForm({
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : "An unexpected error occurred";
-      setError(errorMessage);
+      setArchiveError(errorMessage);
       console.error("Error archiving project:", err);
     } finally {
       setIsSubmitting(false);
@@ -295,7 +300,7 @@ export default function ProjectEditForm({
         {isProjectOwner && (
           <ProjectDangerZoneSection
             project={project}
-            onArchive={handleArchive}
+            onArchive={handleArchiveClick}
             onDelete={handleDeleteModalOpen}
             isArchiving={isSubmitting && !error}
             sectionRef={dangerZoneRef}
@@ -355,6 +360,16 @@ export default function ProjectEditForm({
           </div>
         </div>
       </form>
+
+      {/* Archive Modal */}
+      <ArchiveProjectDialog
+        isOpen={showArchiveModal}
+        onClose={() => setShowArchiveModal(false)}
+        project={project}
+        onArchive={handleArchive}
+        isArchiving={isSubmitting}
+        error={archiveError}
+      />
 
       {/* Delete Modal */}
       {showDeleteModal && (

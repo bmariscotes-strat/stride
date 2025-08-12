@@ -17,13 +17,16 @@ import type {
 } from "@/types";
 
 // Import components
-import NavigationSidebar from "@/components/team/settings/NavigationSidebar";
-import AlertMessages from "@/components/team/settings/AlertMessages";
-import TeamInformationSection from "@/components/team/settings/sections/InformationSection";
-import TeamMembersSection from "@/components/team/settings/sections/MembersSection";
-import TeamSettingsSection from "@/components/team/settings/sections/SettingsSection";
-import DangerZoneSection from "@/components/team/settings/sections/DangerZoneSection";
-import DeleteTeamModal from "@/components/team/settings/dialog/DeleteTeamDialog";
+import {
+  NavigationSidebar,
+  AlertMessages,
+  TeamInformationSection,
+  TeamMembersSection,
+  TeamSettingsSection,
+  DangerZoneSection,
+  DeleteTeamModal,
+  ArchiveTeamDialog,
+} from "@/components/team";
 
 interface FormData {
   name: string;
@@ -73,8 +76,10 @@ export default function UpdateTeamPage({ team }: UpdateTeamPageProps) {
   const [isArchiving, setIsArchiving] = useState<boolean>(false);
   const [isDeleting, setIsDeleting] = useState<boolean>(false);
   const [error, setError] = useState<string>("");
+  const [archiveError, setArchiveError] = useState<string>("");
   const [success, setSuccess] = useState<boolean>(false);
   const [showDeleteModal, setShowDeleteModal] = useState<boolean>(false);
+  const [showArchiveModal, setShowArchiveModal] = useState<boolean>(false);
   const [deleteStep, setDeleteStep] = useState<number>(1);
   const [confirmationText, setConfirmationText] = useState<string>("");
 
@@ -227,27 +232,33 @@ export default function UpdateTeamPage({ team }: UpdateTeamPageProps) {
     }
   };
 
+  const handleArchiveClick = () => {
+    setShowArchiveModal(true);
+    setArchiveError("");
+  };
+
   const handleArchive = async (): Promise<void> => {
     if (!currentUserId) {
-      handleError("You must be logged in to archive a team");
+      setArchiveError("You must be logged in to archive a team");
       return;
     }
 
     setIsArchiving(true);
-    setError("");
+    setArchiveError("");
 
     try {
       const result = await archiveTeamAction(team.id, currentUserId);
 
       if (result.success) {
+        setShowArchiveModal(false);
         router.push("/team");
       } else {
-        handleError(result.error || "Failed to archive team");
+        setArchiveError(result.error || "Failed to archive team");
       }
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : "An unexpected error occurred";
-      handleError(errorMessage);
+      setArchiveError(errorMessage);
       console.error("Error archiving team:", err);
     } finally {
       setIsArchiving(false);
@@ -376,7 +387,7 @@ export default function UpdateTeamPage({ team }: UpdateTeamPageProps) {
               {/* Danger Zone Section */}
               <DangerZoneSection
                 team={team}
-                onArchive={handleArchive}
+                onArchive={handleArchiveClick}
                 onDelete={openDeleteModal}
                 isArchiving={isArchiving}
                 sectionRef={dangerZoneRef}
@@ -435,6 +446,16 @@ export default function UpdateTeamPage({ team }: UpdateTeamPageProps) {
             </form>
           </div>
         }
+      />
+
+      {/* Archive Confirmation Modal */}
+      <ArchiveTeamDialog
+        isOpen={showArchiveModal}
+        onClose={() => setShowArchiveModal(false)}
+        team={team}
+        onArchive={handleArchive}
+        isArchiving={isArchiving}
+        error={archiveError}
       />
 
       {/* Delete Confirmation Modal */}
