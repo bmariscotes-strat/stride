@@ -17,8 +17,8 @@ import type {
 } from "@/types";
 
 // Import components
+import NavigationSidebar from "@/components/layout/shared/NavigationSidebar";
 import {
-  NavigationSidebar,
   AlertMessages,
   TeamInformationSection,
   TeamMembersSection,
@@ -99,33 +99,35 @@ export default function UpdateTeamPage({ team }: UpdateTeamPageProps) {
   const settingsRef = useRef<HTMLDivElement>(null);
   const dangerZoneRef = useRef<HTMLDivElement>(null);
 
-  // Handle scroll to update active section
+  // Optional: Add scroll spy to automatically update active section based on scroll position
   useEffect(() => {
-    const observerOptions: IntersectionObserverInit = {
-      root: null,
-      rootMargin: "-20% 0px -80% 0px",
-      threshold: 0,
-    };
+    const handleScroll = () => {
+      const sections = ["information", "members", "settings", "danger-zone"];
+      let currentSection = "information";
 
-    const observerCallback: IntersectionObserverCallback = (entries) => {
-      entries.forEach((entry) => {
-        if (entry.isIntersecting) {
-          setActiveSection(entry.target.id);
+      for (const sectionId of sections) {
+        const element = document.getElementById(sectionId);
+        if (element) {
+          const rect = element.getBoundingClientRect();
+          // If the section is in the upper half of the viewport, consider it active
+          if (rect.top <= window.innerHeight / 2 && rect.bottom >= 0) {
+            currentSection = sectionId;
+          }
         }
-      });
+      }
+
+      setActiveSection(currentSection);
     };
 
-    const observer = new IntersectionObserver(
-      observerCallback,
-      observerOptions
-    );
+    // Add scroll listener for scroll spy functionality
+    window.addEventListener("scroll", handleScroll);
 
-    if (informationRef.current) observer.observe(informationRef.current);
-    if (membersRef.current) observer.observe(membersRef.current);
-    if (settingsRef.current) observer.observe(settingsRef.current);
-    if (dangerZoneRef.current) observer.observe(dangerZoneRef.current);
+    // Initial check
+    handleScroll();
 
-    return () => observer.disconnect();
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+    };
   }, []);
 
   // Auto-generate slug from name
@@ -157,7 +159,9 @@ export default function UpdateTeamPage({ team }: UpdateTeamPageProps) {
     }));
   };
 
+  // Fixed: Update both scroll and active section
   const scrollToSection = (sectionId: string): void => {
+    setActiveSection(sectionId); // Add this line to update the active section
     const element = document.getElementById(sectionId);
     if (element) {
       element.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -318,7 +322,11 @@ export default function UpdateTeamPage({ team }: UpdateTeamPageProps) {
     { id: "information", label: "Information", icon: Info },
     { id: "members", label: "Members", icon: Users },
     { id: "settings", label: "Settings", icon: Settings },
-    { id: "danger-zone", label: "Danger Zone", icon: Trash2 },
+    {
+      id: "danger-zone",
+      label: "Danger Zone",
+      icon: AlertTriangle,
+    },
   ];
 
   // Show loading if user is not loaded yet
@@ -353,6 +361,8 @@ export default function UpdateTeamPage({ team }: UpdateTeamPageProps) {
             activeSection={activeSection}
             navigationItems={navigationItems}
             onScrollToSection={scrollToSection}
+            title="Team Settings"
+            subtitle={`Manage ${team.name} settings`}
           />
         }
         right={

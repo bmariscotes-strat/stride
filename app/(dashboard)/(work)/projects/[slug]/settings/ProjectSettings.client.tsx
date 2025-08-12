@@ -40,12 +40,44 @@ export default function ProjectSettings({
   const canManageProject =
     isProjectOwner || userRole === "owner" || userRole === "admin";
 
+  // Fixed: Update both scroll and active section
   const scrollToSection = (sectionId: string): void => {
+    setActiveSection(sectionId); // Add this line to update the active section
     const element = document.getElementById(sectionId);
     if (element) {
       element.scrollIntoView({ behavior: "smooth", block: "start" });
     }
   };
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const sections = ["information", "settings", "danger-zone"];
+      let currentSection = "information";
+
+      for (const sectionId of sections) {
+        const element = document.getElementById(sectionId);
+        if (element) {
+          const rect = element.getBoundingClientRect();
+          // If the section is in the upper half of the viewport, consider it active
+          if (rect.top <= window.innerHeight / 2 && rect.bottom >= 0) {
+            currentSection = sectionId;
+          }
+        }
+      }
+
+      setActiveSection(currentSection);
+    };
+
+    // Add scroll listener for scroll spy functionality
+    window.addEventListener("scroll", handleScroll);
+
+    // Initial check
+    handleScroll();
+
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+    };
+  }, []);
 
   // Navigation items for the sidebar
   const navigationItems: NavigationItem[] = [
