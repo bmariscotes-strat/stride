@@ -61,7 +61,7 @@ export async function getNotificationUrlById(
     }
 
     if (notification.projectId && projectSlug) {
-      return `/team/${teamSlug}/project/${projectSlug}`;
+      return `projects/${projectSlug}`;
     }
 
     return `/team/${teamSlug}`;
