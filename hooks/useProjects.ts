@@ -123,7 +123,10 @@ export function useProjects(
 
   // Update project mutation
   const updateProjectMutation = useMutation({
-    mutationFn: (data: UpdateProject) => updateProjectAction(data),
+    mutationFn: (data: UpdateProject) => {
+      if (!currentUserId) throw new Error("User not authenticated");
+      return updateProjectAction({ ...data, userId: currentUserId });
+    },
     onMutate: async (newData) => {
       // Cancel any outgoing refetches (so they don't overwrite our optimistic update)
       await queryClient.cancelQueries({
@@ -321,9 +324,14 @@ export function useCreateProject() {
  */
 export function useUpdateProject() {
   const queryClient = useQueryClient();
+  const { userData, clerkUser } = useUserContext();
+  const currentUserId = userData?.id || clerkUser?.id;
 
   return useMutation({
-    mutationFn: (data: UpdateProject) => updateProjectAction(data),
+    mutationFn: (data: UpdateProject) => {
+      if (!currentUserId) throw new Error("User not authenticated");
+      return updateProjectAction({ ...data, userId: currentUserId });
+    },
     onSuccess: (result, variables) => {
       if (result.success && result.project) {
         // Update the cache
