@@ -1,5 +1,5 @@
 // types/utility.ts
-import type { Priority } from "./enums";
+import type { Priority } from "@/types";
 import type {
   User,
   Card,

@@ -1,5 +1,6 @@
 // types/base.ts
-import type { TeamRole, Priority, NotificationType } from "./enums";
+import type { TeamRole } from "@/types/enums/permissions";
+import type { Priority, NotificationType } from "@/types/enums/notif";
 
 // =============================================================================
 // CORE ENTITY INTERFACES - Main business entities
@@ -134,6 +135,7 @@ export interface ActivityLog {
   actionType: string;
   oldValue: string | null;
   newValue: string | null;
+  teamId: string | null;
   createdAt: Date;
 }
 
@@ -145,6 +147,7 @@ export interface Notification {
   message: string | null;
   cardId: string | null;
   projectId: string | null;
+  teamId: string | null;
   isRead: boolean;
   createdAt: Date;
 }

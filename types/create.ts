@@ -1,5 +1,6 @@
 // types/create.ts
-import type { TeamRole, Priority, NotificationType } from "./enums";
+import type { TeamRole } from "@/types/enums/permissions";
+import type { Priority, NotificationType } from "./enums/notif";
 
 // =============================================================================
 // CREATE INTERFACES - For creating new records (omitting auto-generated fields)
@@ -98,6 +99,7 @@ export interface CreateNotification {
   message?: string | null;
   cardId?: string | null;
   projectId?: string | null;
+  teamId?: string | null;
 }
 
 export interface CreateMention {
