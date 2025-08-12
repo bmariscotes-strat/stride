@@ -267,8 +267,8 @@ const NavDropdown = React.memo<NavDropdownProps>(
                           className={`text-xs mt-0.5 overflow-hidden text-ellipsis whitespace-nowrap ${
                             isActive ? "text-primary" : "text-gray-500"
                           }`}
-                          style={{ maxWidth: "100%" }}
-                          title={item.description || item.type} // Show full text on hover
+                          style={{ maxWidth: "220px" }} // More specific max width
+                          title={item.description || item.type}
                         >
                           {item.description || item.type}
                         </div>
