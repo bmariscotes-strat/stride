@@ -250,7 +250,7 @@ export default function ProjectEditForm({
         // Navigate to updated project after a short delay
         setTimeout(() => {
           if (result.project!.slug !== project.slug) {
-            router.push(`projects/${result.project!.slug}`);
+            router.push(`../${result.project!.slug}`);
           }
         }, 2000);
       } else {
