@@ -68,6 +68,14 @@ export interface TeamWithRelations extends Team {
   projects?: ProjectTeamWithRelations[]; // Changed from Project[] to ProjectTeam[]
 }
 
+export interface TeamWithProjectRoleRelations {
+  team?: TeamWithRelations;
+  members?: TeamMemberWithRelations[];
+  // Project-specific role assignment
+  projectRole: "admin" | "editor" | "viewer";
+  memberRoles: Record<string, "admin" | "editor" | "viewer">;
+}
+
 export interface ProjectWithRelations extends Project {
   teams?: TeamWithProjectRole[]; // Changed from single team to multiple teams with roles
   owner?: User;

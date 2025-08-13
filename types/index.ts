@@ -35,6 +35,7 @@ export type {
   ActivityLogWithRelations,
   NotificationWithRelations,
   MentionWithRelations,
+  TeamWithProjectRoleRelations,
 } from "./relations";
 
 // Create interfaces
@@ -105,6 +106,7 @@ export type {
   ProjectFormData,
   ProjectWithPartialRelations,
   ProjectsListOptions,
+  UserBasic,
 } from "./forms/project";
 
 // Notification

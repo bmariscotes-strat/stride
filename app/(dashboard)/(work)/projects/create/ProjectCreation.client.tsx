@@ -1,4 +1,4 @@
-// projects/create/ProjectCreation.client.tsx
+// projects/create/ProjectCreation.client.tsx - Minor update to pass currentUserId
 "use client";
 import React, { useState, useEffect } from "react";
 import DualPanelLayout from "@/components/layout/shared/DualPanelLayout";
@@ -119,6 +119,7 @@ export default function ProjectCreation({
         <ProjectCreationForm
           teams={teams}
           selectedTeamId={selectedTeamId}
+          currentUserId={currentUserId}
           onNavigateBack={navigateBack}
         />
       }

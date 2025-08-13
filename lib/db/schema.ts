@@ -132,7 +132,6 @@ export const projects = pgTable(
   })
 );
 
-// NEW: Junction table for project-team relationships with roles
 export const projectTeams = pgTable(
   "project_teams",
   {
@@ -140,7 +139,7 @@ export const projectTeams = pgTable(
     projectId: uuid("project_id").notNull(),
     teamId: uuid("team_id").notNull(),
     role: projectTeamRoleEnum("role").notNull(),
-    addedBy: uuid("added_by").notNull(), // Who added this team to the project
+    addedBy: uuid("added_by").notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
@@ -166,6 +165,51 @@ export const projectTeams = pgTable(
       columns: [table.addedBy],
       foreignColumns: [users.id],
       name: "fk_project_teams_added_by",
+    }).onDelete("restrict"),
+  })
+);
+
+// NEW: Assign project roles to team members
+export const projectTeamMembers = pgTable(
+  "project_team_members",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    projectId: uuid("project_id").notNull(),
+    teamMemberId: uuid("team_member_id").notNull(), // links to team_members.id
+    role: projectTeamRoleEnum("role").notNull(),
+    addedBy: uuid("added_by").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    projectMemberUnique: unique("project_member_unique").on(
+      table.projectId,
+      table.teamMemberId
+    ),
+    projectIdIdx: index("project_team_members_project_id_idx").on(
+      table.projectId
+    ),
+    teamMemberIdIdx: index("project_team_members_team_member_id_idx").on(
+      table.teamMemberId
+    ),
+    addedByIdx: index("project_team_members_added_by_idx").on(table.addedBy),
+
+    projectIdFk: foreignKey({
+      columns: [table.projectId],
+      foreignColumns: [projects.id],
+      name: "fk_project_team_members_project_id",
+    }).onDelete("cascade"),
+
+    teamMemberIdFk: foreignKey({
+      columns: [table.teamMemberId],
+      foreignColumns: [teamMembers.id],
+      name: "fk_project_team_members_team_member_id",
+    }).onDelete("cascade"),
+
+    addedByFk: foreignKey({
+      columns: [table.addedBy],
+      foreignColumns: [users.id],
+      name: "fk_project_team_members_added_by",
     }).onDelete("restrict"),
   })
 );

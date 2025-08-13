@@ -24,12 +24,10 @@ export interface CreateTeam {
   createdBy: string;
 }
 
-// UPDATED: CreateProject interface - removed teamId since projects now have many-to-many relationships
 export interface CreateProject {
   name: string;
   slug: string;
   description?: string | null;
-  // teamId: string; // REMOVED - will be handled via projectTeams junction table
   ownerId: string;
   colorTheme?: string | null;
 }
@@ -123,8 +121,13 @@ export interface CreateMention {
 // EXTENDED CREATE INTERFACES FOR COMPLEX OPERATIONS
 // =============================================================================
 
-// For creating a project with initial team assignments
 export interface CreateProjectWithTeams extends CreateProject {
+  teamIds: string[]; // Array of team IDs - matches what your hook expects
+  teamRoles?: Record<string, "admin" | "editor" | "viewer">; // Optional roles per team
+}
+
+// Alternative interface using teamAssignments array (if you prefer this structure)
+export interface CreateProjectWithTeamAssignments extends CreateProject {
   teamAssignments: Array<{
     teamId: string;
     role: "admin" | "editor" | "viewer";

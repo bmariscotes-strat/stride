@@ -18,14 +18,20 @@ import {
 import { getTeamBySlug } from "@/lib/services/teams";
 import { getTeamProjectsAction } from "@/lib/services/projects";
 import type {
+  Project,
   TeamWithRelations,
   TeamMemberWithRelations,
-} from "@/types/relations";
+} from "@/types";
 import UserAvatar from "@/components/shared/UserAvatar";
 
 // Define the expected team type with members that include user data
-interface TeamPageData extends TeamWithRelations {
+export interface TeamPageData
+  extends Omit<TeamWithRelations, "projects" | "members"> {
   members: TeamMemberWithRelations[];
+  projects: (Project & {
+    teamRole: "owner" | "admin" | "viewer" | "editor";
+    addedAt: Date;
+  })[];
   currentUserRole?: string;
 }
 

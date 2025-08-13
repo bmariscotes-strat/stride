@@ -1,4 +1,4 @@
-// types/forms/project
+// types/forms/project.ts - Updated types
 import type { Team, User, Project, TeamWithRelations } from "@/types";
 
 // Basic Types
@@ -32,11 +32,13 @@ export interface ProjectSettings {
   colorTheme?: string;
 }
 
+// Updated to support multiple teams
 export interface ProjectFormData {
   name: string;
   slug: string;
   description: string;
-  teamId: string;
+  teamIds: string[]; // Changed from teamId to teamIds
+  teamRoles: Record<string, "admin" | "editor" | "viewer">; // Roles for each team
   settings: ProjectSettings;
 }
 
@@ -51,16 +53,23 @@ export interface ProjectCreationProps {
   selectedTeamId?: string;
 }
 
+// Updated to support multiple teams and roles
 export interface ProjectFormSectionProps {
   formData: ProjectFormData;
   onInputChange: (
-    field: keyof Omit<ProjectFormData, "settings">,
-    value: string
+    field: keyof Omit<ProjectFormData, "settings" | "teamRoles">,
+    value: string | string[]
   ) => void;
   onSlugChange: (value: string) => void;
   onSettingChange: (setting: keyof ProjectSettings, value: string) => void;
+  onTeamRoleChange: (
+    teamId: string,
+    role: "admin" | "editor" | "viewer"
+  ) => void;
+  onTeamsChange: (teamIds: string[]) => void;
   teams: Team[];
   error: string;
+  currentUserId: string; // Added to determine default roles
 }
 
 export interface ProjectFormNavigationProps {
@@ -80,6 +89,7 @@ export interface ProjectFormMessagesProps {
   success: boolean;
   error: string;
 }
+
 // Base filtering and pagination options (reusable across entities)
 export interface BaseListOptions {
   search?: string;
@@ -94,4 +104,19 @@ export interface ProjectsListOptions extends BaseListOptions {
   ownerId?: string;
   isArchived?: boolean;
   orderBy?: ProjectSortableFields;
+}
+
+// New interfaces for team member role assignment
+export interface TeamMemberWithRole {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  avatarUrl?: string;
+  role: "admin" | "editor" | "viewer";
+}
+
+export interface TeamWithMembersAndRoles extends Team {
+  members: TeamMemberWithRole[];
+  projectRole: "admin" | "editor" | "viewer"; // The role this team will have in the project
 }

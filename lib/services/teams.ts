@@ -574,29 +574,33 @@ export async function getTeamsForUser(userId: string) {
       .select({
         team: teams,
         role: teamMembers.role,
-        memberCount: teamMembers.id,
       })
       .from(teamMembers)
       .innerJoin(teams, eq(teamMembers.teamId, teams.id))
       .where(and(eq(teamMembers.userId, userId), eq(teams.isArchived, false)));
 
-    // Get member counts for each team
-    const teamsWithCounts = await Promise.all(
+    // Attach full members array to each team
+    const teamsWithMembers = await Promise.all(
       userTeams.map(async (item) => {
-        const memberCount = await db
-          .select({ count: teamMembers.id })
+        const members = await db
+          .select({
+            id: teamMembers.id,
+            role: teamMembers.role,
+            user: users, // assumes you have `users` table imported
+          })
           .from(teamMembers)
+          .innerJoin(users, eq(teamMembers.userId, users.id))
           .where(eq(teamMembers.teamId, item.team.id));
 
         return {
           ...item.team,
           role: item.role,
-          memberCount: memberCount.length,
+          members, // full array of members with user details
         };
       })
     );
 
-    return teamsWithCounts;
+    return teamsWithMembers;
   } catch (error) {
     console.error("Error fetching teams:", error);
     return [];
