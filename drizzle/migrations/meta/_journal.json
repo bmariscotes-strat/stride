@@ -15,6 +15,13 @@
       "when": 1754551825141,
       "tag": "0001_tired_morlocks",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1755056324058,
+      "tag": "0002_dapper_terror",
+      "breakpoints": true
     }
   ]
 }
