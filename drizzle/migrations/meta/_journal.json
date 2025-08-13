@@ -22,6 +22,13 @@
       "when": 1755056324058,
       "tag": "0002_dapper_terror",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1755064553146,
+      "tag": "0003_huge_stick",
+      "breakpoints": true
     }
   ]
 }
