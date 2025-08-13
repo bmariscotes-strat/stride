@@ -613,8 +613,17 @@ export async function getTeamBySlug(slug: string, userId: string) {
             user: true,
           },
         },
-        projects: true,
-        labels: true,
+        projects: {
+          // This now refers to the projectTeams junction table
+          with: {
+            project: true, // Get the actual project data through the junction
+          },
+          where: (pt, { eq }) => {
+            // If you want to filter by project status, you'd need to join
+            // For now, we'll filter in the transformation step below
+            return undefined; // Remove this line if not filtering at query level
+          },
+        },
       },
     });
 
@@ -627,9 +636,19 @@ export async function getTeamBySlug(slug: string, userId: string) {
       (member) => member.user.id === userId
     );
 
-    // Return team with current user role
+    // Transform the projects data to get actual project objects
+    const projectsData = team.projects
+      .filter((projectTeam) => !projectTeam.project.isArchived) // Filter out archived projects
+      .map((projectTeam) => ({
+        ...projectTeam.project, // Spread the actual project properties
+        teamRole: projectTeam.role, // Include the team's role in this project
+        addedAt: projectTeam.createdAt, // When this team was added to the project
+      }));
+
+    // Return team with current user role and properly mapped projects
     return {
       ...team,
+      projects: projectsData, // Replace the junction data with actual project data
       currentUserRole: currentUserMembership?.role || null,
     };
   } catch (error) {
@@ -906,11 +925,16 @@ export async function deleteTeamAction(
       };
     }
 
-    // Get team details
+    // Get team details with proper project relationships
     const team = await db.query.teams.findFirst({
       where: eq(teams.id, teamId),
       with: {
-        projects: true,
+        projects: {
+          // This gets projectTeams records
+          with: {
+            project: true, // Get the actual project data
+          },
+        },
       },
     });
 
@@ -937,9 +961,13 @@ export async function deleteTeamAction(
       };
     }
 
-    // Check if team has active projects
+    // Check if team has active projects - need to access through junction table
     if (team.projects && team.projects.length > 0) {
-      const activeProjects = team.projects.filter((p) => !p.isArchived);
+      // Extract actual projects from the junction table and filter archived ones
+      const activeProjects = team.projects
+        .map((pt) => pt.project) // Get the actual project from projectTeam
+        .filter((project) => !project.isArchived); // Now we can access isArchived
+
       if (activeProjects.length > 0) {
         return {
           success: false,
@@ -957,7 +985,6 @@ export async function deleteTeamAction(
       metadata: {
         teamId: team.id,
         slug: team.slug,
-
         deletedAt: new Date().toISOString(),
         confirmationText: confirmationText,
       },

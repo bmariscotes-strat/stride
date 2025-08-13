@@ -33,12 +33,12 @@ export interface Team {
   updatedAt: Date;
 }
 
+// UPDATED: Project interface - removed teamId since projects now have many-to-many relationships with teams
 export interface Project {
   id: string;
   name: string;
   slug: string;
   description: string | null;
-  teamId: string;
   ownerId: string;
   colorTheme: string | null;
   isArchived: boolean;
@@ -74,12 +74,27 @@ export interface Card {
   updatedAt: Date;
 }
 
+// UPDATED: Label interface - changed from teamId to projectId
 export interface Label {
   id: string;
   name: string;
   color: string;
-  teamId: string;
+  projectId: string; // Changed from teamId to projectId
   createdAt: Date;
+}
+
+// =============================================================================
+// NEW: PROJECT-TEAM RELATIONSHIP INTERFACE
+// =============================================================================
+
+export interface ProjectTeam {
+  id: string;
+  projectId: string;
+  teamId: string;
+  role: "admin" | "editor" | "viewer";
+  addedBy: string;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 // =============================================================================
@@ -130,12 +145,12 @@ export interface CardAttachment {
 export interface ActivityLog {
   id: number;
   projectId: string | null;
+  teamId: string | null;
   cardId: string | null;
   userId: string;
   actionType: string;
   oldValue: string | null;
   newValue: string | null;
-  teamId: string | null;
   createdAt: Date;
 }
 
@@ -154,7 +169,7 @@ export interface Notification {
 
 export interface Mention {
   id: number;
-  commentId: string;
+  commentId: number;
   mentionedUserId: string;
   mentionedBy: string;
   createdAt: Date;

@@ -24,13 +24,22 @@ export interface CreateTeam {
   createdBy: string;
 }
 
+// UPDATED: CreateProject interface - removed teamId since projects now have many-to-many relationships
 export interface CreateProject {
   name: string;
   slug: string;
   description?: string | null;
-  teamId: string;
+  // teamId: string; // REMOVED - will be handled via projectTeams junction table
   ownerId: string;
   colorTheme?: string | null;
+}
+
+// NEW: Interface for creating project-team relationships
+export interface CreateProjectTeam {
+  projectId: string;
+  teamId: string;
+  role: "admin" | "editor" | "viewer";
+  addedBy: string;
 }
 
 export interface CreateColumn {
@@ -52,10 +61,11 @@ export interface CreateCard {
   status?: string | null;
 }
 
+// UPDATED: CreateLabel interface - changed from teamId to projectId
 export interface CreateLabel {
   name: string;
   color: string;
-  teamId: string;
+  projectId: string; // Changed from teamId to projectId
 }
 
 export interface CreateTeamMember {
@@ -85,6 +95,7 @@ export interface CreateCardAttachment {
 
 export interface CreateActivityLog {
   projectId?: string | null;
+  teamId?: string | null;
   cardId?: string | null;
   userId: string;
   actionType: string;
@@ -103,7 +114,29 @@ export interface CreateNotification {
 }
 
 export interface CreateMention {
-  commentId: string;
+  commentId: number; // Changed from string to number to match cardComments.id
   mentionedUserId: string;
   mentionedBy: string;
+}
+
+// =============================================================================
+// EXTENDED CREATE INTERFACES FOR COMPLEX OPERATIONS
+// =============================================================================
+
+// For creating a project with initial team assignments
+export interface CreateProjectWithTeams extends CreateProject {
+  teamAssignments: Array<{
+    teamId: string;
+    role: "admin" | "editor" | "viewer";
+  }>;
+}
+
+// For bulk creating project-team relationships
+export interface BulkCreateProjectTeams {
+  projectId: string;
+  assignments: Array<{
+    teamId: string;
+    role: "admin" | "editor" | "viewer";
+  }>;
+  addedBy: string;
 }

@@ -20,6 +20,12 @@ import type {
   ProjectsListOptions,
 } from "@/types";
 
+// Local helper type for create (matches service signature)
+type CreateProjectManyToMany = CreateProject & {
+  teamIds: string[];
+  teamRoles?: Record<string, "admin" | "editor" | "viewer">;
+};
+
 // Query keys for consistent caching
 export const projectKeys = {
   all: ["projects"] as const,
@@ -28,13 +34,13 @@ export const projectKeys = {
     [...projectKeys.lists(), { filters }] as const,
   details: () => [...projectKeys.all, "detail"] as const,
   detail: (id: string) => [...projectKeys.details(), id] as const,
-  bySlug: (teamId: string, slug: string) =>
-    [...projectKeys.all, "bySlug", teamId, slug] as const,
+  bySlug: (slug: string) => [...projectKeys.all, "bySlug", slug] as const,
   team: (teamId: string) => [...projectKeys.all, "team", teamId] as const,
 };
 
 /**
  * Hook for fetching team projects with optional filtering and pagination
+ * (service still accepts a single teamId)
  */
 export function useTeamProjects(
   teamId: string,
@@ -56,20 +62,19 @@ export function useProject(projectId?: string) {
     queryKey: projectKeys.detail(projectId || ""),
     queryFn: () => (projectId ? getProjectAction(projectId) : null),
     enabled: !!projectId,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 5 * 60 * 1000,
   });
 }
 
 /**
- * Hook for fetching a project by team and slug
+ * Hook for fetching a project by slug (global uniqueness)
  */
-export function useProjectBySlug(teamId?: string, slug?: string) {
+export function useProjectBySlug(slug?: string) {
   return useQuery({
-    queryKey: projectKeys.bySlug(teamId || "", slug || ""),
-    queryFn: () =>
-      teamId && slug ? getProjectBySlugAction(teamId, slug) : null,
-    enabled: !!(teamId && slug),
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    queryKey: projectKeys.bySlug(slug || ""),
+    queryFn: () => (slug ? getProjectBySlugAction(slug) : null),
+    enabled: !!slug,
+    staleTime: 5 * 60 * 1000,
   });
 }
 
@@ -84,7 +89,7 @@ export function useProjects(
   const { userData, clerkUser } = useUserContext();
   const currentUserId = userData?.id || clerkUser?.id;
 
-  // Fetch projects query
+  // Fetch projects for a team
   const {
     data: projects = [],
     isLoading,
@@ -94,23 +99,22 @@ export function useProjects(
     queryKey: projectKeys.list({ teamId, ...options }),
     queryFn: () => (teamId ? getTeamProjectsAction(teamId, options) : []),
     enabled: !!teamId,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 5 * 60 * 1000,
   });
 
-  // Create project mutation
+  // Create project (many-to-many)
   const createProjectMutation = useMutation({
-    mutationFn: (data: CreateProject) => createProjectAction(data),
+    mutationFn: (data: CreateProjectManyToMany) => createProjectAction(data),
     onSuccess: (result, variables) => {
       if (result.success) {
-        // Invalidate and refetch team projects
-        queryClient.invalidateQueries({
-          queryKey: projectKeys.team(variables.teamId),
+        // Invalidate each related team list
+        variables.teamIds?.forEach((tid) => {
+          queryClient.invalidateQueries({ queryKey: projectKeys.team(tid) });
         });
-        queryClient.invalidateQueries({
-          queryKey: projectKeys.lists(),
-        });
+        // Invalidate generic lists
+        queryClient.invalidateQueries({ queryKey: projectKeys.lists() });
 
-        // Add the new project to the cache optimistically
+        // Seed detail cache
         if (result.project) {
           queryClient.setQueryData(
             projectKeys.detail(result.project.id),
@@ -121,31 +125,30 @@ export function useProjects(
     },
   });
 
-  // Update project mutation
+  // Update project (uses cached teams for invalidation)
   const updateProjectMutation = useMutation({
     mutationFn: (data: UpdateProject) => {
       if (!currentUserId) throw new Error("User not authenticated");
       return updateProjectAction({ ...data, userId: currentUserId });
     },
     onMutate: async (newData) => {
-      // Cancel any outgoing refetches (so they don't overwrite our optimistic update)
       await queryClient.cancelQueries({
         queryKey: projectKeys.detail(newData.id),
       });
 
-      // Snapshot the previous value
       const previousProject =
         queryClient.getQueryData<ProjectWithPartialRelations>(
           projectKeys.detail(newData.id)
         );
 
-      // Optimistically update the cache
+      // Optimistic update; preserve teams array if present
       if (previousProject) {
         queryClient.setQueryData<ProjectWithPartialRelations>(
           projectKeys.detail(newData.id),
           {
             ...previousProject,
             ...newData,
+            teams: previousProject.teams ?? [], // keep M2M relations
             updatedAt: new Date(),
           }
         );
@@ -154,7 +157,6 @@ export function useProjects(
       return { previousProject };
     },
     onError: (_error, _variables, context) => {
-      // Revert the optimistic update on error
       if (context?.previousProject) {
         queryClient.setQueryData(
           projectKeys.detail(context.previousProject.id),
@@ -164,32 +166,37 @@ export function useProjects(
     },
     onSuccess: (result, variables) => {
       if (result.success && result.project) {
-        // Update the cache with the server response
-        queryClient.setQueryData(
-          projectKeys.detail(variables.id),
-          result.project
+        // Update detail cache
+        const prev = queryClient.getQueryData<ProjectWithPartialRelations>(
+          projectKeys.detail(variables.id)
         );
 
-        // Invalidate related queries
-        queryClient.invalidateQueries({
-          queryKey: projectKeys.lists(),
-        });
-        if (result.project.teamId) {
-          queryClient.invalidateQueries({
-            queryKey: projectKeys.team(result.project.teamId),
-          });
-        }
+        queryClient.setQueryData<ProjectWithPartialRelations>(
+          projectKeys.detail(variables.id),
+          {
+            ...(result.project as any),
+            // keep teams from cache if service doesn't return them
+            ...(prev?.teams ? { teams: prev.teams } : {}),
+          } as ProjectWithPartialRelations
+        );
+
+        // Invalidate lists
+        queryClient.invalidateQueries({ queryKey: projectKeys.lists() });
+
+        // Fan-out invalidate for all related teams (from cached version)
+        prev?.teams?.forEach((t) =>
+          queryClient.invalidateQueries({ queryKey: projectKeys.team(t.id) })
+        );
       }
     },
     onSettled: (_result, _error, variables) => {
-      // Always refetch after mutation settles (success or error)
       queryClient.invalidateQueries({
         queryKey: projectKeys.detail(variables.id),
       });
     },
   });
 
-  // Delete project mutation
+  // Hard delete project (use cached teams for invalidation)
   const deleteProjectMutation = useMutation({
     mutationFn: ({
       projectId,
@@ -199,18 +206,16 @@ export function useProjects(
       userId: string;
     }) => hardDeleteProjectAction(projectId, userId),
     onMutate: async ({ projectId }) => {
-      // Cancel any outgoing refetches
       await queryClient.cancelQueries({
         queryKey: projectKeys.detail(projectId),
       });
 
-      // Snapshot the previous value
       const previousProject =
         queryClient.getQueryData<ProjectWithPartialRelations>(
           projectKeys.detail(projectId)
         );
 
-      // Optimistically remove from lists
+      // Optimistically drop from any lists in cache
       queryClient.setQueriesData<ProjectWithPartialRelations[]>(
         { queryKey: projectKeys.lists() },
         (old) => (old ? old.filter((p) => p.id !== projectId) : [])
@@ -219,28 +224,27 @@ export function useProjects(
       return { previousProject };
     },
     onError: (_error, { projectId }, context) => {
-      // Revert the optimistic update on error
       if (context?.previousProject) {
         queryClient.setQueryData(
           projectKeys.detail(projectId),
           context.previousProject
         );
-        // Refetch lists to restore the item
-        queryClient.invalidateQueries({
-          queryKey: projectKeys.lists(),
-        });
+        queryClient.invalidateQueries({ queryKey: projectKeys.lists() });
       }
     },
     onSuccess: (_result, { projectId }) => {
-      // Remove from cache
-      queryClient.removeQueries({
-        queryKey: projectKeys.detail(projectId),
-      });
+      // Remove detail cache
+      queryClient.removeQueries({ queryKey: projectKeys.detail(projectId) });
 
-      // Invalidate all project lists
-      queryClient.invalidateQueries({
-        queryKey: projectKeys.lists(),
-      });
+      // Invalidate lists + all potentially related teams (from last cached value)
+      const prev = queryClient.getQueryData<ProjectWithPartialRelations>(
+        projectKeys.detail(projectId)
+      );
+      prev?.teams?.forEach((t) =>
+        queryClient.invalidateQueries({ queryKey: projectKeys.team(t.id) })
+      );
+
+      queryClient.invalidateQueries({ queryKey: projectKeys.lists() });
     },
   });
 
@@ -253,7 +257,7 @@ export function useProjects(
     // Actions
     refetch,
 
-    // Create project
+    // Create project (many-to-many)
     createProject: createProjectMutation.mutate,
     createProjectAsync: createProjectMutation.mutateAsync,
     isCreating: createProjectMutation.isPending,
@@ -265,7 +269,7 @@ export function useProjects(
     isUpdating: updateProjectMutation.isPending,
     updateError: updateProjectMutation.error,
 
-    // Delete project
+    // Delete project (hard delete)
     deleteProject: (projectId: string) => {
       if (!currentUserId) return;
       return deleteProjectMutation.mutate({ projectId, userId: currentUserId });
@@ -290,24 +294,20 @@ export function useProjects(
 }
 
 /**
- * Hook for creating projects (can be used independently)
+ * Standalone: create (many-to-many)
  */
 export function useCreateProject() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: CreateProject) => createProjectAction(data),
+    mutationFn: (data: CreateProjectManyToMany) => createProjectAction(data),
     onSuccess: (result, variables) => {
       if (result.success) {
-        // Invalidate and refetch team projects
-        queryClient.invalidateQueries({
-          queryKey: projectKeys.team(variables.teamId),
-        });
-        queryClient.invalidateQueries({
-          queryKey: projectKeys.lists(),
-        });
+        variables.teamIds?.forEach((tid) =>
+          queryClient.invalidateQueries({ queryKey: projectKeys.team(tid) })
+        );
+        queryClient.invalidateQueries({ queryKey: projectKeys.lists() });
 
-        // Add the new project to the cache
         if (result.project) {
           queryClient.setQueryData(
             projectKeys.detail(result.project.id),
@@ -320,7 +320,7 @@ export function useCreateProject() {
 }
 
 /**
- * Hook for updating projects (can be used independently)
+ * Standalone: update
  */
 export function useUpdateProject() {
   const queryClient = useQueryClient();
@@ -334,23 +334,29 @@ export function useUpdateProject() {
     },
     onSuccess: (result, variables) => {
       if (result.success && result.project) {
-        // Update the cache
-        queryClient.setQueryData(
-          projectKeys.detail(variables.id),
-          result.project
+        const prev = queryClient.getQueryData<ProjectWithPartialRelations>(
+          projectKeys.detail(variables.id)
         );
 
-        // Invalidate related queries
-        queryClient.invalidateQueries({
-          queryKey: projectKeys.lists(),
-        });
+        queryClient.setQueryData<ProjectWithPartialRelations>(
+          projectKeys.detail(variables.id),
+          {
+            ...(result.project as any),
+            ...(prev?.teams ? { teams: prev.teams } : {}),
+          } as ProjectWithPartialRelations
+        );
+
+        queryClient.invalidateQueries({ queryKey: projectKeys.lists() });
+        prev?.teams?.forEach((t) =>
+          queryClient.invalidateQueries({ queryKey: projectKeys.team(t.id) })
+        );
       }
     },
   });
 }
 
 /**
- * Hook for deleting projects (can be used independently)
+ * Standalone: soft delete
  */
 export function useDeleteProject() {
   const queryClient = useQueryClient();
@@ -363,21 +369,21 @@ export function useDeleteProject() {
       return deleteProjectAction(projectId, currentUserId);
     },
     onSuccess: (_result, projectId) => {
-      // Remove from cache
-      queryClient.removeQueries({
-        queryKey: projectKeys.detail(projectId),
-      });
+      const prev = queryClient.getQueryData<ProjectWithPartialRelations>(
+        projectKeys.detail(projectId)
+      );
 
-      // Invalidate all project lists
-      queryClient.invalidateQueries({
-        queryKey: projectKeys.lists(),
-      });
+      queryClient.removeQueries({ queryKey: projectKeys.detail(projectId) });
+      queryClient.invalidateQueries({ queryKey: projectKeys.lists() });
+      prev?.teams?.forEach((t) =>
+        queryClient.invalidateQueries({ queryKey: projectKeys.team(t.id) })
+      );
     },
   });
 }
 
 /**
- * Hook for hard deletion
+ * Standalone: hard delete
  */
 export function useHardDeleteProject() {
   const queryClient = useQueryClient();
@@ -390,15 +396,15 @@ export function useHardDeleteProject() {
       return hardDeleteProjectAction(projectId, currentUserId);
     },
     onSuccess: (_result, projectId) => {
-      // Remove from cache
-      queryClient.removeQueries({
-        queryKey: projectKeys.detail(projectId),
-      });
+      const prev = queryClient.getQueryData<ProjectWithPartialRelations>(
+        projectKeys.detail(projectId)
+      );
 
-      // Invalidate all project lists
-      queryClient.invalidateQueries({
-        queryKey: projectKeys.lists(),
-      });
+      queryClient.removeQueries({ queryKey: projectKeys.detail(projectId) });
+      queryClient.invalidateQueries({ queryKey: projectKeys.lists() });
+      prev?.teams?.forEach((t) =>
+        queryClient.invalidateQueries({ queryKey: projectKeys.team(t.id) })
+      );
     },
   });
 }

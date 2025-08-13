@@ -2,7 +2,6 @@
 import type { Team, User, Project, TeamWithRelations } from "@/types";
 
 // Basic Types
-export type TeamBasic = Pick<Team, "id" | "name" | "slug">;
 export type UserBasic = Pick<
   User,
   "id" | "firstName" | "lastName" | "email" | "avatarUrl"
@@ -14,6 +13,20 @@ export type ProjectSortableFields = keyof Pick<
   Project,
   "name" | "createdAt" | "updatedAt"
 >;
+
+export type TeamBasic = Pick<Team, "id" | "name" | "slug">;
+
+export interface ProjectWithPartialRelations extends Project {
+  teams: TeamWithProjectRole[];
+  owner?: UserBasic;
+  // Optional fields for when you need them
+  team?: TeamBasic; // For backward compatibility in some queries
+  teamRole?: "admin" | "editor" | "viewer"; // When queried from user's perspective
+}
+
+export interface TeamWithProjectRole extends TeamBasic {
+  role: "admin" | "editor" | "viewer";
+}
 
 export interface ProjectSettings {
   colorTheme?: string;
@@ -67,12 +80,6 @@ export interface ProjectFormMessagesProps {
   success: boolean;
   error: string;
 }
-
-export interface ProjectWithPartialRelations extends Project {
-  team?: TeamBasic;
-  owner?: UserBasic;
-}
-
 // Base filtering and pagination options (reusable across entities)
 export interface BaseListOptions {
   search?: string;

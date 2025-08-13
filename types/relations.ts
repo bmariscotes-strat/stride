@@ -16,6 +16,38 @@ import type {
 } from "./base";
 
 // =============================================================================
+// NEW TYPES FOR PROJECT-TEAM RELATIONSHIPS
+// =============================================================================
+
+export interface ProjectTeam {
+  id: string;
+  projectId: string;
+  teamId: string;
+  role: "admin" | "editor" | "viewer";
+  addedBy: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface ProjectTeamWithRelations extends ProjectTeam {
+  project?: Project;
+  team?: Team;
+  addedByUser?: User;
+}
+
+// Basic Types for queries
+export type TeamBasic = Pick<Team, "id" | "name" | "slug">;
+export type UserBasic = Pick<
+  User,
+  "id" | "firstName" | "lastName" | "email" | "avatarUrl"
+>;
+
+// Team with role information in project context
+export interface TeamWithProjectRole extends TeamBasic {
+  role: "admin" | "editor" | "viewer";
+}
+
+// =============================================================================
 // EXTENDED INTERFACES WITH RELATIONS - For when you need related data
 // =============================================================================
 
@@ -33,14 +65,14 @@ export interface UserWithRelations extends User {
 export interface TeamWithRelations extends Team {
   creator?: User;
   members?: TeamMemberWithRelations[];
-  projects?: Project[];
-  labels?: Label[];
+  projects?: ProjectTeamWithRelations[]; // Changed from Project[] to ProjectTeam[]
 }
 
 export interface ProjectWithRelations extends Project {
-  team?: Team;
+  teams?: TeamWithProjectRole[]; // Changed from single team to multiple teams with roles
   owner?: User;
   columns?: Column[];
+  labels?: Label[]; // Labels are now project-scoped
   activities?: ActivityLog[];
   notifications?: Notification[];
 }
@@ -60,8 +92,9 @@ export interface CardWithRelations extends Card {
   notifications?: Notification[];
 }
 
+// Updated - Labels are now project-scoped instead of team-scoped
 export interface LabelWithRelations extends Label {
-  team?: Team;
+  project?: Project; // Changed from team to project
   cards?: CardLabel[];
 }
 
@@ -88,6 +121,7 @@ export interface CardAttachmentWithRelations extends CardAttachment {
 
 export interface ActivityLogWithRelations extends ActivityLog {
   project?: Project;
+  team?: Team;
   card?: Card;
   user?: User;
 }
@@ -103,4 +137,39 @@ export interface MentionWithRelations extends Mention {
   comment?: CardComment;
   mentionedUser?: User;
   mentionedByUser?: User;
+}
+
+// =============================================================================
+// UTILITY TYPES FOR PROJECT MANAGEMENT
+// =============================================================================
+
+export interface ProjectTeamManagement {
+  projectId: string;
+  teamId: string;
+  role: "admin" | "editor" | "viewer";
+  userId: string; // User performing the action
+}
+
+export interface ProjectAccessInfo {
+  projectId: string;
+  userId: string;
+  accessLevel: "owner" | "admin" | "editor" | "viewer" | "none";
+  throughTeams: Array<{
+    teamId: string;
+    teamName: string;
+    role: "admin" | "editor" | "viewer";
+  }>;
+}
+
+// For project creation with team assignments
+export interface CreateProjectWithTeams {
+  name: string;
+  slug: string;
+  description?: string | null;
+  ownerId: string;
+  colorTheme?: string | null;
+  teamAssignments: Array<{
+    teamId: string;
+    role: "admin" | "editor" | "viewer";
+  }>;
 }

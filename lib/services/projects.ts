@@ -1,8 +1,16 @@
+// lib/services/projects.ts
 "use server";
 
 import { db } from "@/lib/db/db";
-import { projects, teams, users, teamMembers, columns } from "@/lib/db/schema";
-import { eq, and, like, desc, asc, inArray } from "drizzle-orm";
+import {
+  projects,
+  teams,
+  users,
+  teamMembers,
+  columns,
+  projectTeams,
+} from "@/lib/db/schema";
+import { eq, and, like, desc, asc, inArray, or } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { revalidatePath } from "next/cache";
 import { ActivityService } from "@/lib/services/activity";
@@ -15,11 +23,50 @@ import type {
   ProjectsListOptions,
 } from "@/types";
 
-// Helper function to generate unique slug
-export async function generateUniqueSlug(
-  baseSlug: string,
-  teamId: string
-): Promise<string> {
+async function getTeamsForProjectIds(projectIds: string[]) {
+  if (!projectIds.length)
+    return new Map<
+      string,
+      Array<{
+        id: string;
+        name: string;
+        slug: string;
+        role: "admin" | "editor" | "viewer";
+      }>
+    >();
+
+  const rows = await db
+    .select({
+      projectId: projectTeams.projectId,
+      id: teams.id,
+      name: teams.name,
+      slug: teams.slug,
+      role: projectTeams.role,
+    })
+    .from(projectTeams)
+    .innerJoin(teams, eq(projectTeams.teamId, teams.id))
+    .where(inArray(projectTeams.projectId, projectIds));
+
+  const map = new Map<
+    string,
+    Array<{
+      id: string;
+      name: string;
+      slug: string;
+      role: "admin" | "editor" | "viewer";
+    }>
+  >();
+  for (const r of rows) {
+    if (!map.has(r.projectId)) map.set(r.projectId, []);
+    map
+      .get(r.projectId)!
+      .push({ id: r.id, name: r.name, slug: r.slug, role: r.role });
+  }
+  return map;
+}
+
+// Helper function to generate unique slug (now globally unique since no teamId constraint)
+export async function generateUniqueSlug(baseSlug: string): Promise<string> {
   let slug = baseSlug;
   let counter = 1;
 
@@ -27,13 +74,7 @@ export async function generateUniqueSlug(
     const existing = await db
       .select({ id: projects.id })
       .from(projects)
-      .where(
-        and(
-          eq(projects.slug, slug),
-          eq(projects.teamId, teamId),
-          eq(projects.isArchived, false)
-        )
-      )
+      .where(and(eq(projects.slug, slug), eq(projects.isArchived, false)))
       .limit(1);
 
     if (existing.length === 0) {
@@ -61,38 +102,60 @@ export async function generateUniqueSlug(
   return slug;
 }
 
-// Helper function to verify team membership and permissions
-export async function verifyTeamAccess(
-  teamId: string,
+// Helper function to verify user can create projects in any of their teams
+export async function verifyUserCanCreateProject(
   userId: string
 ): Promise<boolean> {
-  const membership = await db
+  const memberships = await db
     .select({
       role: teamMembers.role,
     })
     .from(teamMembers)
-    .where(and(eq(teamMembers.teamId, teamId), eq(teamMembers.userId, userId)))
-    .limit(1);
+    .where(eq(teamMembers.userId, userId));
 
-  // Must be a team member with at least member role to create projects
-  return (
-    membership.length > 0 &&
-    ["owner", "admin", "member"].includes(membership[0].role)
+  // Must be a member of at least one team with member+ permissions
+  return memberships.some((membership) =>
+    ["owner", "admin", "member"].includes(membership.role)
   );
 }
 
+// Helper function to get user's teams where they can create projects
+export async function getUserTeamsForProjectCreation(
+  userId: string
+): Promise<string[]> {
+  const memberships = await db
+    .select({
+      teamId: teamMembers.teamId,
+      role: teamMembers.role,
+    })
+    .from(teamMembers)
+    .where(eq(teamMembers.userId, userId));
+
+  return memberships
+    .filter((membership) =>
+      ["owner", "admin", "member"].includes(membership.role)
+    )
+    .map((membership) => membership.teamId);
+}
+
 /**
- * Create a new project
+ * Create a new project with team assignments
  */
-export async function createProjectAction(data: CreateProject) {
+export async function createProjectAction(
+  data: CreateProject & {
+    teamIds: string[]; // Array of team IDs to assign to the project
+    teamRoles?: Record<string, "admin" | "editor" | "viewer">; // Optional roles per team
+  }
+) {
   try {
     const {
       name,
       slug: requestedSlug,
       description,
-      teamId,
       ownerId,
       colorTheme,
+      teamIds,
+      teamRoles = {},
     } = data;
 
     // Validate required fields
@@ -104,25 +167,39 @@ export async function createProjectAction(data: CreateProject) {
       };
     }
 
-    if (!teamId || !ownerId) {
+    if (!ownerId || !teamIds?.length) {
       return {
         success: false,
-        error: "Team ID and owner ID are required",
+        error: "Owner ID and at least one team are required",
         project: null,
       };
     }
 
-    // Verify team exists and user has permission
-    const hasAccess = await verifyTeamAccess(teamId, ownerId);
-    if (!hasAccess) {
+    // Verify user can create projects
+    const canCreate = await verifyUserCanCreateProject(ownerId);
+    if (!canCreate) {
       return {
         success: false,
-        error: "You don't have permission to create projects in this team",
+        error: "You don't have permission to create projects",
         project: null,
       };
     }
 
-    // Generate unique slug
+    // Verify user is a member of all specified teams
+    const userTeams = await getUserTeamsForProjectCreation(ownerId);
+    const invalidTeams = teamIds.filter(
+      (teamId) => !userTeams.includes(teamId)
+    );
+    if (invalidTeams.length > 0) {
+      return {
+        success: false,
+        error:
+          "You don't have permission to add this project to some of the selected teams",
+        project: null,
+      };
+    }
+
+    // Generate unique slug (now globally unique)
     const baseSlug = requestedSlug
       .toLowerCase()
       .replace(/[^a-z0-9\s-]/g, "")
@@ -137,7 +214,7 @@ export async function createProjectAction(data: CreateProject) {
       };
     }
 
-    const uniqueSlug = await generateUniqueSlug(baseSlug, teamId);
+    const uniqueSlug = await generateUniqueSlug(baseSlug);
 
     // Create the project
     const [newProject] = await db
@@ -146,13 +223,22 @@ export async function createProjectAction(data: CreateProject) {
         name: name.trim(),
         slug: uniqueSlug,
         description: description?.trim() || null,
-        teamId,
         ownerId,
         colorTheme: colorTheme || null,
         isArchived: false,
         schemaVersion: 1,
       })
       .returning();
+
+    // Create project-team relationships
+    const projectTeamInserts = teamIds.map((teamId) => ({
+      projectId: newProject.id,
+      teamId,
+      role: (teamRoles[teamId] || "editor") as "admin" | "editor" | "viewer",
+      addedBy: ownerId,
+    }));
+
+    await db.insert(projectTeams).values(projectTeamInserts);
 
     // Create default columns for the new project
     await createDefaultColumns(newProject.id);
@@ -168,16 +254,20 @@ export async function createProjectAction(data: CreateProject) {
       newProject.name
     );
 
-    // Notify team members about the new project
-    await NotificationService.notifyProjectCreated(
-      ownerId,
-      newProject.id,
-      newProject.name,
-      teamId
-    );
+    // Notify team members about the new project (for all teams)
+    for (const teamId of teamIds) {
+      await NotificationService.notifyProjectCreated(
+        ownerId,
+        newProject.id,
+        newProject.name,
+        teamId
+      );
+    }
 
     // Revalidate related pages
-    revalidatePath(`/team/${teamId}`);
+    teamIds.forEach((teamId) => {
+      revalidatePath(`/team/${teamId}`);
+    });
     revalidatePath(`/projects/${uniqueSlug}`);
 
     return {
@@ -196,7 +286,7 @@ export async function createProjectAction(data: CreateProject) {
 }
 
 /**
- * Get a project by ID with relations
+ * Get a project by ID with relations (now includes multiple teams)
  */
 export async function getProjectAction(
   projectId: string
@@ -209,19 +299,12 @@ export async function getProjectAction(
         name: projects.name,
         slug: projects.slug,
         description: projects.description,
-        teamId: projects.teamId,
         ownerId: projects.ownerId,
         colorTheme: projects.colorTheme,
         isArchived: projects.isArchived,
         schemaVersion: projects.schemaVersion,
         createdAt: projects.createdAt,
         updatedAt: projects.updatedAt,
-        // Team fields
-        team: {
-          id: teams.id,
-          name: teams.name,
-          slug: teams.slug,
-        },
         // Owner fields
         owner: {
           id: users.id,
@@ -232,12 +315,30 @@ export async function getProjectAction(
         },
       })
       .from(projects)
-      .innerJoin(teams, eq(projects.teamId, teams.id))
       .innerJoin(users, eq(projects.ownerId, users.id))
       .where(eq(projects.id, projectId))
       .limit(1);
 
-    return result[0] || null;
+    if (!result[0]) {
+      return null;
+    }
+
+    // Get associated teams for this project
+    const teamsResult = await db
+      .select({
+        id: teams.id,
+        name: teams.name,
+        slug: teams.slug,
+        role: projectTeams.role,
+      })
+      .from(projectTeams)
+      .innerJoin(teams, eq(projectTeams.teamId, teams.id))
+      .where(eq(projectTeams.projectId, projectId));
+
+    return {
+      ...result[0],
+      teams: teamsResult,
+    };
   } catch (error) {
     console.error("Error fetching project:", error);
     return null;
@@ -245,10 +346,9 @@ export async function getProjectAction(
 }
 
 /**
- * Get a project by slug and team
+ * Get a project by slug (now searches globally since slugs are unique)
  */
 export async function getProjectBySlugAction(
-  teamId: string,
   slug: string
 ): Promise<ProjectWithPartialRelations | null> {
   try {
@@ -259,19 +359,12 @@ export async function getProjectBySlugAction(
         name: projects.name,
         slug: projects.slug,
         description: projects.description,
-        teamId: projects.teamId,
         ownerId: projects.ownerId,
         colorTheme: projects.colorTheme,
         isArchived: projects.isArchived,
         schemaVersion: projects.schemaVersion,
         createdAt: projects.createdAt,
         updatedAt: projects.updatedAt,
-        // Team fields
-        team: {
-          id: teams.id,
-          name: teams.name,
-          slug: teams.slug,
-        },
         // Owner fields
         owner: {
           id: users.id,
@@ -282,12 +375,30 @@ export async function getProjectBySlugAction(
         },
       })
       .from(projects)
-      .innerJoin(teams, eq(projects.teamId, teams.id))
       .innerJoin(users, eq(projects.ownerId, users.id))
-      .where(and(eq(projects.teamId, teamId), eq(projects.slug, slug)))
+      .where(eq(projects.slug, slug))
       .limit(1);
 
-    return result[0] || null;
+    if (!result[0]) {
+      return null;
+    }
+
+    // Get associated teams for this project
+    const teamsResult = await db
+      .select({
+        id: teams.id,
+        name: teams.name,
+        slug: teams.slug,
+        role: projectTeams.role,
+      })
+      .from(projectTeams)
+      .innerJoin(teams, eq(projectTeams.teamId, teams.id))
+      .where(eq(projectTeams.projectId, result[0].id));
+
+    return {
+      ...result[0],
+      teams: teamsResult,
+    };
   } catch (error) {
     console.error("Error fetching project by slug:", error);
     return null;
@@ -312,7 +423,7 @@ export async function getTeamProjectsAction(
       offset = 0,
     } = options;
 
-    // Start with the base query
+    // Base query with all necessary joins
     const baseQuery = db
       .select({
         // Project fields
@@ -320,20 +431,13 @@ export async function getTeamProjectsAction(
         name: projects.name,
         slug: projects.slug,
         description: projects.description,
-        teamId: projects.teamId,
         ownerId: projects.ownerId,
         colorTheme: projects.colorTheme,
         isArchived: projects.isArchived,
         schemaVersion: projects.schemaVersion,
         createdAt: projects.createdAt,
         updatedAt: projects.updatedAt,
-        // Team fields
-        team: {
-          id: teams.id,
-          name: teams.name,
-          slug: teams.slug,
-        },
-        // Owner fields
+        // Owner
         owner: {
           id: users.id,
           firstName: users.firstName,
@@ -341,53 +445,81 @@ export async function getTeamProjectsAction(
           email: users.email,
           avatarUrl: users.avatarUrl,
         },
+        // Team info from join
+        team: {
+          id: teams.id,
+          name: teams.name,
+          slug: teams.slug,
+        },
+        teamRole: projectTeams.role,
       })
       .from(projects)
-      .innerJoin(teams, eq(projects.teamId, teams.id))
+      .innerJoin(projectTeams, eq(projects.id, projectTeams.projectId))
+      .innerJoin(teams, eq(projectTeams.teamId, teams.id))
       .innerJoin(users, eq(projects.ownerId, users.id));
 
-    // Build where conditions
-    const conditions = [eq(projects.teamId, teamId)];
-
+    // Build WHERE conditions
+    const conditions = [eq(projectTeams.teamId, teamId)];
     if (typeof isArchived === "boolean") {
       conditions.push(eq(projects.isArchived, isArchived));
     }
-
     if (ownerId) {
       conditions.push(eq(projects.ownerId, ownerId));
     }
-
     if (search) {
       conditions.push(like(projects.name, `%${search}%`));
     }
 
-    // Apply where conditions
-    const queryWithWhere = baseQuery.where(and(...conditions));
+    // Order expression
+    const orderExpr =
+      orderBy === "name"
+        ? orderDirection === "desc"
+          ? desc(projects.name)
+          : asc(projects.name)
+        : orderBy === "createdAt"
+          ? orderDirection === "desc"
+            ? desc(projects.createdAt)
+            : asc(projects.createdAt)
+          : orderDirection === "desc"
+            ? desc(projects.updatedAt)
+            : asc(projects.updatedAt);
 
-    // Apply ordering
-    let queryWithOrder;
-    if (orderBy === "name") {
-      queryWithOrder = queryWithWhere.orderBy(
-        orderDirection === "desc" ? desc(projects.name) : asc(projects.name)
-      );
-    } else if (orderBy === "createdAt") {
-      queryWithOrder = queryWithWhere.orderBy(
-        orderDirection === "desc"
-          ? desc(projects.createdAt)
-          : asc(projects.createdAt)
-      );
-    } else {
-      queryWithOrder = queryWithWhere.orderBy(
-        orderDirection === "desc"
-          ? desc(projects.updatedAt)
-          : asc(projects.updatedAt)
-      );
+    // Execute query in one chain to keep type safety
+    const rows = await baseQuery
+      .where(and(...conditions))
+      .orderBy(orderExpr)
+      .limit(limit)
+      .offset(offset);
+
+    // Group into many-to-many structure
+    const projectsMap = new Map<string, ProjectWithPartialRelations>();
+
+    for (const row of rows) {
+      if (!projectsMap.has(row.id)) {
+        projectsMap.set(row.id, {
+          id: row.id,
+          name: row.name,
+          slug: row.slug,
+          description: row.description,
+          ownerId: row.ownerId,
+          colorTheme: row.colorTheme,
+          isArchived: row.isArchived,
+          schemaVersion: row.schemaVersion,
+          createdAt: row.createdAt,
+          updatedAt: row.updatedAt,
+          owner: row.owner,
+          teams: [],
+        });
+      }
+      projectsMap.get(row.id)!.teams.push({
+        id: row.team.id,
+        name: row.team.name,
+        slug: row.team.slug,
+        role: row.teamRole,
+      });
     }
 
-    // Apply pagination and execute
-    const result = await queryWithOrder.limit(limit).offset(offset);
-
-    return result;
+    return Array.from(projectsMap.values());
   } catch (error) {
     console.error("Error fetching team projects:", error);
     return [];
@@ -396,16 +528,13 @@ export async function getTeamProjectsAction(
 
 /**
  * Get all projects for a user based on their team memberships
- * This fetches projects from all teams the user is a member of
  */
 export async function getProjectsForUser(
   userId: string,
   options: Omit<ProjectsListOptions, "teamId"> = {}
 ): Promise<ProjectWithPartialRelations[]> {
   try {
-    if (!userId) {
-      return [];
-    }
+    if (!userId) return [];
 
     const {
       ownerId,
@@ -417,40 +546,41 @@ export async function getProjectsForUser(
       offset = 0,
     } = options;
 
-    // First, get all team IDs the user is a member of
-    const userTeams = await db
+    // Teams this user belongs to
+    const memberships = await db
       .select({ teamId: teamMembers.teamId })
       .from(teamMembers)
       .where(eq(teamMembers.userId, userId));
 
-    if (userTeams.length === 0) {
-      return [];
-    }
+    if (memberships.length === 0) return [];
+    const teamIds = memberships.map((m) => m.teamId);
 
-    const teamIds = userTeams.map((t) => t.teamId);
+    const orderExpr =
+      orderBy === "name"
+        ? orderDirection === "desc"
+          ? desc(projects.name)
+          : asc(projects.name)
+        : orderBy === "createdAt"
+          ? orderDirection === "desc"
+            ? desc(projects.createdAt)
+            : asc(projects.createdAt)
+          : orderDirection === "desc"
+            ? desc(projects.updatedAt)
+            : asc(projects.updatedAt);
 
-    // Now use the same pattern as getTeamProjectsAction but for multiple teams
-    const baseQuery = db
+    // Select unique projects reachable via those teams (filtering archived teams too)
+    const rows = await db
       .select({
-        // Project fields
         id: projects.id,
         name: projects.name,
         slug: projects.slug,
         description: projects.description,
-        teamId: projects.teamId,
         ownerId: projects.ownerId,
         colorTheme: projects.colorTheme,
         isArchived: projects.isArchived,
         schemaVersion: projects.schemaVersion,
         createdAt: projects.createdAt,
         updatedAt: projects.updatedAt,
-        // Team fields
-        team: {
-          id: teams.id,
-          name: teams.name,
-          slug: teams.slug,
-        },
-        // Owner fields
         owner: {
           id: users.id,
           firstName: users.firstName,
@@ -460,54 +590,36 @@ export async function getProjectsForUser(
         },
       })
       .from(projects)
-      .innerJoin(teams, eq(projects.teamId, teams.id))
-      .innerJoin(users, eq(projects.ownerId, users.id));
+      .innerJoin(projectTeams, eq(projects.id, projectTeams.projectId))
+      .innerJoin(teams, eq(projectTeams.teamId, teams.id)) // to filter archived teams
+      .innerJoin(users, eq(projects.ownerId, users.id))
+      .where(
+        and(
+          inArray(projectTeams.teamId, teamIds),
+          eq(teams.isArchived, false),
+          typeof isArchived === "boolean"
+            ? eq(projects.isArchived, isArchived)
+            : undefined,
+          ownerId ? eq(projects.ownerId, ownerId) : undefined,
+          search ? like(projects.name, `%${search}%`) : undefined
+        )
+      )
+      .orderBy(orderExpr)
+      .limit(limit)
+      .offset(offset);
 
-    // Build where conditions (same pattern as getTeamProjectsAction)
-    const conditions = [
-      inArray(projects.teamId, teamIds), // Instead of eq(projects.teamId, teamId)
-      eq(teams.isArchived, false), // Also filter out archived teams
-    ];
+    // Attach full teams[] (with roles) for each project
+    const projectIds = rows.map((r) => r.id);
+    const teamsMap = await getTeamsForProjectIds(projectIds);
 
-    if (typeof isArchived === "boolean") {
-      conditions.push(eq(projects.isArchived, isArchived));
+    // De-dupe by id just in case (joins can fan out)
+    const uniq = new Map<string, ProjectWithPartialRelations>();
+    for (const r of rows) {
+      if (!uniq.has(r.id)) {
+        uniq.set(r.id, { ...r, teams: teamsMap.get(r.id) ?? [] });
+      }
     }
-
-    if (ownerId) {
-      conditions.push(eq(projects.ownerId, ownerId));
-    }
-
-    if (search) {
-      conditions.push(like(projects.name, `%${search}%`));
-    }
-
-    // Apply where conditions
-    const queryWithWhere = baseQuery.where(and(...conditions));
-
-    // Apply ordering (same as getTeamProjectsAction)
-    let queryWithOrder;
-    if (orderBy === "name") {
-      queryWithOrder = queryWithWhere.orderBy(
-        orderDirection === "desc" ? desc(projects.name) : asc(projects.name)
-      );
-    } else if (orderBy === "createdAt") {
-      queryWithOrder = queryWithWhere.orderBy(
-        orderDirection === "desc"
-          ? desc(projects.createdAt)
-          : asc(projects.createdAt)
-      );
-    } else {
-      queryWithOrder = queryWithWhere.orderBy(
-        orderDirection === "desc"
-          ? desc(projects.updatedAt)
-          : asc(projects.updatedAt)
-      );
-    }
-
-    // Apply pagination and execute
-    const result = await queryWithOrder.limit(limit).offset(offset);
-
-    return result;
+    return Array.from(uniq.values());
   } catch (error) {
     console.error("Error fetching projects for user:", error);
     return [];
@@ -541,7 +653,6 @@ export async function updateProjectAction(
         description: projects.description,
         colorTheme: projects.colorTheme,
         isArchived: projects.isArchived,
-        teamId: projects.teamId,
         ownerId: projects.ownerId,
       })
       .from(projects)
@@ -557,6 +668,38 @@ export async function updateProjectAction(
     }
 
     const current = currentProject[0];
+
+    // Check permissions - user must be project owner or have admin role in at least one team
+    const isOwner = current.ownerId === userId;
+
+    const hasAdminAccess = await db
+      .select({ role: projectTeams.role })
+      .from(projectTeams)
+      .innerJoin(
+        teamMembers,
+        and(
+          eq(projectTeams.teamId, teamMembers.teamId),
+          eq(teamMembers.userId, userId)
+        )
+      )
+      .where(
+        and(
+          eq(projectTeams.projectId, id),
+          or(
+            eq(projectTeams.role, "admin"),
+            inArray(teamMembers.role, ["owner", "admin"])
+          )
+        )
+      )
+      .limit(1);
+
+    if (!isOwner && hasAdminAccess.length === 0) {
+      return {
+        success: false,
+        error: "You don't have permission to update this project",
+        project: null,
+      };
+    }
 
     // Build update object with only provided fields
     const updateData: Partial<typeof projects.$inferInsert> = {
@@ -586,7 +729,7 @@ export async function updateProjectAction(
 
         // Only check for uniqueness if slug is actually changing
         if (baseSlug !== current.slug) {
-          const uniqueSlug = await generateUniqueSlug(baseSlug, current.teamId);
+          const uniqueSlug = await generateUniqueSlug(baseSlug);
           updateData.slug = uniqueSlug;
           changes.push({
             field: "slug",
@@ -655,6 +798,12 @@ export async function updateProjectAction(
     if (changes.length > 0) {
       await ActivityService.logProjectUpdated(userId, id, changes);
 
+      // Get all teams associated with this project for notifications
+      const projectTeamsList = await db
+        .select({ teamId: projectTeams.teamId })
+        .from(projectTeams)
+        .where(eq(projectTeams.projectId, id));
+
       // Check if project was archived/unarchived for special notification
       const archiveChange = changes.find((c) => c.field === "isArchived");
       if (archiveChange) {
@@ -664,40 +813,58 @@ export async function updateProjectAction(
             id,
             updatedProject.name
           );
-          await NotificationService.notifyProjectArchived(
-            userId,
-            id,
-            updatedProject.name,
-            current.teamId
-          );
+          // Notify all teams
+          for (const pt of projectTeamsList) {
+            await NotificationService.notifyProjectArchived(
+              userId,
+              id,
+              updatedProject.name,
+              pt.teamId
+            );
+          }
         } else {
-          // Project was unarchived
-          await NotificationService.notifyProjectUpdated(
-            userId,
-            id,
-            updatedProject.name,
-            current.teamId,
-            "Project was restored from archive"
-          );
+          // Project was unarchived - notify all teams
+          for (const pt of projectTeamsList) {
+            await NotificationService.notifyProjectUpdated(
+              userId,
+              id,
+              updatedProject.name,
+              pt.teamId,
+              "Project was restored from archive"
+            );
+          }
         }
       } else {
         // Regular project update notification
         const changesSummary = changes
           .map((c) => `${c.field}: ${c.oldValue} → ${c.newValue}`)
           .join(", ");
-        await NotificationService.notifyProjectUpdated(
-          userId,
-          id,
-          updatedProject.name,
-          current.teamId,
-          `Updated: ${changesSummary}`
-        );
+
+        // Notify all teams
+        for (const pt of projectTeamsList) {
+          await NotificationService.notifyProjectUpdated(
+            userId,
+            id,
+            updatedProject.name,
+            pt.teamId,
+            `Updated: ${changesSummary}`
+          );
+        }
       }
     }
 
     // Revalidate related pages
     revalidatePath(`/projects/${updatedProject.slug}`);
-    revalidatePath(`/team/${updatedProject.teamId}`);
+
+    // Get project teams for revalidation
+    const projectTeamsList = await db
+      .select({ teamId: projectTeams.teamId })
+      .from(projectTeams)
+      .where(eq(projectTeams.projectId, id));
+
+    projectTeamsList.forEach((pt) => {
+      revalidatePath(`/team/${pt.teamId}`);
+    });
 
     return {
       success: true,
@@ -726,47 +893,52 @@ export async function deleteProjectAction(projectId: string, userId: string) {
       };
     }
 
-    // Check if user has permission to delete (must be owner or team owner/admin)
-    const projectWithTeam = await db
+    // Get project info
+    const projectInfo = await db
       .select({
         id: projects.id,
         name: projects.name,
         ownerId: projects.ownerId,
-        teamId: projects.teamId,
         slug: projects.slug,
       })
       .from(projects)
       .where(eq(projects.id, projectId))
       .limit(1);
 
-    if (projectWithTeam.length === 0) {
+    if (projectInfo.length === 0) {
       return {
         success: false,
         error: "Project not found",
       };
     }
 
-    const project = projectWithTeam[0];
+    const project = projectInfo[0];
 
-    // Check permissions
+    // Check permissions - user must be project owner or have admin role in at least one team
     const isOwner = project.ownerId === userId;
-    const isTeamAdminOrOwner = await db
-      .select({ role: teamMembers.role })
-      .from(teamMembers)
+
+    const hasAdminAccess = await db
+      .select({ role: projectTeams.role })
+      .from(projectTeams)
+      .innerJoin(
+        teamMembers,
+        and(
+          eq(projectTeams.teamId, teamMembers.teamId),
+          eq(teamMembers.userId, userId)
+        )
+      )
       .where(
         and(
-          eq(teamMembers.teamId, project.teamId),
-          eq(teamMembers.userId, userId)
+          eq(projectTeams.projectId, projectId),
+          or(
+            eq(projectTeams.role, "admin"),
+            inArray(teamMembers.role, ["owner", "admin"])
+          )
         )
       )
       .limit(1);
 
-    const hasDeletePermission =
-      isOwner ||
-      (isTeamAdminOrOwner.length > 0 &&
-        ["owner", "admin"].includes(isTeamAdminOrOwner[0].role));
-
-    if (!hasDeletePermission) {
+    if (!isOwner && hasAdminAccess.length === 0) {
       return {
         success: false,
         error: "You don't have permission to delete this project",
@@ -789,17 +961,27 @@ export async function deleteProjectAction(projectId: string, userId: string) {
     // Log project archival activity
     await ActivityService.logProjectArchived(userId, projectId, project.name);
 
-    // Notify team members about project archival
-    await NotificationService.notifyProjectArchived(
-      userId,
-      projectId,
-      project.name,
-      project.teamId
-    );
+    // Get all teams associated with this project for notifications
+    const projectTeamsList = await db
+      .select({ teamId: projectTeams.teamId })
+      .from(projectTeams)
+      .where(eq(projectTeams.projectId, projectId));
+
+    // Notify all team members about project archival
+    for (const pt of projectTeamsList) {
+      await NotificationService.notifyProjectArchived(
+        userId,
+        projectId,
+        project.name,
+        pt.teamId
+      );
+    }
 
     // Revalidate related pages
     revalidatePath(`/projects/${project.slug}`);
-    revalidatePath(`/team/${project.teamId}`);
+    projectTeamsList.forEach((pt) => {
+      revalidatePath(`/team/${pt.teamId}`);
+    });
 
     return {
       success: true,
@@ -829,47 +1011,52 @@ export async function hardDeleteProjectAction(
       };
     }
 
-    // Fetch project and related team info
-    const projectWithTeam = await db
+    // Fetch project info
+    const projectInfo = await db
       .select({
         id: projects.id,
         name: projects.name,
         ownerId: projects.ownerId,
-        teamId: projects.teamId,
         slug: projects.slug,
       })
       .from(projects)
       .where(eq(projects.id, projectId))
       .limit(1);
 
-    if (projectWithTeam.length === 0) {
+    if (projectInfo.length === 0) {
       return {
         success: false,
         error: "Project not found",
       };
     }
 
-    const project = projectWithTeam[0];
+    const project = projectInfo[0];
 
-    // Permission check (same logic as soft delete)
+    // Check permissions - same as soft delete
     const isOwner = project.ownerId === userId;
-    const isTeamAdminOrOwner = await db
-      .select({ role: teamMembers.role })
-      .from(teamMembers)
+
+    const hasAdminAccess = await db
+      .select({ role: projectTeams.role })
+      .from(projectTeams)
+      .innerJoin(
+        teamMembers,
+        and(
+          eq(projectTeams.teamId, teamMembers.teamId),
+          eq(teamMembers.userId, userId)
+        )
+      )
       .where(
         and(
-          eq(teamMembers.teamId, project.teamId),
-          eq(teamMembers.userId, userId)
+          eq(projectTeams.projectId, projectId),
+          or(
+            eq(projectTeams.role, "admin"),
+            inArray(teamMembers.role, ["owner", "admin"])
+          )
         )
       )
       .limit(1);
 
-    const hasDeletePermission =
-      isOwner ||
-      (isTeamAdminOrOwner.length > 0 &&
-        ["owner", "admin"].includes(isTeamAdminOrOwner[0].role));
-
-    if (!hasDeletePermission) {
+    if (!isOwner && hasAdminAccess.length === 0) {
       return {
         success: false,
         error: "You don't have permission to delete this project",
@@ -880,22 +1067,32 @@ export async function hardDeleteProjectAction(
     // ACTIVITY & NOTIFICATION LOGGING (Before deletion)
     // =============================================================================
 
+    // Get all teams associated with this project for notifications
+    const projectTeamsList = await db
+      .select({ teamId: projectTeams.teamId })
+      .from(projectTeams)
+      .where(eq(projectTeams.projectId, projectId));
+
     // Log project deletion activity (before actual deletion)
     await ActivityService.logProjectDeleted(userId, projectId, project.name);
 
-    // Notify team members about permanent project deletion
-    await NotificationService.notifyProjectDeleted(
-      userId,
-      projectId,
-      project.name,
-      project.teamId
-    );
+    // Notify all team members about permanent project deletion
+    for (const pt of projectTeamsList) {
+      await NotificationService.notifyProjectDeleted(
+        userId,
+        projectId,
+        project.name,
+        pt.teamId
+      );
+    }
 
-    // Hard delete (CASCADE will handle child records)
+    // Hard delete (CASCADE will handle child records including projectTeams)
     await db.delete(projects).where(eq(projects.id, projectId));
 
     // Revalidate relevant paths
-    revalidatePath(`/team/${project.teamId}`);
+    projectTeamsList.forEach((pt) => {
+      revalidatePath(`/team/${pt.teamId}`);
+    });
 
     return {
       success: true,
@@ -940,40 +1137,28 @@ export async function getProjectBySlugForUser(
   userId: string
 ): Promise<ProjectWithPartialRelations | null> {
   try {
-    // First, get all team IDs the user is a member of
-    const userTeams = await db
+    // teams the user is in
+    const memberships = await db
       .select({ teamId: teamMembers.teamId })
       .from(teamMembers)
       .where(eq(teamMembers.userId, userId));
 
-    if (userTeams.length === 0) {
-      return null;
-    }
+    if (memberships.length === 0) return null;
+    const teamIds = memberships.map((m) => m.teamId);
 
-    const teamIds = userTeams.map((t) => t.teamId);
-
-    // Find the project with the given slug in any of the user's teams
-    const result = await db
+    // Find the project the user can reach via their teams
+    const projRow = await db
       .select({
-        // Project fields
         id: projects.id,
         name: projects.name,
         slug: projects.slug,
         description: projects.description,
-        teamId: projects.teamId,
         ownerId: projects.ownerId,
         colorTheme: projects.colorTheme,
         isArchived: projects.isArchived,
         schemaVersion: projects.schemaVersion,
         createdAt: projects.createdAt,
         updatedAt: projects.updatedAt,
-        // Team fields
-        team: {
-          id: teams.id,
-          name: teams.name,
-          slug: teams.slug,
-        },
-        // Owner fields
         owner: {
           id: users.id,
           firstName: users.firstName,
@@ -983,20 +1168,372 @@ export async function getProjectBySlugForUser(
         },
       })
       .from(projects)
-      .innerJoin(teams, eq(projects.teamId, teams.id))
+      .innerJoin(projectTeams, eq(projects.id, projectTeams.projectId))
       .innerJoin(users, eq(projects.ownerId, users.id))
       .where(
         and(
           eq(projects.slug, slug),
-          inArray(projects.teamId, teamIds),
-          eq(projects.isArchived, false) // Only active projects
+          inArray(projectTeams.teamId, teamIds),
+          eq(projects.isArchived, false)
         )
       )
       .limit(1);
 
-    return result[0] || null;
+    const project = projRow[0];
+    if (!project) return null;
+
+    const teamsMap = await getTeamsForProjectIds([project.id]);
+
+    return {
+      ...project,
+      teams: teamsMap.get(project.id) ?? [],
+    };
   } catch (error) {
     console.error("Error fetching project by slug for user:", error);
     return null;
+  }
+}
+
+/**
+ * Add teams to an existing project
+ */
+export async function addTeamsToProjectAction(
+  projectId: string,
+  teamIds: string[],
+  userId: string,
+  teamRoles: Record<string, "admin" | "editor" | "viewer"> = {}
+) {
+  try {
+    if (!projectId || !teamIds?.length || !userId) {
+      return {
+        success: false,
+        error: "Project ID, team IDs, and user ID are required",
+      };
+    }
+
+    // Check if user has permission to manage project teams
+    const hasPermission = await db
+      .select({ role: projectTeams.role })
+      .from(projectTeams)
+      .innerJoin(
+        teamMembers,
+        and(
+          eq(projectTeams.teamId, teamMembers.teamId),
+          eq(teamMembers.userId, userId)
+        )
+      )
+      .where(
+        and(
+          eq(projectTeams.projectId, projectId),
+          or(
+            eq(projectTeams.role, "admin"),
+            inArray(teamMembers.role, ["owner", "admin"])
+          )
+        )
+      )
+      .limit(1);
+
+    // Also check if user is project owner
+    const projectOwner = await db
+      .select({ ownerId: projects.ownerId })
+      .from(projects)
+      .where(eq(projects.id, projectId))
+      .limit(1);
+
+    const isOwner = projectOwner[0]?.ownerId === userId;
+
+    if (!isOwner && hasPermission.length === 0) {
+      return {
+        success: false,
+        error: "You don't have permission to manage teams for this project",
+      };
+    }
+
+    // Check which teams are already associated with the project
+    const existingTeams = await db
+      .select({ teamId: projectTeams.teamId })
+      .from(projectTeams)
+      .where(eq(projectTeams.projectId, projectId));
+
+    const existingTeamIds = existingTeams.map((t) => t.teamId);
+    const newTeamIds = teamIds.filter((id) => !existingTeamIds.includes(id));
+
+    if (newTeamIds.length === 0) {
+      return {
+        success: false,
+        error: "All specified teams are already associated with this project",
+      };
+    }
+
+    // Verify user is a member of the new teams
+    const userTeams = await getUserTeamsForProjectCreation(userId);
+    const invalidTeams = newTeamIds.filter(
+      (teamId) => !userTeams.includes(teamId)
+    );
+    if (invalidTeams.length > 0) {
+      return {
+        success: false,
+        error:
+          "You don't have permission to add some of the selected teams to this project",
+      };
+    }
+
+    // Add the new team relationships
+    const projectTeamInserts = newTeamIds.map((teamId) => ({
+      projectId,
+      teamId,
+      role: (teamRoles[teamId] || "editor") as "admin" | "editor" | "viewer",
+      addedBy: userId,
+    }));
+
+    await db.insert(projectTeams).values(projectTeamInserts);
+
+    // =============================================================================
+    // ACTIVITY & NOTIFICATION LOGGING
+    // =============================================================================
+
+    // Get project name for logging
+    const project = await db
+      .select({ name: projects.name })
+      .from(projects)
+      .where(eq(projects.id, projectId))
+      .limit(1);
+
+    if (project[0]) {
+      // Notify new team members about being added to the project
+      for (const teamId of newTeamIds) {
+        await NotificationService.notifyProjectCreated(
+          userId,
+          projectId,
+          project[0].name,
+          teamId
+        );
+      }
+    }
+
+    // Revalidate related pages
+    newTeamIds.forEach((teamId) => {
+      revalidatePath(`/team/${teamId}`);
+    });
+
+    return {
+      success: true,
+      error: null,
+      addedTeams: newTeamIds,
+    };
+  } catch (error) {
+    console.error("Error adding teams to project:", error);
+    return {
+      success: false,
+      error: "Failed to add teams to project. Please try again.",
+    };
+  }
+}
+
+/**
+ * Remove teams from a project
+ */
+export async function removeTeamsFromProjectAction(
+  projectId: string,
+  teamIds: string[],
+  userId: string
+) {
+  try {
+    if (!projectId || !teamIds?.length || !userId) {
+      return {
+        success: false,
+        error: "Project ID, team IDs, and user ID are required",
+      };
+    }
+
+    // Check if user has permission to manage project teams (same logic as addTeamsToProjectAction)
+    const hasPermission = await db
+      .select({ role: projectTeams.role })
+      .from(projectTeams)
+      .innerJoin(
+        teamMembers,
+        and(
+          eq(projectTeams.teamId, teamMembers.teamId),
+          eq(teamMembers.userId, userId)
+        )
+      )
+      .where(
+        and(
+          eq(projectTeams.projectId, projectId),
+          or(
+            eq(projectTeams.role, "admin"),
+            inArray(teamMembers.role, ["owner", "admin"])
+          )
+        )
+      )
+      .limit(1);
+
+    // Also check if user is project owner
+    const projectOwner = await db
+      .select({ ownerId: projects.ownerId })
+      .from(projects)
+      .where(eq(projects.id, projectId))
+      .limit(1);
+
+    const isOwner = projectOwner[0]?.ownerId === userId;
+
+    if (!isOwner && hasPermission.length === 0) {
+      return {
+        success: false,
+        error: "You don't have permission to manage teams for this project",
+      };
+    }
+
+    // Check that we won't remove all teams (project must have at least one team)
+    const currentTeams = await db
+      .select({ teamId: projectTeams.teamId })
+      .from(projectTeams)
+      .where(eq(projectTeams.projectId, projectId));
+
+    const remainingTeams = currentTeams.filter(
+      (t) => !teamIds.includes(t.teamId)
+    );
+
+    if (remainingTeams.length === 0) {
+      return {
+        success: false,
+        error:
+          "Cannot remove all teams from a project. A project must be associated with at least one team.",
+      };
+    }
+
+    // Remove the team relationships
+    await db
+      .delete(projectTeams)
+      .where(
+        and(
+          eq(projectTeams.projectId, projectId),
+          inArray(projectTeams.teamId, teamIds)
+        )
+      );
+
+    // Revalidate related pages
+    teamIds.forEach((teamId) => {
+      revalidatePath(`/team/${teamId}`);
+    });
+
+    return {
+      success: true,
+      error: null,
+      removedTeams: teamIds,
+    };
+  } catch (error) {
+    console.error("Error removing teams from project:", error);
+    return {
+      success: false,
+      error: "Failed to remove teams from project. Please try again.",
+    };
+  }
+}
+
+/**
+ * Update team role for a project
+ */
+export async function updateProjectTeamRoleAction(
+  projectId: string,
+  teamId: string,
+  newRole: "admin" | "editor" | "viewer",
+  userId: string
+) {
+  try {
+    if (!projectId || !teamId || !newRole || !userId) {
+      return {
+        success: false,
+        error: "All parameters are required",
+      };
+    }
+
+    // Check permissions (same logic as other team management functions)
+    const hasPermission = await db
+      .select({ role: projectTeams.role })
+      .from(projectTeams)
+      .innerJoin(
+        teamMembers,
+        and(
+          eq(projectTeams.teamId, teamMembers.teamId),
+          eq(teamMembers.userId, userId)
+        )
+      )
+      .where(
+        and(
+          eq(projectTeams.projectId, projectId),
+          or(
+            eq(projectTeams.role, "admin"),
+            inArray(teamMembers.role, ["owner", "admin"])
+          )
+        )
+      )
+      .limit(1);
+
+    // Also check if user is project owner
+    const projectOwner = await db
+      .select({ ownerId: projects.ownerId })
+      .from(projects)
+      .where(eq(projects.id, projectId))
+      .limit(1);
+
+    const isOwner = projectOwner[0]?.ownerId === userId;
+
+    if (!isOwner && hasPermission.length === 0) {
+      return {
+        success: false,
+        error:
+          "You don't have permission to manage team roles for this project",
+      };
+    }
+
+    // Update the team role
+    const [updated] = await db
+      .update(projectTeams)
+      .set({
+        role: newRole,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(projectTeams.projectId, projectId),
+          eq(projectTeams.teamId, teamId)
+        )
+      )
+      .returning();
+
+    if (!updated) {
+      return {
+        success: false,
+        error: "Team-project relationship not found",
+      };
+    }
+
+    // =============================================================================
+    // ACTIVITY & NOTIFICATION LOGGING
+    // =============================================================================
+
+    // Get project name for logging
+    const project = await db
+      .select({ name: projects.name })
+      .from(projects)
+      .where(eq(projects.id, projectId))
+      .limit(1);
+
+    // Revalidate related pages
+    revalidatePath(`/team/${teamId}`);
+    revalidatePath(`/projects/${projectId}`);
+
+    return {
+      success: true,
+      error: null,
+      updatedRole: newRole,
+    };
+  } catch (error) {
+    console.error("Error updating project team role:", error);
+    return {
+      success: false,
+      error: "Failed to update team role. Please try again.",
+    };
   }
 }
