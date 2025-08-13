@@ -9,6 +9,7 @@ import {
   teamMembers,
   columns,
   projectTeams,
+  projectTeamMembers,
 } from "@/lib/db/schema";
 import { eq, and, like, desc, asc, inArray, or } from "drizzle-orm";
 import { nanoid } from "nanoid";
@@ -1432,97 +1433,78 @@ export async function removeTeamsFromProjectAction(
 }
 
 /**
- * Update team role for a project
+ * Assign project role
  */
-export async function updateProjectTeamRoleAction(
+export async function assignProjectTeamMemberRoleAction(
   projectId: string,
-  teamId: string,
+  memberId: string, // The project team member whose role you want to assign/change
   newRole: "admin" | "editor" | "viewer",
-  userId: string
+  userId: string // The user performing the assignment
 ) {
   try {
-    if (!projectId || !teamId || !newRole || !userId) {
+    if (!projectId || !memberId || !newRole || !userId) {
       return {
         success: false,
         error: "All parameters are required",
       };
     }
 
-    // Check permissions (same logic as other team management functions)
-    const hasPermission = await db
-      .select({ role: projectTeams.role })
-      .from(projectTeams)
-      .innerJoin(
-        teamMembers,
-        and(
-          eq(projectTeams.teamId, teamMembers.teamId),
-          eq(teamMembers.userId, userId)
-        )
-      )
+    // 1. Check if the acting user has permission
+    const permissionCheck = await db
+      .select({
+        teamRole: teamMembers.role,
+        projectOwnerId: projects.ownerId,
+      })
+      .from(teamMembers)
+      .innerJoin(projectTeams, eq(teamMembers.teamId, projectTeams.teamId))
+      .innerJoin(projects, eq(projectTeams.projectId, projects.id))
       .where(
         and(
-          eq(projectTeams.projectId, projectId),
-          or(
-            eq(projectTeams.role, "admin"),
-            inArray(teamMembers.role, ["owner", "admin"])
-          )
+          eq(projects.id, projectId),
+          eq(teamMembers.userId, userId) // The acting user
         )
       )
       .limit(1);
 
-    // Also check if user is project owner
-    const projectOwner = await db
-      .select({ ownerId: projects.ownerId })
-      .from(projects)
-      .where(eq(projects.id, projectId))
-      .limit(1);
+    const actingUser = permissionCheck[0];
+    const isProjectOwner = actingUser?.projectOwnerId === userId;
+    const isTeamAdminOrOwner =
+      actingUser?.teamRole === "owner" || actingUser?.teamRole === "admin";
 
-    const isOwner = projectOwner[0]?.ownerId === userId;
-
-    if (!isOwner && hasPermission.length === 0) {
+    if (!isProjectOwner && !isTeamAdminOrOwner) {
       return {
         success: false,
-        error:
-          "You don't have permission to manage team roles for this project",
+        error: "You don't have permission to assign this member's role",
       };
     }
 
-    // Update the team role
-    const [updated] = await db
-      .update(projectTeams)
+    // 2. Assign (or update) the member's role
+    const [updatedMember] = await db
+      .update(projectTeamMembers)
       .set({
         role: newRole,
         updatedAt: new Date(),
       })
-      .where(
-        and(
-          eq(projectTeams.projectId, projectId),
-          eq(projectTeams.teamId, teamId)
-        )
-      )
-      .returning();
+      .where(eq(projectTeamMembers.id, memberId)) // use projectTeamMembers.id, not teamMembers.id
+      .returning({
+        id: projectTeamMembers.id,
+        projectId: projectTeamMembers.projectId,
+        teamMemberId: projectTeamMembers.teamMemberId,
+      });
 
-    if (!updated) {
-      return {
-        success: false,
-        error: "Team-project relationship not found",
-      };
+    if (!updatedMember) {
+      return { success: false, error: "Project team member not found" };
     }
 
-    // =============================================================================
-    // ACTIVITY & NOTIFICATION LOGGING
-    // =============================================================================
-
-    // Get project name for logging
-    const project = await db
-      .select({ name: projects.name })
-      .from(projects)
-      .where(eq(projects.id, projectId))
+    // Fetch the teamId for revalidation
+    const [{ teamId }] = await db
+      .select({ teamId: teamMembers.teamId })
+      .from(teamMembers)
+      .where(eq(teamMembers.id, updatedMember.teamMemberId))
       .limit(1);
 
-    // Revalidate related pages
-    revalidatePath(`/team/${teamId}`);
     revalidatePath(`/projects/${projectId}`);
+    if (teamId) revalidatePath(`/team/${teamId}`);
 
     return {
       success: true,
@@ -1530,10 +1512,10 @@ export async function updateProjectTeamRoleAction(
       updatedRole: newRole,
     };
   } catch (error) {
-    console.error("Error updating project team role:", error);
+    console.error("Error assigning project team member role:", error);
     return {
       success: false,
-      error: "Failed to update team role. Please try again.",
+      error: "Failed to assign team member role. Please try again.",
     };
   }
 }

@@ -175,7 +175,7 @@ export const projectTeamMembers = pgTable(
   {
     id: uuid("id").primaryKey().defaultRandom(),
     projectId: uuid("project_id").notNull(),
-    teamMemberId: uuid("team_member_id").notNull(), // links to team_members.id
+    teamMemberId: uuid("team_member_id").notNull(),
     role: projectTeamRoleEnum("role").notNull(),
     addedBy: uuid("added_by").notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
