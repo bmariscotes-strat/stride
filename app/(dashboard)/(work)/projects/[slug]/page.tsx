@@ -5,7 +5,17 @@ import { notFound, redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/services/users";
 import DualPanelLayout from "@/components/layout/shared/DualPanelLayout";
 import AppBreadcrumb from "@/components/shared/AppBreadcrumb";
-import { Settings, Calendar, Users, Kanban, List, Table } from "lucide-react";
+import {
+  Settings,
+  Calendar,
+  Users,
+  Kanban,
+  List,
+  Table,
+  Crown,
+  Shield,
+  Eye,
+} from "lucide-react";
 import { getProjectBySlugForUser } from "@/lib/services/projects";
 import { ProjectPermissionChecker, PERMISSIONS } from "@/lib/permissions";
 import type { ProjectWithPartialRelations } from "@/types";
@@ -59,6 +69,34 @@ export default async function ProjectPage({
 
   // Determine if user can access settings (project edit or team management)
   const canAccessSettings = canEditProject || canManageTeams;
+
+  // Get role icon helper
+  const getRoleIcon = (role: "admin" | "editor" | "viewer") => {
+    switch (role) {
+      case "admin":
+        return <Crown size={12} className="text-yellow-600" />;
+      case "editor":
+        return <Shield size={12} className="text-blue-600" />;
+      case "viewer":
+        return <Eye size={12} className="text-gray-500" />;
+      default:
+        return null;
+    }
+  };
+
+  // Get role badge color
+  const getRoleBadgeClass = (role: "admin" | "editor" | "viewer") => {
+    switch (role) {
+      case "admin":
+        return "bg-yellow-100 text-yellow-800";
+      case "editor":
+        return "bg-blue-100 text-blue-800";
+      case "viewer":
+        return "bg-gray-100 text-gray-800";
+      default:
+        return "bg-gray-100 text-gray-800";
+    }
+  };
 
   // Views configuration - disable views based on permissions
   const views = [
@@ -116,33 +154,105 @@ export default async function ProjectPage({
 
           {/* Project Stats */}
           <div className="space-y-3 mb-6">
-            <div className="flex items-center gap-2 text-sm text-gray-600">
-              <Users size={14} />
-              <span>
-                Team:{" "}
-                <Link
-                  href={`/team/${project.team?.slug}`}
-                  className="text-blue-500 hover:underline"
-                >
-                  {project.team?.name}
-                </Link>
-              </span>
-            </div>
+            {/* Project Teams */}
+            {project.teams && project.teams.length > 0 && (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-sm text-gray-600 font-medium">
+                  <Users size={14} />
+                  <span>Teams ({project.teams.length}):</span>
+                </div>
+                <div className="ml-5 space-y-1">
+                  {project.teams.map((team) => (
+                    <div
+                      key={team.id}
+                      className="flex items-center justify-between"
+                    >
+                      <Link
+                        href={`/team/${team.slug}`}
+                        className="text-blue-500 hover:underline text-sm"
+                      >
+                        {team.name}
+                      </Link>
+                      {team.role && (
+                        <div
+                          className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${getRoleBadgeClass(team.role)}`}
+                        >
+                          {getRoleIcon(team.role)}
+                          {team.role}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="flex items-center gap-2 text-sm text-gray-600">
               <Calendar size={14} />
               <span>
                 Created {new Date(project.createdAt).toLocaleDateString()}
               </span>
             </div>
+
             {/* Show owner info */}
             <div className="flex items-center gap-2 text-sm text-gray-600">
-              <Users size={14} />
+              <Crown size={14} />
               <span>
                 Owner: {project.owner?.firstName} {project.owner?.lastName}
                 {isProjectOwner && " (You)"}
               </span>
             </div>
           </div>
+
+          {/* Project Team Members Section */}
+          {project.projectTeamMembers &&
+            project.projectTeamMembers.length > 0 && (
+              <div className="mb-6">
+                <h3 className="font-medium text-gray-900 mb-3 flex items-center gap-2">
+                  <Users size={16} />
+                  Team Members ({project.projectTeamMembers.length})
+                </h3>
+                <div className="space-y-2 max-h-40 overflow-y-auto">
+                  {project.projectTeamMembers.map((member) => (
+                    <div
+                      key={member.id}
+                      className="flex items-center justify-between p-2 bg-gray-50 rounded-md"
+                    >
+                      <div className="flex items-center gap-2">
+                        {member.teamMember?.user?.avatarUrl ? (
+                          <img
+                            src={member.teamMember.user.avatarUrl}
+                            alt=""
+                            className="w-6 h-6 rounded-full"
+                          />
+                        ) : (
+                          <div className="w-6 h-6 rounded-full bg-gray-300 flex items-center justify-center text-xs text-gray-600">
+                            {member.teamMember?.user?.firstName?.charAt(0)}
+                            {member.teamMember?.user?.lastName?.charAt(0)}
+                          </div>
+                        )}
+                        <div>
+                          <div className="text-sm font-medium text-gray-900">
+                            {member.teamMember?.user?.firstName}{" "}
+                            {member.teamMember?.user?.lastName}
+                            {member.teamMember?.user?.id === userId && " (You)"}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {member.teamMember?.user?.email}
+                          </div>
+                        </div>
+                      </div>
+                      <div
+                        className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${getRoleBadgeClass(member.role)}`}
+                      >
+                        {getRoleIcon(member.role)}
+                        {member.role}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
           {/* Permission-based Action Buttons */}
           {(canCreateCards || canEditProject) && (

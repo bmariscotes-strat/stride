@@ -8,6 +8,8 @@ export type {
   User,
   Team,
   Project,
+  ProjectTeam,
+  ProjectTeamMember,
   Column,
   Card,
   Label,
@@ -37,6 +39,7 @@ export type {
   NotificationWithRelations,
   MentionWithRelations,
   TeamWithProjectRoleRelations,
+  ProjectTeamMemberWithRelations,
 } from "./relations";
 
 // Create interfaces
@@ -104,6 +107,7 @@ export type {
   ProjectCreationProps,
   ProjectFormSectionProps,
   ProjectFormNavigationProps,
+  ProjectEditFormProps,
   ProjectFormMessagesProps,
   ProjectFormData,
   ProjectWithPartialRelations,

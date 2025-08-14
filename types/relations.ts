@@ -13,25 +13,20 @@ import type {
   ActivityLog,
   Notification,
   Mention,
+  ProjectTeam,
+  ProjectTeamMember,
 } from "./base";
-
-// =============================================================================
-// NEW TYPES FOR PROJECT-TEAM RELATIONSHIPS
-// =============================================================================
-
-export interface ProjectTeam {
-  id: string;
-  projectId: string;
-  teamId: string;
-  role: "admin" | "editor" | "viewer";
-  addedBy: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
 
 export interface ProjectTeamWithRelations extends ProjectTeam {
   project?: Project;
   team?: Team;
+  addedByUser?: User;
+}
+
+export interface ProjectTeamMemberWithRelations extends ProjectTeamMember {
+  project?: Project;
+  teams?: Team;
+  teamMember?: TeamMemberWithRelations;
   addedByUser?: User;
 }
 
@@ -82,7 +77,7 @@ export interface TeamWithMemberRoles {
 }
 
 export interface ProjectWithRelations extends Project {
-  teams?: TeamWithProjectRole[]; // Changed from single team to multiple teams with roles
+  teams?: TeamWithProjectRole[];
   owner?: User;
   columns?: Column[];
   labels?: Label[]; // Labels are now project-scoped

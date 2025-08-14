@@ -1,5 +1,11 @@
 // types/forms/project.ts - Updated types
-import type { Team, User, Project, TeamWithRelations } from "@/types";
+import type {
+  Team,
+  User,
+  Project,
+  TeamWithRelations,
+  ProjectTeamMemberWithRelations,
+} from "@/types";
 
 // Basic Types
 export type UserBasic = Pick<
@@ -20,6 +26,7 @@ export interface ProjectWithPartialRelations extends Project {
   teams: TeamWithProjectRole[];
   owner?: UserBasic;
   team?: TeamBasic;
+  projectTeamMembers?: ProjectTeamMemberWithRelations[];
 }
 
 export interface TeamWithProjectRole extends TeamBasic {
@@ -63,17 +70,19 @@ export interface ProjectFormSectionProps {
   error?: string | null;
 }
 
+export interface ProjectEditFormProps {
+  project: ProjectWithPartialRelations;
+  teams: TeamWithRelations[];
+  currentUserId: string;
+  isProjectOwner: boolean;
+  onNavigateBack: () => void;
+}
+
 export interface ProjectFormNavigationProps {
   activeSection: string;
   onSectionClick: (sectionId: string) => void;
   isEdit?: boolean;
   canDelete?: boolean;
-}
-
-export interface ProjectEditProps {
-  project: ProjectWithPartialRelations;
-  teams: TeamWithRelations[];
-  currentUserId: string;
 }
 
 export interface ProjectFormMessagesProps {

@@ -47,6 +47,25 @@ export interface Project {
   updatedAt: Date;
 }
 
+export interface ProjectTeam {
+  id: string;
+  projectId: string;
+  teamId: string;
+  addedBy: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface ProjectTeamMember {
+  id: string;
+  projectId: string;
+  teamMemberId: string;
+  role: "admin" | "editor" | "viewer";
+  addedBy: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export interface Column {
   id: string;
   projectId: string;

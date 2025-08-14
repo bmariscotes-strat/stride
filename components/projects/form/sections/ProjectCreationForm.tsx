@@ -6,12 +6,7 @@ import { useUserContext } from "@/contexts/UserContext";
 import { useCreateProject } from "@/hooks/useProjects";
 import AlertMessages from "@/components/projects/form/AlertMessages";
 import ProjectInformationSection from "./ProjectInformationSection";
-import ProjectSettingsSection from "./ProjectSettingsSection";
-import type {
-  ProjectCreationProps,
-  ProjectFormData,
-  ProjectSettings,
-} from "@/types";
+import type { ProjectCreationProps, ProjectFormData } from "@/types";
 
 interface ProjectCreationFormProps extends ProjectCreationProps {
   onNavigateBack: () => void;
