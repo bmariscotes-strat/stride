@@ -136,7 +136,7 @@ export async function getUserTeamsForProjectCreation(
 }
 
 /**
- * Create a new project with team assignments
+ * Create a new project with team assignments and member roles
  */
 export async function createProjectAction(
   data: CreateProject & {
@@ -213,7 +213,7 @@ export async function createProjectAction(
 
     const uniqueSlug = await generateUniqueSlug(baseSlug);
 
-    // Create the project
+    // STEP 1: Create the project
     const [newProject] = await db
       .insert(projects)
       .values({
@@ -227,52 +227,56 @@ export async function createProjectAction(
       })
       .returning();
 
-    // Create project-team relationships (without team-level roles)
+    // STEP 2: Create project-team relationships
+    // FIX: Use the exact field names that match your database schema
     const projectTeamInserts = teamIds.map((teamId) => ({
       projectId: newProject.id,
-      teamId,
+      teamId: teamId,
       addedBy: ownerId,
     }));
 
     await db.insert(projectTeams).values(projectTeamInserts);
 
+    // STEP 3: Get all team members for the selected teams and assign project roles
     const memberRoleInserts: Array<{
       projectId: string;
       teamMemberId: string;
       role: "admin" | "editor" | "viewer";
-      addedBy: string; // ✅ matches table schema
+      addedBy: string;
     }> = [];
 
     for (const teamId of teamIds) {
-      const members = await db
+      // Get all team members for this team
+      const teamMembersData = await db
         .select({
-          id: teamMembers.id,
+          id: teamMembers.id, // This is the teamMembers.id we need for projectTeamMembers
           userId: teamMembers.userId,
         })
         .from(teamMembers)
         .where(eq(teamMembers.teamId, teamId));
 
-      members.forEach((member) => {
-        const role = memberRoles[member.userId];
-        if (role) {
-          memberRoleInserts.push({
-            projectId: newProject.id,
-            teamMemberId: member.id,
-            role,
-            addedBy: ownerId,
-          });
-        }
+      // For each team member, assign their project role
+      teamMembersData.forEach((member) => {
+        const role = memberRoles[member.userId] || "editor"; // Default to editor if no role specified
+
+        memberRoleInserts.push({
+          projectId: newProject.id,
+          teamMemberId: member.id, // This is the teamMembers.id (foreign key)
+          role,
+          addedBy: ownerId,
+        });
       });
     }
 
+    // Insert all project team member roles
     if (memberRoleInserts.length > 0) {
       await db.insert(projectTeamMembers).values(memberRoleInserts);
     }
 
-    // Create default columns for the new project
+    // STEP 4: Create default columns for the new project
     await createDefaultColumns(newProject.id);
 
-    // Activity & Notification logging (same as before)
+    // STEP 5: Activity & Notification logging
     await ActivityService.logProjectCreated(
       ownerId,
       newProject.id,
@@ -288,7 +292,7 @@ export async function createProjectAction(
       );
     }
 
-    // Revalidate related pages
+    // STEP 6: Revalidate related pages
     teamIds.forEach((teamId) => {
       revalidatePath(`/team/${teamId}`);
     });
@@ -308,7 +312,6 @@ export async function createProjectAction(
     };
   }
 }
-
 export async function getProjectWithMemberRoles(projectId: string): Promise<
   | (ProjectWithPartialRelations & {
       memberRoles: Array<{
