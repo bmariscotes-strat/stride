@@ -1,4 +1,4 @@
-// hooks/useProject
+// hooks/useProject.ts - Updated to handle the Object.entries error
 
 "use client";
 
@@ -12,6 +12,7 @@ import {
   getTeamProjectsAction,
   getProjectAction,
   getProjectBySlugAction,
+  getProjectsForUser, // Add this import
   assignProjectTeamMemberRoleAction,
 } from "@/lib/services/projects";
 import type {
@@ -38,11 +39,26 @@ export const projectKeys = {
   detail: (id: string) => [...projectKeys.details(), id] as const,
   bySlug: (slug: string) => [...projectKeys.all, "bySlug", slug] as const,
   team: (teamId: string) => [...projectKeys.all, "team", teamId] as const,
+  user: (userId: string) => [...projectKeys.all, "user", userId] as const, // Add this
 };
 
 /**
+ * Hook for fetching all projects for a user (across all their teams)
+ */
+export function useUserProjects(
+  userId?: string,
+  options: Omit<ProjectsListOptions, "teamId"> = {}
+) {
+  return useQuery({
+    queryKey: projectKeys.user(userId || ""),
+    queryFn: () => (userId ? getProjectsForUser(userId, options) : []),
+    enabled: !!userId,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+/**
  * Hook for fetching team projects with optional filtering and pagination
- * (service still accepts a single teamId)
  */
 export function useTeamProjects(
   teamId: string,
@@ -110,6 +126,13 @@ export function useAssignProjectRole() {
           queryKey: projectKeys.lists(),
         });
 
+        // Invalidate user projects if we have current user
+        if (currentUserId) {
+          queryClient.invalidateQueries({
+            queryKey: projectKeys.user(currentUserId),
+          });
+        }
+
         // If we have cached project data, we can try to get team info for additional invalidation
         const cachedProject =
           queryClient.getQueryData<ProjectWithPartialRelations>(
@@ -131,7 +154,7 @@ export function useAssignProjectRole() {
 }
 
 /**
- * Main projects hook with CRUD operations
+ * Main projects hook with CRUD operations - Updated to use the new user projects function
  */
 export function useProjects(
   teamId?: string,
@@ -141,27 +164,40 @@ export function useProjects(
   const { userData, clerkUser } = useUserContext();
   const currentUserId = userData?.id || clerkUser?.id;
 
-  // Fetch projects for a team
+  // If teamId is provided, use team-specific query, otherwise use user projects
   const {
     data: projects = [],
     isLoading,
     error,
     refetch,
   } = useQuery({
-    queryKey: projectKeys.list({ teamId, ...options }),
-    queryFn: () => (teamId ? getTeamProjectsAction(teamId, options) : []),
-    enabled: !!teamId,
+    queryKey: teamId
+      ? projectKeys.list({ teamId, ...options })
+      : projectKeys.user(currentUserId || ""),
+    queryFn: () => {
+      if (teamId) {
+        return getTeamProjectsAction(teamId, options);
+      } else if (currentUserId) {
+        return getProjectsForUser(currentUserId, options);
+      }
+      return [];
+    },
+    enabled: !!(teamId || currentUserId),
     staleTime: 5 * 60 * 1000,
   });
 
-  // Create project (many-to-many)
+  // Create project (many-to-many) - Fixed to handle undefined memberRoles
   const createProjectMutation = useMutation({
     mutationFn: (
       data: CreateProject & {
         teamIds: string[];
-        memberRoles: Record<string, "admin" | "editor" | "viewer">;
+        memberRoles?: Record<string, "admin" | "editor" | "viewer">; // Make optional
       }
-    ) => createProjectAction(data),
+    ) =>
+      createProjectAction({
+        ...data,
+        memberRoles: data.memberRoles || {}, // Provide default empty object
+      }),
     onSuccess: (result, variables) => {
       if (result.success) {
         // Invalidate each related team list
@@ -170,6 +206,13 @@ export function useProjects(
         });
         // Invalidate generic lists
         queryClient.invalidateQueries({ queryKey: projectKeys.lists() });
+
+        // Invalidate user projects
+        if (currentUserId) {
+          queryClient.invalidateQueries({
+            queryKey: projectKeys.user(currentUserId),
+          });
+        }
 
         // Seed detail cache
         if (result.project) {
@@ -237,8 +280,13 @@ export function useProjects(
           } as ProjectWithPartialRelations
         );
 
-        // Invalidate lists
+        // Invalidate lists and user projects
         queryClient.invalidateQueries({ queryKey: projectKeys.lists() });
+        if (currentUserId) {
+          queryClient.invalidateQueries({
+            queryKey: projectKeys.user(currentUserId),
+          });
+        }
 
         // Fan-out invalidate for all related teams (from cached version)
         prev?.teams?.forEach((t) =>
@@ -278,6 +326,14 @@ export function useProjects(
         (old) => (old ? old.filter((p) => p.id !== projectId) : [])
       );
 
+      // Also remove from user projects
+      if (currentUserId) {
+        queryClient.setQueriesData<ProjectWithPartialRelations[]>(
+          { queryKey: projectKeys.user(currentUserId) },
+          (old) => (old ? old.filter((p) => p.id !== projectId) : [])
+        );
+      }
+
       return { previousProject };
     },
     onError: (_error, { projectId }, context) => {
@@ -287,6 +343,11 @@ export function useProjects(
           context.previousProject
         );
         queryClient.invalidateQueries({ queryKey: projectKeys.lists() });
+        if (currentUserId) {
+          queryClient.invalidateQueries({
+            queryKey: projectKeys.user(currentUserId),
+          });
+        }
       }
     },
     onSuccess: (_result, { projectId }) => {
@@ -302,6 +363,11 @@ export function useProjects(
       );
 
       queryClient.invalidateQueries({ queryKey: projectKeys.lists() });
+      if (currentUserId) {
+        queryClient.invalidateQueries({
+          queryKey: projectKeys.user(currentUserId),
+        });
+      }
     },
   });
 
@@ -327,6 +393,13 @@ export function useProjects(
         queryClient.invalidateQueries({
           queryKey: projectKeys.lists(),
         });
+
+        // Invalidate user projects
+        if (currentUserId) {
+          queryClient.invalidateQueries({
+            queryKey: projectKeys.user(currentUserId),
+          });
+        }
 
         // Invalidate team-specific queries
         const cachedProject =
@@ -395,24 +468,37 @@ export function useProjects(
 }
 
 /**
- * Standalone: create (many-to-many)
+ * Standalone: create (many-to-many) - Fixed memberRoles handling
  */
 export function useCreateProject() {
   const queryClient = useQueryClient();
+  const { userData, clerkUser } = useUserContext();
+  const currentUserId = userData?.id || clerkUser?.id;
 
   return useMutation({
     mutationFn: (
       data: CreateProject & {
         teamIds: string[];
-        memberRoles: Record<string, "admin" | "editor" | "viewer">;
+        memberRoles?: Record<string, "admin" | "editor" | "viewer">; // Make optional
       }
-    ) => createProjectAction(data),
+    ) =>
+      createProjectAction({
+        ...data,
+        memberRoles: data.memberRoles || {}, // Provide default empty object
+      }),
     onSuccess: (result, variables) => {
       if (result.success) {
         variables.teamIds?.forEach((tid) =>
           queryClient.invalidateQueries({ queryKey: projectKeys.team(tid) })
         );
         queryClient.invalidateQueries({ queryKey: projectKeys.lists() });
+
+        // Invalidate user projects
+        if (currentUserId) {
+          queryClient.invalidateQueries({
+            queryKey: projectKeys.user(currentUserId),
+          });
+        }
 
         if (result.project) {
           queryClient.setQueryData(
@@ -453,6 +539,14 @@ export function useUpdateProject() {
         );
 
         queryClient.invalidateQueries({ queryKey: projectKeys.lists() });
+
+        // Invalidate user projects
+        if (currentUserId) {
+          queryClient.invalidateQueries({
+            queryKey: projectKeys.user(currentUserId),
+          });
+        }
+
         prev?.teams?.forEach((t) =>
           queryClient.invalidateQueries({ queryKey: projectKeys.team(t.id) })
         );
@@ -481,6 +575,14 @@ export function useDeleteProject() {
 
       queryClient.removeQueries({ queryKey: projectKeys.detail(projectId) });
       queryClient.invalidateQueries({ queryKey: projectKeys.lists() });
+
+      // Invalidate user projects
+      if (currentUserId) {
+        queryClient.invalidateQueries({
+          queryKey: projectKeys.user(currentUserId),
+        });
+      }
+
       prev?.teams?.forEach((t) =>
         queryClient.invalidateQueries({ queryKey: projectKeys.team(t.id) })
       );
@@ -508,6 +610,14 @@ export function useHardDeleteProject() {
 
       queryClient.removeQueries({ queryKey: projectKeys.detail(projectId) });
       queryClient.invalidateQueries({ queryKey: projectKeys.lists() });
+
+      // Invalidate user projects
+      if (currentUserId) {
+        queryClient.invalidateQueries({
+          queryKey: projectKeys.user(currentUserId),
+        });
+      }
+
       prev?.teams?.forEach((t) =>
         queryClient.invalidateQueries({ queryKey: projectKeys.team(t.id) })
       );

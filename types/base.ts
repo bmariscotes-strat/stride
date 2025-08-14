@@ -40,7 +40,6 @@ export interface Project {
   slug: string;
   description: string | null;
   ownerId: string;
-  colorTheme: string | null;
   isArchived: boolean;
   schemaVersion: number;
   createdAt: Date;

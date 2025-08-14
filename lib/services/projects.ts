@@ -32,7 +32,6 @@ async function getTeamsForProjectIds(projectIds: string[]) {
         id: string;
         name: string;
         slug: string;
-        role: "admin" | "editor" | "viewer";
       }>
     >();
 
@@ -55,6 +54,7 @@ async function getTeamsForProjectIds(projectIds: string[]) {
       slug: string;
     }>
   >();
+
   for (const r of rows) {
     if (!map.has(r.projectId)) map.set(r.projectId, []);
     map.get(r.projectId)!.push({ id: r.id, name: r.name, slug: r.slug });
@@ -585,7 +585,6 @@ export async function getTeamProjectsAction(
           slug: row.slug,
           description: row.description,
           ownerId: row.ownerId,
-          colorTheme: row.colorTheme,
           isArchived: row.isArchived,
           schemaVersion: row.schemaVersion,
           createdAt: row.createdAt,
@@ -611,12 +610,18 @@ export async function getTeamProjectsAction(
 /**
  * Get all projects for a user based on their team memberships
  */
+/**
+ * Get all projects for a user based on their team memberships - FIXED VERSION
+ */
 export async function getProjectsForUser(
   userId: string,
   options: Omit<ProjectsListOptions, "teamId"> = {}
 ): Promise<ProjectWithPartialRelations[]> {
   try {
     if (!userId) return [];
+
+    // Convert Clerk user ID to internal user ID if needed
+    let internalUserId = userId;
 
     const {
       ownerId,
@@ -628,11 +633,11 @@ export async function getProjectsForUser(
       offset = 0,
     } = options;
 
-    // Teams this user belongs to
+    // Get teams this user belongs to (using internal user ID)
     const memberships = await db
       .select({ teamId: teamMembers.teamId })
       .from(teamMembers)
-      .where(eq(teamMembers.userId, userId));
+      .where(eq(teamMembers.userId, internalUserId));
 
     if (memberships.length === 0) return [];
     const teamIds = memberships.map((m) => m.teamId);
@@ -650,7 +655,7 @@ export async function getProjectsForUser(
             ? desc(projects.updatedAt)
             : asc(projects.updatedAt);
 
-    // Select unique projects reachable via those teams (filtering archived teams too)
+    // Get unique projects via those teams
     const rows = await db
       .select({
         id: projects.id,
@@ -673,7 +678,7 @@ export async function getProjectsForUser(
       })
       .from(projects)
       .innerJoin(projectTeams, eq(projects.id, projectTeams.projectId))
-      .innerJoin(teams, eq(projectTeams.teamId, teams.id)) // to filter archived teams
+      .innerJoin(teams, eq(projectTeams.teamId, teams.id))
       .innerJoin(users, eq(projects.ownerId, users.id))
       .where(
         and(
@@ -690,18 +695,22 @@ export async function getProjectsForUser(
       .limit(limit)
       .offset(offset);
 
-    // Attach full teams[] (with roles) for each project
+    // Get teams for each project
     const projectIds = rows.map((r) => r.id);
     const teamsMap = await getTeamsForProjectIds(projectIds);
 
-    // De-dupe by id just in case (joins can fan out)
-    const uniq = new Map<string, ProjectWithPartialRelations>();
+    // De-duplicate projects (since joins can fan out)
+    const projectsMap = new Map<string, ProjectWithPartialRelations>();
     for (const r of rows) {
-      if (!uniq.has(r.id)) {
-        uniq.set(r.id, { ...r, teams: teamsMap.get(r.id) ?? [] });
+      if (!projectsMap.has(r.id)) {
+        projectsMap.set(r.id, {
+          ...r,
+          teams: teamsMap.get(r.id) ?? [],
+        });
       }
     }
-    return Array.from(uniq.values());
+
+    return Array.from(projectsMap.values());
   } catch (error) {
     console.error("Error fetching projects for user:", error);
     return [];
@@ -1212,23 +1221,47 @@ async function createDefaultColumns(projectId: string) {
 
 /**
  * Get a project by slug for a specific user (searches across all their teams)
- * This is more efficient than the loop approach in the component
  */
 export async function getProjectBySlugForUser(
   slug: string,
   userId: string
-): Promise<ProjectWithPartialRelations | null> {
+): Promise<(ProjectWithPartialRelations & { userRole?: string }) | null> {
   try {
-    // teams the user is in
+    console.log("[getProjectBySlugForUser] Called with:", { slug, userId });
+
+    // 1. Get team memberships (team-level roles)
     const memberships = await db
-      .select({ teamId: teamMembers.teamId })
+      .select({
+        teamId: teamMembers.teamId,
+        teamRole: teamMembers.role,
+      })
       .from(teamMembers)
       .where(eq(teamMembers.userId, userId));
 
-    if (memberships.length === 0) return null;
+    console.log("[getProjectBySlugForUser] Memberships found:", memberships);
     const teamIds = memberships.map((m) => m.teamId);
 
-    // Find the project the user can reach via their teams
+    // 2. Get project memberships (project-level roles)
+    const projectMemberships = await db
+      .select({
+        projectId: projectTeamMembers.projectId,
+        projectRole: projectTeamMembers.role,
+      })
+      .from(projectTeamMembers)
+      .innerJoin(
+        teamMembers,
+        eq(projectTeamMembers.teamMemberId, teamMembers.id)
+      )
+      .where(eq(teamMembers.userId, userId));
+
+    console.log(
+      "[getProjectBySlugForUser] Project memberships found:",
+      projectMemberships
+    );
+    const projectIdsFromMemberships = projectMemberships.map(
+      (p) => p.projectId
+    );
+
     const projRow = await db
       .select({
         id: projects.id,
@@ -1236,7 +1269,6 @@ export async function getProjectBySlugForUser(
         slug: projects.slug,
         description: projects.description,
         ownerId: projects.ownerId,
-        colorTheme: projects.colorTheme,
         isArchived: projects.isArchived,
         schemaVersion: projects.schemaVersion,
         createdAt: projects.createdAt,
@@ -1250,28 +1282,58 @@ export async function getProjectBySlugForUser(
         },
       })
       .from(projects)
-      .innerJoin(projectTeams, eq(projects.id, projectTeams.projectId))
       .innerJoin(users, eq(projects.ownerId, users.id))
+      .leftJoin(projectTeams, eq(projects.id, projectTeams.projectId))
       .where(
         and(
           eq(projects.slug, slug),
-          inArray(projectTeams.teamId, teamIds),
-          eq(projects.isArchived, false)
+          eq(projects.isArchived, false),
+          or(
+            inArray(projectTeams.teamId, teamIds), // Team-level access
+            inArray(projects.id, projectIdsFromMemberships) // Project-level access
+          )
         )
       )
       .limit(1);
 
     const project = projRow[0];
-    if (!project) return null;
 
+    // 4. Get their role (prefer project-level role if available)
+    let userRole: string | undefined;
+    const projectRoleEntry = projectMemberships.find(
+      (p) => p.projectId === project.id
+    );
+    if (projectRoleEntry) {
+      userRole = projectRoleEntry.projectRole;
+    } else {
+      // If no direct project role, find a team role from one of the linked teams
+      const projectTeamsForThisProject = await db
+        .select({ teamId: projectTeams.teamId })
+        .from(projectTeams)
+        .where(eq(projectTeams.projectId, project.id));
+
+      const matchingTeam = memberships.find((m) =>
+        projectTeamsForThisProject.some((t) => t.teamId === m.teamId)
+      );
+      userRole = matchingTeam?.teamRole;
+    }
+
+    // 5. Get teams for the project
     const teamsMap = await getTeamsForProjectIds([project.id]);
 
-    return {
+    const result = {
       ...project,
       teams: teamsMap.get(project.id) ?? [],
+      userRole,
     };
+
+    console.log("[getProjectBySlugForUser] Final project data:", result);
+    return result;
   } catch (error) {
-    console.error("Error fetching project by slug for user:", error);
+    console.error(
+      "[getProjectBySlugForUser] Error fetching project by slug for user:",
+      error
+    );
     return null;
   }
 }
