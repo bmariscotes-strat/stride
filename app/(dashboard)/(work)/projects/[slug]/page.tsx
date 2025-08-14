@@ -211,12 +211,6 @@ export default async function ProjectPage({
             >
               Create New Card
             </button>
-            <button
-              type="button"
-              className="w-full bg-gray-100 text-gray-700 px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-200 transition-colors"
-            >
-              Edit Project Details
-            </button>
           </div>
 
           <div className="mb-4">
@@ -243,30 +237,6 @@ export default async function ProjectPage({
                   {label}
                 </button>
               ))}
-            </div>
-          </div>
-
-          <div className="border-t border-gray-200 pt-4 mt-6">
-            <h3 className="font-medium text-gray-900 mb-3">Quick Actions</h3>
-            <div className="space-y-2">
-              <button
-                type="button"
-                className="w-full text-left px-3 py-2 rounded-md text-sm text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors"
-              >
-                + Add Card
-              </button>
-              <button
-                type="button"
-                className="w-full text-left px-3 py-2 rounded-md text-sm text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors"
-              >
-                Edit Project
-              </button>
-              <button
-                type="button"
-                className="w-full text-left px-3 py-2 rounded-md text-sm text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors"
-              >
-                Manage Team Access
-              </button>
             </div>
           </div>
         </>
