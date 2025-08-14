@@ -24,6 +24,7 @@ export type {
 export type {
   UserWithRelations,
   TeamWithRelations,
+  TeamWithMemberRoles,
   ProjectWithRelations,
   ColumnWithRelations,
   CardWithRelations,
@@ -43,6 +44,7 @@ export type {
   CreateUser,
   CreateTeam,
   CreateProject,
+  CreateProjectWithMembers,
   CreateColumn,
   CreateCard,
   CreateLabel,
@@ -105,6 +107,7 @@ export type {
   ProjectFormMessagesProps,
   ProjectFormData,
   ProjectWithPartialRelations,
+  AssignProjectRoleParams,
   ProjectsListOptions,
   UserBasic,
 } from "./forms/project";

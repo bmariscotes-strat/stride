@@ -32,6 +32,12 @@ export interface CreateProject {
   colorTheme?: string | null;
 }
 
+export interface CreateProjectWithMembers
+  extends Omit<CreateProject, "teamIds"> {
+  teamIds: string[];
+  memberRoles: Record<string, "admin" | "editor" | "viewer">;
+}
+
 // NEW: Interface for creating project-team relationships
 export interface CreateProjectTeam {
   projectId: string;

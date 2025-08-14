@@ -12,12 +12,14 @@ import {
   getTeamProjectsAction,
   getProjectAction,
   getProjectBySlugAction,
+  assignProjectTeamMemberRoleAction,
 } from "@/lib/services/projects";
 import type {
   CreateProject,
   UpdateProject,
   ProjectWithPartialRelations,
   ProjectsListOptions,
+  AssignProjectRoleParams,
 } from "@/types";
 
 // Local helper type for create (matches service signature)
@@ -79,6 +81,56 @@ export function useProjectBySlug(slug?: string) {
 }
 
 /**
+ * Standalone hook for assigning project team member roles
+ */
+export function useAssignProjectRole() {
+  const queryClient = useQueryClient();
+  const { userData, clerkUser } = useUserContext();
+  const currentUserId = userData?.id || clerkUser?.id;
+
+  return useMutation({
+    mutationFn: ({ projectId, memberId, newRole }: AssignProjectRoleParams) => {
+      if (!currentUserId) throw new Error("User not authenticated");
+      return assignProjectTeamMemberRoleAction(
+        projectId,
+        memberId,
+        newRole,
+        currentUserId
+      );
+    },
+    onSuccess: (result, { projectId }) => {
+      if (result.success) {
+        // Invalidate project details to refresh member roles
+        queryClient.invalidateQueries({
+          queryKey: projectKeys.detail(projectId),
+        });
+
+        // Invalidate project lists to ensure consistent data
+        queryClient.invalidateQueries({
+          queryKey: projectKeys.lists(),
+        });
+
+        // If we have cached project data, we can try to get team info for additional invalidation
+        const cachedProject =
+          queryClient.getQueryData<ProjectWithPartialRelations>(
+            projectKeys.detail(projectId)
+          );
+
+        // Invalidate team-specific queries if we know which teams are involved
+        cachedProject?.teams?.forEach((team) => {
+          queryClient.invalidateQueries({
+            queryKey: projectKeys.team(team.id),
+          });
+        });
+      }
+    },
+    onError: (error) => {
+      console.error("Error assigning project role:", error);
+    },
+  });
+}
+
+/**
  * Main projects hook with CRUD operations
  */
 export function useProjects(
@@ -104,7 +156,12 @@ export function useProjects(
 
   // Create project (many-to-many)
   const createProjectMutation = useMutation({
-    mutationFn: (data: CreateProjectManyToMany) => createProjectAction(data),
+    mutationFn: (
+      data: CreateProject & {
+        teamIds: string[];
+        memberRoles: Record<string, "admin" | "editor" | "viewer">;
+      }
+    ) => createProjectAction(data),
     onSuccess: (result, variables) => {
       if (result.success) {
         // Invalidate each related team list
@@ -248,6 +305,43 @@ export function useProjects(
     },
   });
 
+  // Role assignment mutation
+  const assignRoleMutation = useMutation({
+    mutationFn: ({ projectId, memberId, newRole }: AssignProjectRoleParams) => {
+      if (!currentUserId) throw new Error("User not authenticated");
+      return assignProjectTeamMemberRoleAction(
+        projectId,
+        memberId,
+        newRole,
+        currentUserId
+      );
+    },
+    onSuccess: (result, { projectId }) => {
+      if (result.success) {
+        // Invalidate project details to refresh member roles
+        queryClient.invalidateQueries({
+          queryKey: projectKeys.detail(projectId),
+        });
+
+        // Invalidate project lists
+        queryClient.invalidateQueries({
+          queryKey: projectKeys.lists(),
+        });
+
+        // Invalidate team-specific queries
+        const cachedProject =
+          queryClient.getQueryData<ProjectWithPartialRelations>(
+            projectKeys.detail(projectId)
+          );
+        cachedProject?.teams?.forEach((team) => {
+          queryClient.invalidateQueries({
+            queryKey: projectKeys.team(team.id),
+          });
+        });
+      }
+    },
+  });
+
   return {
     // Data
     projects,
@@ -284,12 +378,19 @@ export function useProjects(
     isDeleting: deleteProjectMutation.isPending,
     deleteError: deleteProjectMutation.error,
 
+    // Assign project role
+    assignProjectRole: assignRoleMutation.mutate,
+    assignProjectRoleAsync: assignRoleMutation.mutateAsync,
+    isAssigningRole: assignRoleMutation.isPending,
+    assignRoleError: assignRoleMutation.error,
+
     // Combined loading state
     isBusy:
       isLoading ||
       createProjectMutation.isPending ||
       updateProjectMutation.isPending ||
-      deleteProjectMutation.isPending,
+      deleteProjectMutation.isPending ||
+      assignRoleMutation.isPending,
   };
 }
 
@@ -300,7 +401,12 @@ export function useCreateProject() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: CreateProjectManyToMany) => createProjectAction(data),
+    mutationFn: (
+      data: CreateProject & {
+        teamIds: string[];
+        memberRoles: Record<string, "admin" | "editor" | "viewer">;
+      }
+    ) => createProjectAction(data),
     onSuccess: (result, variables) => {
       if (result.success) {
         variables.teamIds?.forEach((tid) =>

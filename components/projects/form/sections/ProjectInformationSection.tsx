@@ -1,20 +1,22 @@
 // Updated ProjectInformationSection.tsx
 "use client";
 import React, { useState } from "react";
-import { Info, FolderOpen, Plus, X, Users } from "lucide-react";
+import { Info, FolderOpen, Plus, X, Users, AlertTriangle } from "lucide-react";
 import { Input } from "@/components/ui/Input";
 import { TextArea } from "@/components/ui/TextArea";
 import TeamSelectionModal from "@/components/projects/form/sections/TeamSelectionModal";
+import { useProjects } from "@/hooks/useProjects";
 import type {
   ProjectFormSectionProps,
   TeamWithRelations,
-  TeamWithProjectRoleRelations,
+  TeamWithMemberRoles,
 } from "@/types";
 
 interface ProjectInformationSectionProps extends ProjectFormSectionProps {
   informationRef: React.RefObject<HTMLElement | null>;
   isEdit?: boolean;
   teams: TeamWithRelations[];
+  projectId?: string;
 }
 
 export default function ProjectInformationSection({
@@ -22,19 +24,23 @@ export default function ProjectInformationSection({
   onInputChange,
   onSlugChange,
   onTeamsChange,
-  onTeamRoleChange,
+  onMemberRolesChange,
   teams,
   error,
   informationRef,
   currentUserId,
   isEdit = false,
+  projectId,
 }: ProjectInformationSectionProps) {
   const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
+
+  // Use the projects hook for role assignment
+  const { assignProjectRole, isAssigningRole } = useProjects();
 
   const handleSlugChange = (value: string) => {
     const basicSlug = value
       .toLowerCase()
-      .replace(/\\s+/g, "-")
+      .replace(/\s+/g, "-")
       .replace(/[^a-z0-9-]/g, "")
       .replace(/--+/g, "-")
       .replace(/^-+|-+$/g, "");
@@ -42,18 +48,35 @@ export default function ProjectInformationSection({
   };
 
   const handleTeamSelectionConfirm = (
-    selectedTeams: TeamWithProjectRoleRelations[]
+    selectedTeams: TeamWithMemberRoles[],
+    memberRoles: Record<string, "admin" | "editor" | "viewer">
   ) => {
     const teamIds = selectedTeams
-      .map((team) => team.team?.id || "")
-      .filter(Boolean);
-    onTeamsChange(teamIds);
+      .map((team) => team.team?.id)
+      .filter((id): id is string => Boolean(id));
 
-    selectedTeams.forEach((team) => {
-      if (team.team?.id) {
-        onTeamRoleChange(team.team.id, team.projectRole);
+    onTeamsChange(teamIds);
+    if (onMemberRolesChange) {
+      onMemberRolesChange(memberRoles);
+    }
+  };
+
+  const handleMemberRoleChangeInEditMode = async (
+    memberId: string,
+    newRole: "admin" | "editor" | "viewer"
+  ) => {
+    if (isEdit && projectId) {
+      try {
+        await assignProjectRole({
+          projectId,
+          memberId,
+          newRole,
+        });
+      } catch (error) {
+        console.error("Failed to assign role:", error);
+        // Handle error (show toast, etc.)
       }
-    });
+    }
   };
 
   const removeTeam = (teamIdToRemove: string) => {
@@ -63,19 +86,57 @@ export default function ProjectInformationSection({
     onTeamsChange(updatedTeamIds);
   };
 
-  // Convert your teams to the format needed for display
-  const getSelectedTeams = () => {
+  // Get selected teams with their members
+  const getSelectedTeamsWithMembers = () => {
     return teams
-      .filter((team) => formData.teamIds.includes(team.id))
+      .filter((team) => team?.id && formData.teamIds.includes(team.id))
       .map((team) => ({
         team,
-        members: team.members,
-        projectRole: (formData.teamRoles[team.id] || "editor") as
-          | "admin"
-          | "editor"
-          | "viewer",
-        memberRoles: {},
+        members: team.members || [],
       }));
+  };
+
+  // Get unique members across all selected teams
+  const getAllUniqueMembers = () => {
+    const memberMap = new Map<
+      string,
+      {
+        id: string;
+        userId: string;
+        user: {
+          id: string;
+          firstName: string | null;
+          lastName: string | null;
+          email: string;
+          avatarUrl: string | null;
+        };
+        teams: string[];
+        role: "admin" | "editor" | "viewer";
+      }
+    >();
+
+    getSelectedTeamsWithMembers().forEach(({ team, members }) => {
+      members.forEach((member) => {
+        if (member.user?.id) {
+          const existing = memberMap.get(member.user.id);
+          if (existing) {
+            existing.teams.push(team.name);
+          } else {
+            memberMap.set(member.user.id, {
+              ...member,
+              user: member.user!,
+              teams: [team.name],
+              role: (formData.memberRoles?.[member.user.id] || "editor") as
+                | "admin"
+                | "editor"
+                | "viewer",
+            });
+          }
+        }
+      });
+    });
+
+    return Array.from(memberMap.values());
   };
 
   const getRoleBadgeColor = (role: "admin" | "editor" | "viewer") => {
@@ -86,8 +147,12 @@ export default function ProjectInformationSection({
         return "bg-blue-100 text-blue-800 border-blue-200";
       case "viewer":
         return "bg-gray-100 text-gray-800 border-gray-200";
+      default:
+        return "bg-gray-100 text-gray-800 border-gray-200";
     }
   };
+
+  const uniqueMembers = getAllUniqueMembers();
 
   return (
     <>
@@ -117,7 +182,8 @@ export default function ProjectInformationSection({
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <label className="block text-sm font-medium text-gray-700">
-                Teams {!isEdit && <span className="text-red-500">*</span>}
+                Teams & Members{" "}
+                {!isEdit && <span className="text-red-500">*</span>}
               </label>
               {!isEdit && (
                 <button
@@ -132,69 +198,129 @@ export default function ProjectInformationSection({
             </div>
 
             {formData.teamIds.length > 0 ? (
-              <div className="space-y-2">
-                {getSelectedTeams().map((teamWithRole) => {
-                  if (!teamWithRole.team) return null;
-
-                  return (
-                    <div
-                      key={teamWithRole.team.id}
-                      className="flex items-center justify-between p-3 bg-gray-50 border border-gray-200 rounded-md"
-                    >
-                      <div className="flex items-center gap-3">
-                        <FolderOpen className="h-4 w-4 text-gray-400" />
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium text-gray-900">
-                              {teamWithRole.team.name}
-                            </span>
-                            <span
-                              className={`px-2 py-1 rounded-full text-xs font-medium border ${getRoleBadgeColor(teamWithRole.projectRole)}`}
-                            >
-                              {teamWithRole.projectRole}
-                            </span>
-                          </div>
-                          <div className="text-sm text-gray-600">
-                            {teamWithRole.members?.length || 0} members
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {!isEdit && (
-                          <select
-                            value={teamWithRole.projectRole}
-                            onChange={(e) =>
-                              onTeamRoleChange(
-                                teamWithRole.team!.id,
-                                e.target.value as "admin" | "editor" | "viewer"
-                              )
-                            }
-                            className="text-sm border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <option value="admin">Admin</option>
-                            <option value="editor">Editor</option>
-                            <option value="viewer">Viewer</option>
-                          </select>
-                        )}
+              <div className="space-y-4">
+                {/* Teams Overview */}
+                <div className="bg-gray-50 border border-gray-200 rounded-md p-4">
+                  <h4 className="text-sm font-medium text-gray-900 mb-3">
+                    Selected Teams
+                  </h4>
+                  <div className="flex flex-wrap gap-2">
+                    {getSelectedTeamsWithMembers().map(({ team }) => (
+                      <div
+                        key={team.id}
+                        className="flex items-center gap-2 px-3 py-1 bg-white border border-gray-200 rounded-full text-sm"
+                      >
+                        <FolderOpen className="h-3 w-3 text-gray-400" />
+                        <span className="font-medium text-gray-900">
+                          {team.name}
+                        </span>
+                        <span className="text-gray-600">
+                          ({team.members?.length || 0})
+                        </span>
                         {!isEdit && formData.teamIds.length > 1 && (
                           <button
                             type="button"
-                            onClick={() => removeTeam(teamWithRole.team!.id)}
-                            className="text-red-600 hover:text-red-800 p-1"
+                            onClick={() => removeTeam(team.id)}
+                            className="text-red-600 hover:text-red-800 ml-1"
                             title="Remove team"
                           >
-                            <X size={16} />
+                            <X size={12} />
                           </button>
                         )}
                       </div>
-                    </div>
-                  );
-                })}
+                    ))}
+                  </div>
+                </div>
+
+                {/* Members with Roles */}
+                <div className="bg-white border border-gray-200 rounded-md">
+                  <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
+                    <h4 className="text-sm font-medium text-gray-900">
+                      Project Members ({uniqueMembers.length})
+                    </h4>
+                    <p className="text-xs text-gray-600 mt-1">
+                      Individual member roles across all selected teams
+                    </p>
+                  </div>
+                  <div className="divide-y divide-gray-100 max-h-64 overflow-y-auto">
+                    {uniqueMembers.map((member, index) => (
+                      <div
+                        key={`${member.userId}-${index}`}
+                        className="p-4 hover:bg-gray-50"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
+                              {member.user.avatarUrl ? (
+                                <img
+                                  src={member.user.avatarUrl}
+                                  alt={`${member.user.firstName} ${member.user.lastName}`}
+                                  className="w-full h-full rounded-full object-cover"
+                                />
+                              ) : (
+                                <span className="text-xs font-medium text-gray-600">
+                                  {member.user.firstName?.charAt(0) || ""}
+                                  {member.user.lastName?.charAt(0) || ""}
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm font-medium text-gray-900">
+                                  {member.user.firstName} {member.user.lastName}
+                                  {member.user.id === currentUserId && (
+                                    <span className="ml-2 text-xs text-blue-600">
+                                      (You)
+                                    </span>
+                                  )}
+                                </span>
+                                <span
+                                  className={`px-2 py-0.5 rounded-full text-xs font-medium border ${getRoleBadgeColor(member.role)}`}
+                                >
+                                  {member.role}
+                                </span>
+                              </div>
+                              <div className="text-xs text-gray-600">
+                                {member.user.email}
+                              </div>
+                              <div className="text-xs text-gray-500 mt-1">
+                                Teams: {member.teams.join(", ")}
+                              </div>
+                            </div>
+                          </div>
+                          {isEdit ? (
+                            <select
+                              value={member.role}
+                              onChange={(e) =>
+                                handleMemberRoleChangeInEditMode(
+                                  member.id,
+                                  e.target.value as
+                                    | "admin"
+                                    | "editor"
+                                    | "viewer"
+                                )
+                              }
+                              disabled={isAssigningRole}
+                              className="text-sm border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                            >
+                              <option value="admin">Admin</option>
+                              <option value="editor">Editor</option>
+                              <option value="viewer">Viewer</option>
+                            </select>
+                          ) : (
+                            <div className="text-sm text-gray-500">
+                              Role set during team selection
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
             ) : (
-              <div className="flex items-center gap-2 px-3 py-8 bg-gray-50 border border-gray-300 rounded-md border-dashed text-center">
-                <Users className="h-5 w-5 text-gray-400 mx-auto" />
+              <div className="flex flex-col items-center gap-2 px-3 py-8 bg-gray-50 border border-gray-300 rounded-md border-dashed text-center">
+                <Users className="h-5 w-5 text-gray-400" />
                 <span className="text-sm text-gray-500">
                   {isEdit
                     ? "No teams assigned to this project"
@@ -205,15 +331,15 @@ export default function ProjectInformationSection({
 
             {!isEdit && (
               <p className="text-xs text-gray-500">
-                Choose which teams this project belongs to. Each team can have
-                different permission levels.
+                Choose which teams this project belongs to. Set individual
+                member roles during team selection.
               </p>
             )}
 
             {isEdit && (
               <p className="text-xs text-gray-500">
-                Teams cannot be changed after project creation. Contact your
-                team admin if you need to modify team assignments.
+                Teams cannot be changed after project creation. You can modify
+                individual member roles above.
               </p>
             )}
           </div>
@@ -228,6 +354,7 @@ export default function ProjectInformationSection({
             maxLength={50}
             leftAddon="stride-pm.app/.../projects/"
             helperText="Only lowercase letters, numbers, and hyphens. The server will ensure uniqueness."
+            disabled={isEdit}
           />
 
           <TextArea
@@ -249,6 +376,7 @@ export default function ProjectInformationSection({
         availableTeams={teams}
         currentUserId={currentUserId}
         preSelectedTeamIds={formData.teamIds}
+        preSelectedMemberRoles={formData.memberRoles || {}}
       />
     </>
   );

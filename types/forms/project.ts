@@ -19,13 +19,11 @@ export type TeamBasic = Pick<Team, "id" | "name" | "slug">;
 export interface ProjectWithPartialRelations extends Project {
   teams: TeamWithProjectRole[];
   owner?: UserBasic;
-  // Optional fields for when you need them
-  team?: TeamBasic; // For backward compatibility in some queries
-  teamRole?: "admin" | "editor" | "viewer"; // When queried from user's perspective
+  team?: TeamBasic;
 }
 
 export interface TeamWithProjectRole extends TeamBasic {
-  role: "admin" | "editor" | "viewer";
+  role?: "admin" | "editor" | "viewer";
 }
 
 export interface ProjectSettings {
@@ -37,9 +35,8 @@ export interface ProjectFormData {
   name: string;
   slug: string;
   description: string;
-  teamIds: string[]; // Changed from teamId to teamIds
-  teamRoles: Record<string, "admin" | "editor" | "viewer">; // Roles for each team
-  settings: ProjectSettings;
+  teamIds: string[];
+  memberRoles: Record<string, "admin" | "editor" | "viewer">;
 }
 
 export interface NavigationItem {
@@ -56,20 +53,14 @@ export interface ProjectCreationProps {
 // Updated to support multiple teams and roles
 export interface ProjectFormSectionProps {
   formData: ProjectFormData;
-  onInputChange: (
-    field: keyof Omit<ProjectFormData, "settings" | "teamRoles">,
-    value: string | string[]
-  ) => void;
-  onSlugChange: (value: string) => void;
-  onSettingChange: (setting: keyof ProjectSettings, value: string) => void;
-  onTeamRoleChange: (
-    teamId: string,
-    role: "admin" | "editor" | "viewer"
-  ) => void;
+  onInputChange: (field: keyof ProjectFormData, value: any) => void;
+  onSlugChange: (slug: string) => void;
   onTeamsChange: (teamIds: string[]) => void;
-  teams: Team[];
-  error: string;
-  currentUserId: string; // Added to determine default roles
+  onMemberRolesChange: (
+    memberRoles: Record<string, "admin" | "editor" | "viewer">
+  ) => void;
+  currentUserId: string;
+  error?: string | null;
 }
 
 export interface ProjectFormNavigationProps {
@@ -118,5 +109,11 @@ export interface TeamMemberWithRole {
 
 export interface TeamWithMembersAndRoles extends Team {
   members: TeamMemberWithRole[];
-  projectRole: "admin" | "editor" | "viewer"; // The role this team will have in the project
+  projectRole: "admin" | "editor" | "viewer";
 }
+
+export type AssignProjectRoleParams = {
+  projectId: string;
+  memberId: string;
+  newRole: "admin" | "editor" | "viewer";
+};

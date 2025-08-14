@@ -42,7 +42,6 @@ async function getTeamsForProjectIds(projectIds: string[]) {
       id: teams.id,
       name: teams.name,
       slug: teams.slug,
-      role: projectTeams.role,
     })
     .from(projectTeams)
     .innerJoin(teams, eq(projectTeams.teamId, teams.id))
@@ -54,14 +53,11 @@ async function getTeamsForProjectIds(projectIds: string[]) {
       id: string;
       name: string;
       slug: string;
-      role: "admin" | "editor" | "viewer";
     }>
   >();
   for (const r of rows) {
     if (!map.has(r.projectId)) map.set(r.projectId, []);
-    map
-      .get(r.projectId)!
-      .push({ id: r.id, name: r.name, slug: r.slug, role: r.role });
+    map.get(r.projectId)!.push({ id: r.id, name: r.name, slug: r.slug });
   }
   return map;
 }
@@ -144,8 +140,8 @@ export async function getUserTeamsForProjectCreation(
  */
 export async function createProjectAction(
   data: CreateProject & {
-    teamIds: string[]; // Array of team IDs to assign to the project
-    teamRoles?: Record<string, "admin" | "editor" | "viewer">; // Optional roles per team
+    teamIds: string[];
+    memberRoles: Record<string, "admin" | "editor" | "viewer">;
   }
 ) {
   try {
@@ -156,7 +152,7 @@ export async function createProjectAction(
       ownerId,
       colorTheme,
       teamIds,
-      teamRoles = {},
+      memberRoles = {},
     } = data;
 
     // Validate required fields
@@ -200,7 +196,7 @@ export async function createProjectAction(
       };
     }
 
-    // Generate unique slug (now globally unique)
+    // Generate unique slug
     const baseSlug = requestedSlug
       .toLowerCase()
       .replace(/[^a-z0-9\s-]/g, "")
@@ -231,31 +227,58 @@ export async function createProjectAction(
       })
       .returning();
 
-    // Create project-team relationships
+    // Create project-team relationships (without team-level roles)
     const projectTeamInserts = teamIds.map((teamId) => ({
       projectId: newProject.id,
       teamId,
-      role: (teamRoles[teamId] || "editor") as "admin" | "editor" | "viewer",
       addedBy: ownerId,
     }));
 
     await db.insert(projectTeams).values(projectTeamInserts);
 
+    const memberRoleInserts: Array<{
+      projectId: string;
+      teamMemberId: string;
+      role: "admin" | "editor" | "viewer";
+      addedBy: string; // ✅ matches table schema
+    }> = [];
+
+    for (const teamId of teamIds) {
+      const members = await db
+        .select({
+          id: teamMembers.id,
+          userId: teamMembers.userId,
+        })
+        .from(teamMembers)
+        .where(eq(teamMembers.teamId, teamId));
+
+      members.forEach((member) => {
+        const role = memberRoles[member.userId];
+        if (role) {
+          memberRoleInserts.push({
+            projectId: newProject.id,
+            teamMemberId: member.id,
+            role,
+            addedBy: ownerId,
+          });
+        }
+      });
+    }
+
+    if (memberRoleInserts.length > 0) {
+      await db.insert(projectTeamMembers).values(memberRoleInserts);
+    }
+
     // Create default columns for the new project
     await createDefaultColumns(newProject.id);
 
-    // =============================================================================
-    // ACTIVITY & NOTIFICATION LOGGING
-    // =============================================================================
-
-    // Log project creation activity
+    // Activity & Notification logging (same as before)
     await ActivityService.logProjectCreated(
       ownerId,
       newProject.id,
       newProject.name
     );
 
-    // Notify team members about the new project (for all teams)
     for (const teamId of teamIds) {
       await NotificationService.notifyProjectCreated(
         ownerId,
@@ -286,6 +309,64 @@ export async function createProjectAction(
   }
 }
 
+export async function getProjectWithMemberRoles(projectId: string): Promise<
+  | (ProjectWithPartialRelations & {
+      memberRoles: Array<{
+        userId: string;
+        role: "admin" | "editor" | "viewer";
+        teamName: string;
+        user: {
+          id: string;
+          firstName: string | null;
+          lastName: string | null;
+          email: string;
+          avatarUrl: string | null;
+        };
+      }>;
+    })
+  | null
+> {
+  try {
+    // Get basic project info
+    const project = await getProjectAction(projectId);
+    if (!project) return null;
+
+    // Get member roles for this project
+    const memberRoles = await db
+      .select({
+        userId: users.id,
+        role: projectTeamMembers.role,
+        teamName: teams.name,
+        user: {
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          email: users.email,
+          avatarUrl: users.avatarUrl,
+        },
+      })
+      .from(projectTeamMembers)
+      .innerJoin(
+        teamMembers,
+        eq(projectTeamMembers.teamMemberId, teamMembers.id)
+      )
+      .innerJoin(users, eq(teamMembers.userId, users.id))
+      .innerJoin(
+        projectTeams,
+        eq(projectTeamMembers.projectId, projectTeams.projectId)
+      )
+      .innerJoin(teams, eq(projectTeams.teamId, teams.id))
+      .where(eq(projectTeamMembers.projectId, projectId));
+
+    return {
+      ...project,
+      memberRoles,
+    };
+  } catch (error) {
+    console.error("Error fetching project with member roles:", error);
+    return null;
+  }
+}
 /**
  * Get a project by ID with relations (now includes multiple teams)
  */
@@ -330,7 +411,7 @@ export async function getProjectAction(
         id: teams.id,
         name: teams.name,
         slug: teams.slug,
-        role: projectTeams.role,
+        role: projectTeamMembers.role,
       })
       .from(projectTeams)
       .innerJoin(teams, eq(projectTeams.teamId, teams.id))
@@ -390,7 +471,6 @@ export async function getProjectBySlugAction(
         id: teams.id,
         name: teams.name,
         slug: teams.slug,
-        role: projectTeams.role,
       })
       .from(projectTeams)
       .innerJoin(teams, eq(projectTeams.teamId, teams.id))
@@ -452,7 +532,6 @@ export async function getTeamProjectsAction(
           name: teams.name,
           slug: teams.slug,
         },
-        teamRole: projectTeams.role,
       })
       .from(projects)
       .innerJoin(projectTeams, eq(projects.id, projectTeams.projectId))
@@ -516,7 +595,6 @@ export async function getTeamProjectsAction(
         id: row.team.id,
         name: row.team.name,
         slug: row.team.slug,
-        role: row.teamRole,
       });
     }
 
@@ -674,7 +752,7 @@ export async function updateProjectAction(
     const isOwner = current.ownerId === userId;
 
     const hasAdminAccess = await db
-      .select({ role: projectTeams.role })
+      .select({ role: projectTeamMembers.role })
       .from(projectTeams)
       .innerJoin(
         teamMembers,
@@ -687,7 +765,7 @@ export async function updateProjectAction(
         and(
           eq(projectTeams.projectId, id),
           or(
-            eq(projectTeams.role, "admin"),
+            eq(projectTeamMembers.role, "admin"),
             inArray(teamMembers.role, ["owner", "admin"])
           )
         )
@@ -919,7 +997,7 @@ export async function deleteProjectAction(projectId: string, userId: string) {
     const isOwner = project.ownerId === userId;
 
     const hasAdminAccess = await db
-      .select({ role: projectTeams.role })
+      .select({ role: projectTeamMembers.role })
       .from(projectTeams)
       .innerJoin(
         teamMembers,
@@ -932,7 +1010,7 @@ export async function deleteProjectAction(projectId: string, userId: string) {
         and(
           eq(projectTeams.projectId, projectId),
           or(
-            eq(projectTeams.role, "admin"),
+            eq(projectTeamMembers.role, "admin"),
             inArray(teamMembers.role, ["owner", "admin"])
           )
         )
@@ -1037,7 +1115,7 @@ export async function hardDeleteProjectAction(
     const isOwner = project.ownerId === userId;
 
     const hasAdminAccess = await db
-      .select({ role: projectTeams.role })
+      .select({ role: projectTeamMembers.role })
       .from(projectTeams)
       .innerJoin(
         teamMembers,
@@ -1050,7 +1128,7 @@ export async function hardDeleteProjectAction(
         and(
           eq(projectTeams.projectId, projectId),
           or(
-            eq(projectTeams.role, "admin"),
+            eq(projectTeamMembers.role, "admin"),
             inArray(teamMembers.role, ["owner", "admin"])
           )
         )
@@ -1214,7 +1292,7 @@ export async function addTeamsToProjectAction(
 
     // Check if user has permission to manage project teams
     const hasPermission = await db
-      .select({ role: projectTeams.role })
+      .select({ role: projectTeamMembers.role })
       .from(projectTeams)
       .innerJoin(
         teamMembers,
@@ -1227,7 +1305,7 @@ export async function addTeamsToProjectAction(
         and(
           eq(projectTeams.projectId, projectId),
           or(
-            eq(projectTeams.role, "admin"),
+            eq(projectTeamMembers.role, "admin"),
             inArray(teamMembers.role, ["owner", "admin"])
           )
         )
@@ -1349,7 +1427,7 @@ export async function removeTeamsFromProjectAction(
 
     // Check if user has permission to manage project teams (same logic as addTeamsToProjectAction)
     const hasPermission = await db
-      .select({ role: projectTeams.role })
+      .select({ role: projectTeamMembers.role })
       .from(projectTeams)
       .innerJoin(
         teamMembers,
@@ -1362,7 +1440,7 @@ export async function removeTeamsFromProjectAction(
         and(
           eq(projectTeams.projectId, projectId),
           or(
-            eq(projectTeams.role, "admin"),
+            eq(projectTeamMembers.role, "admin"),
             inArray(teamMembers.role, ["owner", "admin"])
           )
         )

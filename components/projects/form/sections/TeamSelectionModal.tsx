@@ -1,14 +1,26 @@
 import React, { useState, useEffect } from "react";
-import { X, Users, ChevronDown, ChevronUp } from "lucide-react";
-import type { TeamWithRelations, TeamWithProjectRoleRelations } from "@/types";
+import { X, Users, ChevronDown, ChevronUp, AlertTriangle } from "lucide-react";
+import type { TeamWithRelations, TeamWithMemberRoles } from "@/types";
+
+// Updated interface to focus on member roles only
+
+interface MemberRoleAssignment {
+  userId: string;
+  role: "admin" | "editor" | "viewer";
+  teams: string[];
+}
 
 interface TeamSelectionModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: (selectedTeams: TeamWithProjectRoleRelations[]) => void;
+  onConfirm: (
+    selectedTeams: TeamWithMemberRoles[],
+    memberRoles: Record<string, "admin" | "editor" | "viewer">
+  ) => void;
   availableTeams: TeamWithRelations[];
   currentUserId: string;
   preSelectedTeamIds?: string[];
+  preSelectedMemberRoles?: Record<string, "admin" | "editor" | "viewer">;
 }
 
 const TeamSelectionModal: React.FC<TeamSelectionModalProps> = ({
@@ -18,92 +30,126 @@ const TeamSelectionModal: React.FC<TeamSelectionModalProps> = ({
   availableTeams,
   currentUserId,
   preSelectedTeamIds = [],
+  preSelectedMemberRoles = {},
 }) => {
-  const [selectedTeams, setSelectedTeams] = useState<
-    TeamWithProjectRoleRelations[]
-  >([]);
+  const [selectedTeams, setSelectedTeams] = useState<TeamWithMemberRoles[]>([]);
+  const [memberRoles, setMemberRoles] = useState<
+    Record<string, "admin" | "editor" | "viewer">
+  >({});
   const [expandedTeams, setExpandedTeams] = useState<Set<string>>(new Set());
+  const [duplicateMembers, setDuplicateMembers] = useState<Set<string>>(
+    new Set()
+  );
 
+  // Reset state when modal opens/closes
   useEffect(() => {
-    if (isOpen && preSelectedTeamIds.length > 0) {
-      const preSelected = availableTeams
-        .filter((teamMember) => preSelectedTeamIds.includes(teamMember.id))
-        .map((teamMember) => initializeTeamWithRoles(teamMember));
-      setSelectedTeams(preSelected);
-      setExpandedTeams(new Set(preSelectedTeamIds));
+    if (isOpen) {
+      if (preSelectedTeamIds.length > 0) {
+        const preSelected = availableTeams
+          .filter((team) => team?.id && preSelectedTeamIds.includes(team.id))
+          .map((team) => ({
+            team,
+            members: team.members || [],
+          }));
+        setSelectedTeams(preSelected);
+        setExpandedTeams(new Set(preSelectedTeamIds));
+        setMemberRoles(preSelectedMemberRoles);
+      } else {
+        setSelectedTeams([]);
+        setExpandedTeams(new Set());
+        setMemberRoles({});
+      }
     }
-  }, [isOpen, preSelectedTeamIds, availableTeams]);
+  }, [isOpen, preSelectedTeamIds, availableTeams, preSelectedMemberRoles]);
 
-  const initializeTeamWithRoles = (
-    teamMember: TeamWithRelations
-  ): TeamWithProjectRoleRelations => {
-    const memberRoles: Record<string, "admin" | "editor" | "viewer"> = {};
+  // Calculate duplicate members whenever selected teams change
+  useEffect(() => {
+    const memberTeamCount = new Map<string, string[]>();
+    const duplicates = new Set<string>();
 
-    // Set all members to "editor" by default, except current user gets "admin"
-    if (teamMember.members) {
-      teamMember.members.forEach((member) => {
-        if (member.user) {
-          memberRoles[member.user.id] =
-            member.user.id === currentUserId ? "admin" : "editor";
+    selectedTeams.forEach((teamWithMembers) => {
+      teamWithMembers.members.forEach((member) => {
+        const userId = member.user?.id;
+        if (!memberTeamCount.has(userId!)) {
+          memberTeamCount.set(userId!, []);
+        }
+        memberTeamCount.get(userId!)!.push(teamWithMembers.team.name);
+
+        if (memberTeamCount.get(userId!)!.length > 1) {
+          duplicates.add(userId!);
         }
       });
-    }
+    });
 
-    return {
-      team: teamMember,
-      members: teamMember?.members,
-      projectRole: "editor",
-      memberRoles,
-    };
+    setDuplicateMembers(duplicates);
+  }, [selectedTeams]);
+
+  const initializeMemberRoles = (team: TeamWithRelations) => {
+    const newRoles = { ...memberRoles };
+
+    team.members?.forEach((member) => {
+      if (member.user?.id && !newRoles[member.user.id]) {
+        // Set current user as admin by default, others as editor
+        newRoles[member.user.id] =
+          member.user.id === currentUserId ? "admin" : "editor";
+      }
+    });
+
+    setMemberRoles(newRoles);
   };
 
-  const handleTeamToggle = (teamMember: TeamWithRelations) => {
-    const isSelected = selectedTeams.some((t) => t.team?.id === teamMember?.id);
+  const handleTeamToggle = (team: TeamWithRelations) => {
+    if (!team?.id) return;
+
+    const isSelected = selectedTeams.some((t) => t.team?.id === team.id);
 
     if (isSelected) {
-      setSelectedTeams((prev) =>
-        prev.filter((t) => t.team?.id !== teamMember?.id)
+      // Remove team and clean up member roles for members who are only in this team
+      const remainingTeams = selectedTeams.filter(
+        (t) => t.team?.id !== team.id
       );
+      setSelectedTeams(remainingTeams);
+
+      // Clean up member roles for users who are no longer in any selected team
+      const remainingMemberIds = new Set<string>();
+      remainingTeams.forEach((t) => {
+        t.members.forEach((m) => {
+          if (m.user?.id) remainingMemberIds.add(m.user.id);
+        });
+      });
+
+      const cleanedRoles = { ...memberRoles };
+      Object.keys(cleanedRoles).forEach((userId) => {
+        if (!remainingMemberIds.has(userId)) {
+          delete cleanedRoles[userId];
+        }
+      });
+      setMemberRoles(cleanedRoles);
+
       setExpandedTeams((prev) => {
         const newSet = new Set(prev);
-        if (teamMember?.id) {
-          newSet.delete(teamMember.id);
-        }
+        newSet.delete(team.id);
         return newSet;
       });
     } else {
-      const teamWithRoles = initializeTeamWithRoles(teamMember);
-      setSelectedTeams((prev) => [...prev, teamWithRoles]);
-      setExpandedTeams((prev) => new Set([...prev, teamMember?.id || ""]));
+      const teamWithMembers: TeamWithMemberRoles = {
+        team,
+        members: team.members || [],
+      };
+      setSelectedTeams((prev) => [...prev, teamWithMembers]);
+      initializeMemberRoles(team);
+      setExpandedTeams((prev) => new Set([...prev, team.id]));
     }
   };
 
-  const handleTeamRoleChange = (
-    teamId: string,
-    role: "admin" | "editor" | "viewer"
-  ) => {
-    setSelectedTeams((prev) =>
-      prev.map((team) =>
-        team.team?.id === teamId ? { ...team, projectRole: role } : team
-      )
-    );
-  };
-
   const handleMemberRoleChange = (
-    teamId: string,
-    memberId: string,
+    userId: string,
     role: "admin" | "editor" | "viewer"
   ) => {
-    setSelectedTeams((prev) =>
-      prev.map((team) =>
-        team.team?.id === teamId
-          ? {
-              ...team,
-              memberRoles: { ...team.memberRoles, [memberId]: role },
-            }
-          : team
-      )
-    );
+    setMemberRoles((prev) => ({
+      ...prev,
+      [userId]: role,
+    }));
   };
 
   const toggleTeamExpansion = (teamId: string) => {
@@ -119,7 +165,7 @@ const TeamSelectionModal: React.FC<TeamSelectionModalProps> = ({
   };
 
   const handleConfirm = () => {
-    onConfirm(selectedTeams);
+    onConfirm(selectedTeams, memberRoles);
     onClose();
   };
 
@@ -131,20 +177,39 @@ const TeamSelectionModal: React.FC<TeamSelectionModalProps> = ({
         return "bg-blue-100 text-blue-800 border-blue-200";
       case "viewer":
         return "bg-gray-100 text-gray-800 border-gray-200";
+      default:
+        return "bg-gray-100 text-gray-800 border-gray-200";
     }
   };
+
+  const getMemberTeams = (userId: string): string[] => {
+    const teams: string[] = [];
+    selectedTeams.forEach((teamWithMembers) => {
+      if (teamWithMembers.members.some((m) => m.user?.id === userId)) {
+        teams.push(teamWithMembers.team.name);
+      }
+    });
+    return teams;
+  };
+
+  const canConfirm = selectedTeams.length > 0 && duplicateMembers.size === 0;
 
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[80vh] flex flex-col">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-5xl max-h-[85vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
-            <Users size={20} />
-            Select Teams and Assign Roles
-          </h2>
+          <div>
+            <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
+              <Users size={20} />
+              Select Teams and Assign Member Roles
+            </h2>
+            <p className="text-sm text-gray-600 mt-1">
+              Choose teams and set individual member roles for this project
+            </p>
+          </div>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600 transition-colors"
@@ -152,6 +217,25 @@ const TeamSelectionModal: React.FC<TeamSelectionModalProps> = ({
             <X size={20} />
           </button>
         </div>
+
+        {/* Duplicate Members Warning */}
+        {duplicateMembers.size > 0 && (
+          <div className="mx-6 mt-4 p-4 bg-amber-50 border border-amber-200 rounded-md">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
+              <div>
+                <h4 className="text-sm font-medium text-amber-800">
+                  Duplicate Members Detected
+                </h4>
+                <p className="text-sm text-amber-700 mt-1">
+                  Some members belong to multiple selected teams. Each member
+                  can only have one role per project. Please resolve conflicts
+                  before proceeding.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Content */}
         <div className="flex-1 overflow-hidden flex">
@@ -165,14 +249,9 @@ const TeamSelectionModal: React.FC<TeamSelectionModalProps> = ({
             </div>
             <div className="flex-1 overflow-y-auto">
               {availableTeams
-                .filter((team) => !team?.isArchived)
+                .filter((team) => team && !team.isArchived)
                 .map((team) => {
-                  if (!team) return null;
-
-                  // Debug logs
-                  console.log("Rendering team:", team.name, team.id);
-                  console.log("Team members raw:", team.members);
-                  console.log("Team member count:", team.members?.length);
+                  if (!team?.id) return null;
 
                   return (
                     <div key={team.id} className="border-b border-gray-100">
@@ -180,16 +259,9 @@ const TeamSelectionModal: React.FC<TeamSelectionModalProps> = ({
                         <input
                           type="checkbox"
                           checked={selectedTeams.some(
-                            (t) => t.team?.id === team?.id
+                            (t) => t.team?.id === team.id
                           )}
-                          onChange={() => {
-                            console.log(
-                              "Toggling team selection:",
-                              team.id,
-                              team.name
-                            );
-                            handleTeamToggle(team);
-                          }}
+                          onChange={() => handleTeamToggle(team)}
                           className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                         />
                         <div className="ml-3 flex-1">
@@ -207,41 +279,41 @@ const TeamSelectionModal: React.FC<TeamSelectionModalProps> = ({
             </div>
           </div>
 
-          {/* Selected Teams and Role Assignment */}
+          {/* Selected Teams and Member Role Assignment */}
           <div className="flex-1 flex flex-col">
             <div className="p-4 bg-gray-50 border-b border-gray-200">
               <h3 className="font-medium text-gray-900">
                 Selected Teams ({selectedTeams.length})
               </h3>
               <p className="text-sm text-gray-600">
-                Configure roles for each team and their members
+                Assign roles to individual team members
               </p>
             </div>
             <div className="flex-1 overflow-y-auto">
               {selectedTeams.length === 0 ? (
                 <div className="flex items-center justify-center h-32 text-gray-500">
-                  Select teams from the left to configure roles
+                  Select teams from the left to assign member roles
                 </div>
               ) : (
-                selectedTeams.map((teamWithRole) => {
-                  if (!teamWithRole.team) return null;
+                selectedTeams.map((teamWithMembers) => {
+                  if (!teamWithMembers.team?.id) return null;
 
                   return (
                     <div
-                      key={teamWithRole.team.id}
+                      key={teamWithMembers.team.id}
                       className="border-b border-gray-100"
                     >
                       {/* Team Header */}
-                      <div className="p-4 bg-white">
+                      <div className="p-4 bg-white border-l-4 border-blue-500">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
                             <button
                               onClick={() =>
-                                toggleTeamExpansion(teamWithRole.team!.id)
+                                toggleTeamExpansion(teamWithMembers.team!.id)
                               }
                               className="p-1 hover:bg-gray-100 rounded"
                             >
-                              {expandedTeams.has(teamWithRole.team.id) ? (
+                              {expandedTeams.has(teamWithMembers.team.id) ? (
                                 <ChevronUp size={16} />
                               ) : (
                                 <ChevronDown size={16} />
@@ -249,53 +321,42 @@ const TeamSelectionModal: React.FC<TeamSelectionModalProps> = ({
                             </button>
                             <div>
                               <div className="font-medium text-gray-900">
-                                {teamWithRole.team.name}
+                                {teamWithMembers.team.name}
                               </div>
                               <div className="text-sm text-gray-600">
-                                {teamWithRole.members?.length || 0} members
+                                {teamWithMembers.members?.length || 0} members
                               </div>
                             </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm text-gray-600">
-                              Team Role:
-                            </span>
-                            <select
-                              value={teamWithRole.projectRole}
-                              onChange={(e) =>
-                                handleTeamRoleChange(
-                                  teamWithRole.team!.id,
-                                  e.target.value as
-                                    | "admin"
-                                    | "editor"
-                                    | "viewer"
-                                )
-                              }
-                              className="text-sm border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            >
-                              <option value="admin">Admin</option>
-                              <option value="editor">Editor</option>
-                              <option value="viewer">Viewer</option>
-                            </select>
                           </div>
                         </div>
                       </div>
 
                       {/* Team Members */}
-                      {expandedTeams.has(teamWithRole.team.id) &&
-                        teamWithRole.members && (
+                      {expandedTeams.has(teamWithMembers.team.id) &&
+                        teamWithMembers.members && (
                           <div className="bg-gray-50 px-4 pb-4">
                             <div className="space-y-2">
-                              {teamWithRole.members.map((member) => {
-                                if (!member.user) return null;
+                              {teamWithMembers.members.map((member) => {
+                                if (!member.user?.id) return null;
+
+                                const isDuplicate = duplicateMembers.has(
+                                  member.user.id
+                                );
+                                const memberTeams = getMemberTeams(
+                                  member.user.id
+                                );
 
                                 return (
                                   <div
                                     key={member.id}
-                                    className="flex items-center justify-between py-2 px-3 bg-white rounded border"
+                                    className={`flex items-center justify-between py-3 px-4 bg-white rounded border ${
+                                      isDuplicate
+                                        ? "border-amber-300 bg-amber-50"
+                                        : ""
+                                    }`}
                                   >
-                                    <div className="flex items-center gap-3">
-                                      <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
+                                    <div className="flex items-center gap-3 flex-1">
+                                      <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center flex-shrink-0">
                                         {member.user.avatarUrl ? (
                                           <img
                                             src={member.user.avatarUrl}
@@ -304,35 +365,53 @@ const TeamSelectionModal: React.FC<TeamSelectionModalProps> = ({
                                           />
                                         ) : (
                                           <span className="text-xs font-medium text-gray-600">
-                                            {member.user.firstName.charAt(0)}
-                                            {member.user.lastName.charAt(0)}
+                                            {member.user.firstName?.charAt(0) ||
+                                              ""}
+                                            {member.user.lastName?.charAt(0) ||
+                                              ""}
                                           </span>
                                         )}
                                       </div>
-                                      <div>
-                                        <div className="text-sm font-medium text-gray-900">
-                                          {member.user.firstName}{" "}
-                                          {member.user.lastName}
-                                          {member.user.id === currentUserId && (
-                                            <span className="ml-2 text-xs text-blue-600">
-                                              (You)
-                                            </span>
+                                      <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2">
+                                          <div className="text-sm font-medium text-gray-900 truncate">
+                                            {member.user.firstName}{" "}
+                                            {member.user.lastName}
+                                            {member.user.id ===
+                                              currentUserId && (
+                                              <span className="ml-2 text-xs text-blue-600">
+                                                (You)
+                                              </span>
+                                            )}
+                                          </div>
+                                          {isDuplicate && (
+                                            <AlertTriangle className="h-4 w-4 text-amber-600 flex-shrink-0" />
                                           )}
                                         </div>
-                                        <div className="text-xs text-gray-600">
+                                        <div className="text-xs text-gray-600 truncate">
                                           {member.user.email}
                                         </div>
+                                        {isDuplicate && (
+                                          <div className="text-xs text-amber-700 mt-1">
+                                            Also in:{" "}
+                                            {memberTeams
+                                              .filter(
+                                                (t) =>
+                                                  t !==
+                                                  teamWithMembers.team.name
+                                              )
+                                              .join(", ")}
+                                          </div>
+                                        )}
                                       </div>
                                     </div>
+
                                     <select
                                       value={
-                                        teamWithRole.memberRoles[
-                                          member.user.id
-                                        ] || "editor"
+                                        memberRoles[member.user.id] || "editor"
                                       }
                                       onChange={(e) =>
                                         handleMemberRoleChange(
-                                          teamWithRole.team!.id,
                                           member.user!.id,
                                           e.target.value as
                                             | "admin"
@@ -340,7 +419,11 @@ const TeamSelectionModal: React.FC<TeamSelectionModalProps> = ({
                                             | "viewer"
                                         )
                                       }
-                                      className="text-sm border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                      className={`text-sm border rounded px-3 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500 ml-3 ${
+                                        isDuplicate
+                                          ? "border-amber-300 bg-amber-50"
+                                          : "border-gray-300"
+                                      }`}
                                     >
                                       <option value="admin">Admin</option>
                                       <option value="editor">Editor</option>
@@ -361,21 +444,31 @@ const TeamSelectionModal: React.FC<TeamSelectionModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="p-4 bg-gray-50 border-t border-gray-200 flex justify-end gap-3">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleConfirm}
-            disabled={selectedTeams.length === 0}
-            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Add {selectedTeams.length} Team
-            {selectedTeams.length !== 1 ? "s" : ""}
-          </button>
+        <div className="p-4 bg-gray-50 border-t border-gray-200 flex justify-between items-center">
+          <div className="text-sm text-gray-600">
+            {duplicateMembers.size > 0 && (
+              <span className="text-amber-700 font-medium">
+                ⚠️ Resolve {duplicateMembers.size} member conflict
+                {duplicateMembers.size !== 1 ? "s" : ""} to continue
+              </span>
+            )}
+          </div>
+          <div className="flex gap-3">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleConfirm}
+              disabled={!canConfirm}
+              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Add {selectedTeams.length} Team
+              {selectedTeams.length !== 1 ? "s" : ""}
+            </button>
+          </div>
         </div>
       </div>
     </div>
