@@ -251,6 +251,22 @@ export default function ProjectInformationSection({
 
   const uniqueMembers = getAllUniqueMembers();
 
+  console.log("DEBUG: getAllUniqueMembers called", {
+    isEdit,
+    hasFreshData: !!freshProjectData,
+    freshDataTeamMembersCount:
+      freshProjectData?.projectTeamMembers?.length || 0,
+    formDataMemberRolesCount: Object.keys(formData.memberRoles || {}).length,
+    formDataMemberRoles: formData.memberRoles,
+    projectTeamMembersCount: projectTeamMembers.length,
+    uniqueMembersCount: uniqueMembers.length,
+    uniqueMembers: uniqueMembers.map((m) => ({
+      userId: m.userId,
+      email: m.user.email,
+      role: m.role,
+    })),
+  });
+
   return (
     <>
       <section id="information" ref={informationRef} className="scroll-mt-6">
@@ -382,6 +398,17 @@ export default function ProjectInformationSection({
                           Individual member roles across all selected teams
                         </p>
                       </div>
+                      {uniqueMembers.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setIsTeamModalOpen(true)}
+                          className="text-xs text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1"
+                          disabled={isAssigningRole}
+                        >
+                          <Settings className="h-3 w-3" />
+                          {isEdit ? "Edit Roles" : "Set Roles"}
+                        </button>
+                      )}
                     </div>
                   </div>
                   <div className="divide-y divide-gray-100 max-h-64 overflow-y-auto">
@@ -489,6 +516,7 @@ export default function ProjectInformationSection({
         preSelectedTeamIds={formData.teamIds}
         preSelectedMemberRoles={formData.memberRoles || {}}
         isEditMode={isEdit}
+        projectId={projectId}
       />
     </>
   );

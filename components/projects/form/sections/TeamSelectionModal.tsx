@@ -1,7 +1,8 @@
-// components/projects/form/sections/TeamSelectionModal.tsx - Fixed to handle duplicate users
+// components/projects/form/sections/TeamSelectionModal.tsx - Fixed to handle duplicate users and show fresh roles in edit mode
 "use client";
 import React, { useState, useEffect } from "react";
 import { X, Check, Users, Crown, Shield, Eye } from "lucide-react";
+import { useProject } from "@/hooks/useProjects"; // Add useProject import
 import type { TeamWithRelations, TeamWithMemberRoles } from "@/types";
 
 interface TeamSelectionModalProps {
@@ -16,6 +17,7 @@ interface TeamSelectionModalProps {
   preSelectedTeamIds?: string[];
   preSelectedMemberRoles?: Record<string, "admin" | "editor" | "viewer">;
   isEditMode?: boolean;
+  projectId?: string; // Add projectId prop for edit mode
 }
 
 interface UniqueUser {
@@ -41,6 +43,7 @@ export default function TeamSelectionModal({
   preSelectedTeamIds = [],
   preSelectedMemberRoles = {},
   isEditMode = false,
+  projectId, // Add projectId prop
 }: TeamSelectionModalProps) {
   const [selectedTeamIds, setSelectedTeamIds] =
     useState<string[]>(preSelectedTeamIds);
@@ -48,13 +51,49 @@ export default function TeamSelectionModal({
     Record<string, "admin" | "editor" | "viewer">
   >(preSelectedMemberRoles);
 
+  // Use the project hook to get fresh data in edit mode
+  const {
+    data: freshProjectData,
+    isLoading: isLoadingProject,
+    error: projectError,
+  } = useProject(isEditMode ? projectId : undefined);
+
+  // Get the most up-to-date member roles
+  const getCurrentMemberRoles = (): Record<
+    string,
+    "admin" | "editor" | "viewer"
+  > => {
+    if (!isEditMode) {
+      return preSelectedMemberRoles;
+    }
+
+    // In edit mode, prioritize fresh project data, then fall back to preSelected
+    if (freshProjectData?.projectTeamMembers) {
+      const freshRoles: Record<string, "admin" | "editor" | "viewer"> = {};
+
+      freshProjectData.projectTeamMembers.forEach((ptm) => {
+        if (ptm.teamMember?.user?.id && ptm.role) {
+          freshRoles[ptm.teamMember.user.id] = ptm.role;
+        }
+      });
+
+      // Merge with preSelected roles for any users not in fresh data
+      return { ...preSelectedMemberRoles, ...freshRoles };
+    }
+
+    return preSelectedMemberRoles;
+  };
+
   // Reset state when modal opens with new data
   useEffect(() => {
     if (isOpen) {
       setSelectedTeamIds(preSelectedTeamIds);
-      setMemberRoles(preSelectedMemberRoles);
+
+      // Use fresh roles if available in edit mode
+      const currentRoles = getCurrentMemberRoles();
+      setMemberRoles(currentRoles);
     }
-  }, [isOpen, preSelectedTeamIds, preSelectedMemberRoles]);
+  }, [isOpen, preSelectedTeamIds, preSelectedMemberRoles, freshProjectData]);
 
   const handleTeamToggle = (teamId: string) => {
     const newSelectedTeamIds = selectedTeamIds.includes(teamId)
@@ -89,13 +128,16 @@ export default function TeamSelectionModal({
 
       setMemberRoles(newMemberRoles);
     } else {
-      // If selecting a team, add default roles for new users
+      // If selecting a team, add roles for new users
       const addedTeam = availableTeams.find((t) => t.id === teamId);
       const newMemberRoles = { ...memberRoles };
+      const currentRoles = getCurrentMemberRoles();
 
       addedTeam?.members?.forEach((member) => {
         if (member.user?.id && !newMemberRoles[member.user.id]) {
-          newMemberRoles[member.user.id] = "editor";
+          // Use fresh role if available, otherwise default to editor
+          newMemberRoles[member.user.id] =
+            currentRoles[member.user.id] || "editor";
         }
       });
 
@@ -125,9 +167,10 @@ export default function TeamSelectionModal({
     onClose();
   };
 
-  // Get unique members across all selected teams - FIXED to handle duplicates properly
+  // Get unique members across all selected teams - FIXED to handle duplicates properly and show correct roles
   const getUniqueMembers = (): UniqueUser[] => {
     const memberMap = new Map<string, UniqueUser>();
+    const currentRoles = getCurrentMemberRoles();
 
     availableTeams
       .filter((team) => selectedTeamIds.includes(team.id))
@@ -143,13 +186,18 @@ export default function TeamSelectionModal({
                 existing.teams.push(team.name);
               }
             } else {
+              // Get the current role: first from local state (for unsaved changes),
+              // then from fresh data, then from preSelected, then default to editor
+              const currentRole =
+                memberRoles[userId] || currentRoles[userId] || "editor";
+
               // Create new entry
               memberMap.set(userId, {
                 id: member.id,
                 userId: userId,
                 user: member.user,
                 teams: [team.name],
-                role: memberRoles[userId] || "editor",
+                role: currentRole,
               });
             }
           }
@@ -183,6 +231,28 @@ export default function TeamSelectionModal({
     }
   };
 
+  // Debug logging
+  console.log("TeamSelectionModal Debug:", {
+    isEditMode,
+    projectId,
+    hasFreshData: !!freshProjectData,
+    isLoadingProject,
+    projectError: projectError?.message,
+    freshProjectDataKeys: freshProjectData ? Object.keys(freshProjectData) : [],
+    freshDataTeamMembersCount:
+      freshProjectData?.projectTeamMembers?.length || 0,
+    preSelectedMemberRolesCount: Object.keys(preSelectedMemberRoles).length,
+    currentMemberRolesCount: Object.keys(memberRoles).length,
+    uniqueMembersCount: uniqueMembers.length,
+    freshTeamMembers:
+      freshProjectData?.projectTeamMembers?.map((ptm) => ({
+        userId: ptm.teamMember?.user?.id,
+        role: ptm.role,
+        email: ptm.teamMember?.user?.email,
+      })) || [],
+    fullFreshProjectData: freshProjectData, // Show the full structure
+  });
+
   if (!isOpen) return null;
 
   return (
@@ -197,7 +267,9 @@ export default function TeamSelectionModal({
           {/* Header */}
           <div className="flex items-center justify-between p-6 border-b border-gray-200">
             <h3 className="text-lg font-medium text-gray-900">
-              {isEditMode ? "Manage Project Teams" : "Select Teams & Set Roles"}
+              {isEditMode
+                ? "Manage Project Teams & Roles"
+                : "Select Teams & Set Roles"}
             </h3>
             <button
               onClick={onClose}
@@ -254,9 +326,17 @@ export default function TeamSelectionModal({
 
             {/* Member Roles */}
             <div className="w-2/3 p-6">
-              <h4 className="text-sm font-medium text-gray-900 mb-4">
-                Project Member Roles ({uniqueMembers.length})
-              </h4>
+              <div className="flex items-center justify-between mb-4">
+                <h4 className="text-sm font-medium text-gray-900">
+                  Project Member Roles ({uniqueMembers.length})
+                </h4>
+                {isEditMode && freshProjectData && (
+                  <div className="text-xs text-green-600 flex items-center gap-1">
+                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                    Live data
+                  </div>
+                )}
+              </div>
 
               {uniqueMembers.length > 0 ? (
                 <div className="space-y-3 max-h-full overflow-y-auto">
@@ -352,7 +432,7 @@ export default function TeamSelectionModal({
                 disabled={selectedTeamIds.length === 0}
                 className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {isEditMode ? "Update Teams" : "Confirm Selection"}
+                {isEditMode ? "Update Teams & Roles" : "Confirm Selection"}
               </button>
             </div>
           </div>

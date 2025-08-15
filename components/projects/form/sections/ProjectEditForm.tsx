@@ -58,12 +58,6 @@ export default function ProjectEditForm({
     useHardDeleteProject();
 
   useEffect(() => {
-    console.log("ProjectEditForm: Initializing member roles", {
-      projectTeamMembers: project.projectTeamMembers,
-      projectTeamMembersLength: project.projectTeamMembers?.length || 0,
-      projectId: project.id,
-    });
-
     if (project.projectTeamMembers && project.projectTeamMembers.length > 0) {
       const memberRoles: Record<string, "admin" | "editor" | "viewer"> = {};
       project.projectTeamMembers.forEach((ptm, index) => {
