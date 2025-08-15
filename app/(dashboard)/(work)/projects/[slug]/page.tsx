@@ -3,6 +3,7 @@ import React from "react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/services/users";
+import { ProjectPermissionChecker } from "@/lib/permissions/project-permission-checker";
 import DualPanelLayout from "@/components/layout/shared/DualPanelLayout";
 import AppBreadcrumb from "@/components/shared/AppBreadcrumb";
 import {
@@ -44,6 +45,15 @@ export default async function ProjectPage({
   if (!project) {
     notFound();
   }
+
+  // Check permissions
+  const permissionChecker = new ProjectPermissionChecker();
+  await permissionChecker.loadContext(userId, project.id);
+
+  const canEditProject = permissionChecker.canEditProject();
+  const canManageTeams = permissionChecker.canManageTeams();
+  const canCreateCards = permissionChecker.canCreateCards();
+  const showSettings = canEditProject || canManageTeams;
 
   const isProjectOwner = project.ownerId === userId;
 
@@ -97,13 +107,16 @@ export default async function ProjectPage({
               )}
             </div>
 
-            <Link
-              href={`/projects/${project.slug}/settings`}
-              className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md"
-              title="Project Settings"
-            >
-              <Settings size={16} />
-            </Link>
+            {/* Settings button - only show if user has permission */}
+            {showSettings && (
+              <Link
+                href={`/projects/${project.slug}/settings`}
+                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md"
+                title="Project Settings"
+              >
+                <Settings size={16} />
+              </Link>
+            )}
           </div>
 
           <div className="space-y-3 mb-6">
@@ -205,12 +218,15 @@ export default async function ProjectPage({
             )}
 
           <div className="mb-6 space-y-2">
-            <button
-              type="button"
-              className="w-full bg-blue-600 text-white px-3 py-2 rounded-md text-sm font-medium hover:bg-blue-700 transition-colors"
-            >
-              Create New Card
-            </button>
+            {/* Create card button - only show if user can create cards */}
+            {canCreateCards && (
+              <button
+                type="button"
+                className="w-full bg-blue-600 text-white px-3 py-2 rounded-md text-sm font-medium hover:bg-blue-700 transition-colors"
+              >
+                Create New Card
+              </button>
+            )}
           </div>
 
           <div className="mb-4">
@@ -252,12 +268,15 @@ export default async function ProjectPage({
               <p className="text-sm text-gray-500 mb-4">
                 Project content will be displayed here
               </p>
-              <button
-                type="button"
-                className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-700 transition-colors"
-              >
-                Create First Card
-              </button>
+              {/* Create first card button - only show if user can create cards */}
+              {canCreateCards && (
+                <button
+                  type="button"
+                  className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-700 transition-colors"
+                >
+                  Create First Card
+                </button>
+              )}
             </div>
           </div>
         </div>

@@ -33,7 +33,7 @@ export default function ProjectSettings({
   const user = userData || clerkUser;
 
   const isProjectOwner = project.ownerId === currentUserId;
-  const userTeam = teams.find((team) => team.id === project.teamId);
+  const userTeam = teams.find((team) => team.id === project.team?.id);
   const userRole = userTeam?.members?.find(
     (member) => member.userId === currentUserId
   )?.role;
