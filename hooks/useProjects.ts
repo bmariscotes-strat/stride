@@ -1,5 +1,3 @@
-// hooks/useProject.ts - Updated to handle the Object.entries error and fix update mutations
-
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";

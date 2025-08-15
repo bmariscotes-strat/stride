@@ -5,6 +5,7 @@ import {
   teams,
   projects,
   projectTeams,
+  projectTeamMembers,
   teamMembers,
   cardComments,
 } from "@/lib/db/schema";
@@ -40,14 +41,22 @@ export class ProjectPermissionChecker {
     const isProjectOwner = project[0].ownerId === userId;
 
     // Get user's team memberships that have access to this project
+    // AND their specific project roles
     const teamMemberships = await db
       .select({
         teamId: teamMembers.teamId,
         teamRole: teamMembers.role,
-        projectRole: projectTeams.role,
+        projectRole: projectTeamMembers.role, // This comes from projectTeamMembers, not projectTeams
       })
       .from(teamMembers)
       .innerJoin(projectTeams, eq(teamMembers.teamId, projectTeams.teamId))
+      .innerJoin(
+        projectTeamMembers,
+        and(
+          eq(projectTeamMembers.projectId, projectTeams.projectId),
+          eq(projectTeamMembers.teamMemberId, teamMembers.id)
+        )
+      )
       .where(
         and(
           eq(teamMembers.userId, userId),
@@ -160,7 +169,7 @@ export class ProjectPermissionChecker {
           PERMISSIONS.CARD_ASSIGN,
           PERMISSIONS.CARD_MOVE,
           PERMISSIONS.COMMENT_CREATE,
-          PERMISSIONS.COMMENT_EDIT, // Can edit their own comments
+          PERMISSIONS.COMMENT_EDIT,
           PERMISSIONS.LABEL_CREATE,
           PERMISSIONS.LABEL_EDIT,
           PERMISSIONS.ATTACHMENT_UPLOAD,
@@ -199,7 +208,6 @@ export class ProjectPermissionChecker {
     return this.hasPermission(PERMISSIONS.CARD_DELETE);
   }
 
-  // Check if user can edit/delete a specific comment (they can edit their own)
   async canModifyComment(commentId: number): Promise<boolean> {
     if (!this.context) {
       throw new Error("Permission context not loaded");

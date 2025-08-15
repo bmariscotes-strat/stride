@@ -568,6 +568,8 @@ export async function updateTeamMemberRoleAction(
 }
 
 // ... (keeping all the existing query functions unchanged)
+// Replace your current getTeamsForUser function with this fixed version
+
 export async function getTeamsForUser(userId: string) {
   try {
     const userTeams = await db
@@ -585,7 +587,10 @@ export async function getTeamsForUser(userId: string) {
         const members = await db
           .select({
             id: teamMembers.id,
+            teamId: teamMembers.teamId, // Add this missing field
+            userId: teamMembers.userId, // Add this missing field
             role: teamMembers.role,
+            joinedAt: teamMembers.joinedAt, // Add this missing field
             user: users, // assumes you have `users` table imported
           })
           .from(teamMembers)
@@ -618,14 +623,11 @@ export async function getTeamBySlug(slug: string, userId: string) {
           },
         },
         projects: {
-          // This now refers to the projectTeams junction table
           with: {
-            project: true, // Get the actual project data through the junction
+            project: true,
           },
           where: (pt, { eq }) => {
-            // If you want to filter by project status, you'd need to join
-            // For now, we'll filter in the transformation step below
-            return undefined; // Remove this line if not filtering at query level
+            return undefined;
           },
         },
       },
@@ -642,11 +644,10 @@ export async function getTeamBySlug(slug: string, userId: string) {
 
     // Transform the projects data to get actual project objects
     const projectsData = team.projects
-      .filter((projectTeam) => !projectTeam.project.isArchived) // Filter out archived projects
+      .filter((projectTeam) => !projectTeam.project.isArchived)
       .map((projectTeam) => ({
-        ...projectTeam.project, // Spread the actual project properties
-        teamRole: projectTeam.role, // Include the team's role in this project
-        addedAt: projectTeam.createdAt, // When this team was added to the project
+        ...projectTeam.project,
+        addedAt: projectTeam.createdAt,
       }));
 
     // Return team with current user role and properly mapped projects

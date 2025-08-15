@@ -7,7 +7,7 @@ export interface UserPermissionContext {
   teamMemberships: Array<{
     teamId: string;
     teamRole: TeamRole;
-    projectRole?: ProjectTeamRole; // Only if team has access to project
+    projectRole?: ProjectTeamRole;
   }>;
   isProjectOwner: boolean;
 }

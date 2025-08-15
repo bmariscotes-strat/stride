@@ -74,8 +74,6 @@ export default function ProjectEditForm({
         }
       });
 
-      console.log("Final memberRoles object:", memberRoles);
-
       setFormData((prev) => {
         // Only update if we actually have roles to set
         if (Object.keys(memberRoles).length > 0) {

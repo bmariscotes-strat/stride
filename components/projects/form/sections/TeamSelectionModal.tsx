@@ -1,4 +1,4 @@
-// components/projects/form/sections/TeamSelectionModal.tsx - Fixed to handle duplicate users and show fresh roles in edit mode
+
 "use client";
 import React, { useState, useEffect } from "react";
 import { X, Check, Users, Crown, Shield, Eye } from "lucide-react";
@@ -17,7 +17,7 @@ interface TeamSelectionModalProps {
   preSelectedTeamIds?: string[];
   preSelectedMemberRoles?: Record<string, "admin" | "editor" | "viewer">;
   isEditMode?: boolean;
-  projectId?: string; // Add projectId prop for edit mode
+  projectId?: string;
 }
 
 interface UniqueUser {
@@ -230,28 +230,6 @@ export default function TeamSelectionModal({
         return "bg-gray-100 text-gray-800 border-gray-200";
     }
   };
-
-  // Debug logging
-  console.log("TeamSelectionModal Debug:", {
-    isEditMode,
-    projectId,
-    hasFreshData: !!freshProjectData,
-    isLoadingProject,
-    projectError: projectError?.message,
-    freshProjectDataKeys: freshProjectData ? Object.keys(freshProjectData) : [],
-    freshDataTeamMembersCount:
-      freshProjectData?.projectTeamMembers?.length || 0,
-    preSelectedMemberRolesCount: Object.keys(preSelectedMemberRoles).length,
-    currentMemberRolesCount: Object.keys(memberRoles).length,
-    uniqueMembersCount: uniqueMembers.length,
-    freshTeamMembers:
-      freshProjectData?.projectTeamMembers?.map((ptm) => ({
-        userId: ptm.teamMember?.user?.id,
-        role: ptm.role,
-        email: ptm.teamMember?.user?.email,
-      })) || [],
-    fullFreshProjectData: freshProjectData, // Show the full structure
-  });
 
   if (!isOpen) return null;
 
