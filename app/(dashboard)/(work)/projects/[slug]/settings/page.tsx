@@ -13,7 +13,6 @@ export default async function ProjectSettingsPage({
   const userId = await getRequiredUserId();
   const { slug } = await params;
 
-  // Fetch project data (this already verifies user has access)
   const project = await getProjectBySlugForUser(slug, userId);
 
   if (!project) {
