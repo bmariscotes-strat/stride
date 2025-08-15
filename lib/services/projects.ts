@@ -228,7 +228,6 @@ export async function createProjectAction(
       .returning();
 
     // STEP 2: Create project-team relationships
-    // FIX: Use the exact field names that match your database schema
     const projectTeamInserts = teamIds.map((teamId) => ({
       projectId: newProject.id,
       teamId: teamId,
@@ -312,6 +311,7 @@ export async function createProjectAction(
     };
   }
 }
+
 export async function getProjectWithMemberRoles(projectId: string): Promise<
   | (ProjectWithPartialRelations & {
       memberRoles: Array<{
@@ -370,6 +370,7 @@ export async function getProjectWithMemberRoles(projectId: string): Promise<
     return null;
   }
 }
+
 /**
  * Get a project by ID with relations (now includes multiple teams)
  */
@@ -414,7 +415,6 @@ export async function getProjectAction(
         id: teams.id,
         name: teams.name,
         slug: teams.slug,
-        role: projectTeamMembers.role,
       })
       .from(projectTeams)
       .innerJoin(teams, eq(projectTeams.teamId, teams.id))
@@ -516,7 +516,6 @@ export async function getTeamProjectsAction(
         slug: projects.slug,
         description: projects.description,
         ownerId: projects.ownerId,
-        colorTheme: projects.colorTheme,
         isArchived: projects.isArchived,
         schemaVersion: projects.schemaVersion,
         createdAt: projects.createdAt,
@@ -608,9 +607,6 @@ export async function getTeamProjectsAction(
 }
 
 /**
- * Get all projects for a user based on their team memberships
- */
-/**
  * Get all projects for a user based on their team memberships - FIXED VERSION
  */
 export async function getProjectsForUser(
@@ -663,7 +659,6 @@ export async function getProjectsForUser(
         slug: projects.slug,
         description: projects.description,
         ownerId: projects.ownerId,
-        colorTheme: projects.colorTheme,
         isArchived: projects.isArchived,
         schemaVersion: projects.schemaVersion,
         createdAt: projects.createdAt,
@@ -718,14 +713,26 @@ export async function getProjectsForUser(
 }
 
 /**
- * Update an existing project
+ * Update an existing project - FIXED to handle team management
  */
 export async function updateProjectAction(
-  data: UpdateProject & { userId: string }
+  data: UpdateProject & {
+    userId: string;
+    teamIds?: string[];
+    memberRoles?: Record<string, "admin" | "editor" | "viewer">;
+  }
 ) {
   try {
-    const { id, userId, name, slug, description, colorTheme, isArchived } =
-      data;
+    const {
+      id,
+      userId,
+      name,
+      slug,
+      description,
+      isArchived,
+      teamIds,
+      memberRoles = {},
+    } = data;
 
     if (!id) {
       return {
@@ -742,7 +749,6 @@ export async function updateProjectAction(
         name: projects.name,
         slug: projects.slug,
         description: projects.description,
-        colorTheme: projects.colorTheme,
         isArchived: projects.isArchived,
         ownerId: projects.ownerId,
       })
@@ -764,7 +770,10 @@ export async function updateProjectAction(
     const isOwner = current.ownerId === userId;
 
     const hasAdminAccess = await db
-      .select({ role: projectTeamMembers.role })
+      .select({
+        teamRole: teamMembers.role,
+        projectRole: projectTeamMembers.role,
+      })
       .from(projectTeams)
       .innerJoin(
         teamMembers,
@@ -773,18 +782,23 @@ export async function updateProjectAction(
           eq(teamMembers.userId, userId)
         )
       )
-      .where(
+      .leftJoin(
+        projectTeamMembers,
         and(
-          eq(projectTeams.projectId, id),
-          or(
-            eq(projectTeamMembers.role, "admin"),
-            inArray(teamMembers.role, ["owner", "admin"])
-          )
+          eq(projectTeams.projectId, projectTeamMembers.projectId),
+          eq(projectTeamMembers.teamMemberId, teamMembers.id)
         )
       )
+      .where(eq(projectTeams.projectId, id))
       .limit(1);
 
-    if (!isOwner && hasAdminAccess.length === 0) {
+    const hasPermission =
+      hasAdminAccess.length > 0 &&
+      (hasAdminAccess[0].teamRole === "owner" ||
+        hasAdminAccess[0].teamRole === "admin" ||
+        hasAdminAccess[0].projectRole === "admin");
+
+    if (!isOwner && !hasPermission) {
       return {
         success: false,
         error: "You don't have permission to update this project",
@@ -849,15 +863,6 @@ export async function updateProjectAction(
       }
     }
 
-    if (colorTheme !== undefined && colorTheme !== current.colorTheme) {
-      updateData.colorTheme = colorTheme;
-      changes.push({
-        field: "colorTheme",
-        oldValue: current.colorTheme,
-        newValue: colorTheme,
-      });
-    }
-
     if (isArchived !== undefined && isArchived !== current.isArchived) {
       updateData.isArchived = isArchived;
       changes.push({
@@ -867,6 +872,7 @@ export async function updateProjectAction(
       });
     }
 
+    // Update the project
     const [updatedProject] = await db
       .update(projects)
       .set(updateData)
@@ -881,11 +887,138 @@ export async function updateProjectAction(
       };
     }
 
-    // =============================================================================
-    // ACTIVITY & NOTIFICATION LOGGING
-    // =============================================================================
+    // Handle team updates if teamIds are provided
+    if (teamIds !== undefined && teamIds.length > 0) {
+      // Get current teams
+      const currentTeams = await db
+        .select({ teamId: projectTeams.teamId })
+        .from(projectTeams)
+        .where(eq(projectTeams.projectId, id));
 
-    // Log project updates
+      const currentTeamIds = currentTeams.map((t) => t.teamId);
+
+      // Find teams to add and remove
+      const teamsToAdd = teamIds.filter(
+        (teamId) => !currentTeamIds.includes(teamId)
+      );
+      const teamsToRemove = currentTeamIds.filter(
+        (teamId) => !teamIds.includes(teamId)
+      );
+
+      // Verify user has access to new teams
+      if (teamsToAdd.length > 0) {
+        const userTeams = await getUserTeamsForProjectCreation(userId);
+        const invalidTeams = teamsToAdd.filter(
+          (teamId) => !userTeams.includes(teamId)
+        );
+
+        if (invalidTeams.length > 0) {
+          return {
+            success: false,
+            error:
+              "You don't have permission to add some of the selected teams",
+            project: null,
+          };
+        }
+      }
+
+      // Remove old teams and their member relationships
+      if (teamsToRemove.length > 0) {
+        // First remove project team members for these teams
+        await db
+          .delete(projectTeamMembers)
+          .where(
+            and(
+              eq(projectTeamMembers.projectId, id),
+              inArray(
+                projectTeamMembers.teamMemberId,
+                db
+                  .select({ id: teamMembers.id })
+                  .from(teamMembers)
+                  .where(inArray(teamMembers.teamId, teamsToRemove))
+              )
+            )
+          );
+
+        // Then remove project team relationships
+        await db
+          .delete(projectTeams)
+          .where(
+            and(
+              eq(projectTeams.projectId, id),
+              inArray(projectTeams.teamId, teamsToRemove)
+            )
+          );
+      }
+
+      // Add new teams and their member relationships
+      if (teamsToAdd.length > 0) {
+        // Add project-team relationships
+        const projectTeamInserts = teamsToAdd.map((teamId) => ({
+          projectId: id,
+          teamId,
+          addedBy: userId,
+        }));
+
+        await db.insert(projectTeams).values(projectTeamInserts);
+
+        // Add project team member roles for new teams
+        const memberRoleInserts: Array<{
+          projectId: string;
+          teamMemberId: string;
+          role: "admin" | "editor" | "viewer";
+          addedBy: string;
+        }> = [];
+
+        for (const teamId of teamsToAdd) {
+          const teamMembersData = await db
+            .select({
+              id: teamMembers.id,
+              userId: teamMembers.userId,
+            })
+            .from(teamMembers)
+            .where(eq(teamMembers.teamId, teamId));
+
+          teamMembersData.forEach((member) => {
+            const role = memberRoles[member.userId] || "editor";
+            memberRoleInserts.push({
+              projectId: id,
+              teamMemberId: member.id,
+              role,
+              addedBy: userId,
+            });
+          });
+        }
+
+        if (memberRoleInserts.length > 0) {
+          await db.insert(projectTeamMembers).values(memberRoleInserts);
+        }
+      }
+
+      // Update existing member roles if provided
+      if (Object.keys(memberRoles).length > 0) {
+        for (const [userId, role] of Object.entries(memberRoles)) {
+          await db
+            .update(projectTeamMembers)
+            .set({ role, updatedAt: new Date() })
+            .where(
+              and(
+                eq(projectTeamMembers.projectId, id),
+                eq(
+                  projectTeamMembers.teamMemberId,
+                  db
+                    .select({ id: teamMembers.id })
+                    .from(teamMembers)
+                    .where(eq(teamMembers.userId, userId))
+                    .limit(1)
+                )
+              )
+            );
+        }
+      }
+    }
+
+    // Activity & Notification logging
     if (changes.length > 0) {
       await ActivityService.logProjectUpdated(userId, id, changes);
 
@@ -973,7 +1106,7 @@ export async function updateProjectAction(
 }
 
 /**
- * Delete a project (soft delete by archiving)
+ * Delete a project (soft delete by archiving) - FIXED to handle related records
  */
 export async function deleteProjectAction(projectId: string, userId: string) {
   try {
@@ -1009,7 +1142,10 @@ export async function deleteProjectAction(projectId: string, userId: string) {
     const isOwner = project.ownerId === userId;
 
     const hasAdminAccess = await db
-      .select({ role: projectTeamMembers.role })
+      .select({
+        teamRole: teamMembers.role,
+        projectRole: projectTeamMembers.role,
+      })
       .from(projectTeams)
       .innerJoin(
         teamMembers,
@@ -1018,18 +1154,23 @@ export async function deleteProjectAction(projectId: string, userId: string) {
           eq(teamMembers.userId, userId)
         )
       )
-      .where(
+      .leftJoin(
+        projectTeamMembers,
         and(
-          eq(projectTeams.projectId, projectId),
-          or(
-            eq(projectTeamMembers.role, "admin"),
-            inArray(teamMembers.role, ["owner", "admin"])
-          )
+          eq(projectTeams.projectId, projectTeamMembers.projectId),
+          eq(projectTeamMembers.teamMemberId, teamMembers.id)
         )
       )
+      .where(eq(projectTeams.projectId, projectId))
       .limit(1);
 
-    if (!isOwner && hasAdminAccess.length === 0) {
+    const hasPermission =
+      hasAdminAccess.length > 0 &&
+      (hasAdminAccess[0].teamRole === "owner" ||
+        hasAdminAccess[0].teamRole === "admin" ||
+        hasAdminAccess[0].projectRole === "admin");
+
+    if (!isOwner && !hasPermission) {
       return {
         success: false,
         error: "You don't have permission to delete this project",
@@ -1045,11 +1186,7 @@ export async function deleteProjectAction(projectId: string, userId: string) {
       })
       .where(eq(projects.id, projectId));
 
-    // =============================================================================
-    // ACTIVITY & NOTIFICATION LOGGING
-    // =============================================================================
-
-    // Log project archival activity
+    // Activity & Notification logging
     await ActivityService.logProjectArchived(userId, projectId, project.name);
 
     // Get all teams associated with this project for notifications
@@ -1088,7 +1225,7 @@ export async function deleteProjectAction(projectId: string, userId: string) {
 }
 
 /**
- * Permanently delete a project (with CASCADE cleanup)
+ * Permanently delete a project (with CASCADE cleanup) - FIXED to handle all relationships
  */
 export async function hardDeleteProjectAction(
   projectId: string,
@@ -1127,7 +1264,10 @@ export async function hardDeleteProjectAction(
     const isOwner = project.ownerId === userId;
 
     const hasAdminAccess = await db
-      .select({ role: projectTeamMembers.role })
+      .select({
+        teamRole: teamMembers.role,
+        projectRole: projectTeamMembers.role,
+      })
       .from(projectTeams)
       .innerJoin(
         teamMembers,
@@ -1136,27 +1276,28 @@ export async function hardDeleteProjectAction(
           eq(teamMembers.userId, userId)
         )
       )
-      .where(
+      .leftJoin(
+        projectTeamMembers,
         and(
-          eq(projectTeams.projectId, projectId),
-          or(
-            eq(projectTeamMembers.role, "admin"),
-            inArray(teamMembers.role, ["owner", "admin"])
-          )
+          eq(projectTeams.projectId, projectTeamMembers.projectId),
+          eq(projectTeamMembers.teamMemberId, teamMembers.id)
         )
       )
+      .where(eq(projectTeams.projectId, projectId))
       .limit(1);
 
-    if (!isOwner && hasAdminAccess.length === 0) {
+    const hasPermission =
+      hasAdminAccess.length > 0 &&
+      (hasAdminAccess[0].teamRole === "owner" ||
+        hasAdminAccess[0].teamRole === "admin" ||
+        hasAdminAccess[0].projectRole === "admin");
+
+    if (!isOwner && !hasPermission) {
       return {
         success: false,
         error: "You don't have permission to delete this project",
       };
     }
-
-    // =============================================================================
-    // ACTIVITY & NOTIFICATION LOGGING (Before deletion)
-    // =============================================================================
 
     // Get all teams associated with this project for notifications
     const projectTeamsList = await db
@@ -1177,7 +1318,20 @@ export async function hardDeleteProjectAction(
       );
     }
 
-    // Hard delete (CASCADE will handle child records including projectTeams)
+    // MANUAL CASCADE DELETE - Delete in correct order to avoid foreign key constraints
+
+    // 1. Delete project team members first (references teamMembers and projectTeams)
+    await db
+      .delete(projectTeamMembers)
+      .where(eq(projectTeamMembers.projectId, projectId));
+
+    // 2. Delete project teams (references projects and teams)
+    await db.delete(projectTeams).where(eq(projectTeams.projectId, projectId));
+
+    // 3. Delete columns (references projects)
+    await db.delete(columns).where(eq(columns.projectId, projectId));
+
+    // 4. Finally delete the project itself
     await db.delete(projects).where(eq(projects.id, projectId));
 
     // Revalidate relevant paths
@@ -1269,6 +1423,7 @@ export async function getProjectBySlugForUser(
         slug: projects.slug,
         description: projects.description,
         ownerId: projects.ownerId,
+        colorTheme: projects.colorTheme,
         isArchived: projects.isArchived,
         schemaVersion: projects.schemaVersion,
         createdAt: projects.createdAt,
@@ -1297,6 +1452,7 @@ export async function getProjectBySlugForUser(
       .limit(1);
 
     const project = projRow[0];
+    if (!project) return null;
 
     // 4. Get their role (prefer project-level role if available)
     let userRole: string | undefined;
@@ -1345,7 +1501,7 @@ export async function addTeamsToProjectAction(
   projectId: string,
   teamIds: string[],
   userId: string,
-  teamRoles: Record<string, "admin" | "editor" | "viewer"> = {}
+  memberRoles: Record<string, "admin" | "editor" | "viewer"> = {}
 ) {
   try {
     if (!projectId || !teamIds?.length || !userId) {
@@ -1357,7 +1513,10 @@ export async function addTeamsToProjectAction(
 
     // Check if user has permission to manage project teams
     const hasPermission = await db
-      .select({ role: projectTeamMembers.role })
+      .select({
+        teamRole: teamMembers.role,
+        projectRole: projectTeamMembers.role,
+      })
       .from(projectTeams)
       .innerJoin(
         teamMembers,
@@ -1366,15 +1525,14 @@ export async function addTeamsToProjectAction(
           eq(teamMembers.userId, userId)
         )
       )
-      .where(
+      .leftJoin(
+        projectTeamMembers,
         and(
-          eq(projectTeams.projectId, projectId),
-          or(
-            eq(projectTeamMembers.role, "admin"),
-            inArray(teamMembers.role, ["owner", "admin"])
-          )
+          eq(projectTeams.projectId, projectTeamMembers.projectId),
+          eq(projectTeamMembers.teamMemberId, teamMembers.id)
         )
       )
+      .where(eq(projectTeams.projectId, projectId))
       .limit(1);
 
     // Also check if user is project owner
@@ -1385,8 +1543,13 @@ export async function addTeamsToProjectAction(
       .limit(1);
 
     const isOwner = projectOwner[0]?.ownerId === userId;
+    const hasAdminAccess =
+      hasPermission.length > 0 &&
+      (hasPermission[0].teamRole === "owner" ||
+        hasPermission[0].teamRole === "admin" ||
+        hasPermission[0].projectRole === "admin");
 
-    if (!isOwner && hasPermission.length === 0) {
+    if (!isOwner && !hasAdminAccess) {
       return {
         success: false,
         error: "You don't have permission to manage teams for this project",
@@ -1426,17 +1589,44 @@ export async function addTeamsToProjectAction(
     const projectTeamInserts = newTeamIds.map((teamId) => ({
       projectId,
       teamId,
-      role: (teamRoles[teamId] || "editor") as "admin" | "editor" | "viewer",
       addedBy: userId,
     }));
 
     await db.insert(projectTeams).values(projectTeamInserts);
 
-    // =============================================================================
-    // ACTIVITY & NOTIFICATION LOGGING
-    // =============================================================================
+    // Add project team member roles for new teams
+    const memberRoleInserts: Array<{
+      projectId: string;
+      teamMemberId: string;
+      role: "admin" | "editor" | "viewer";
+      addedBy: string;
+    }> = [];
 
-    // Get project name for logging
+    for (const teamId of newTeamIds) {
+      const teamMembersData = await db
+        .select({
+          id: teamMembers.id,
+          userId: teamMembers.userId,
+        })
+        .from(teamMembers)
+        .where(eq(teamMembers.teamId, teamId));
+
+      teamMembersData.forEach((member) => {
+        const role = memberRoles[member.userId] || "editor";
+        memberRoleInserts.push({
+          projectId,
+          teamMemberId: member.id,
+          role,
+          addedBy: userId,
+        });
+      });
+    }
+
+    if (memberRoleInserts.length > 0) {
+      await db.insert(projectTeamMembers).values(memberRoleInserts);
+    }
+
+    // Activity & Notification logging
     const project = await db
       .select({ name: projects.name })
       .from(projects)
@@ -1492,7 +1682,10 @@ export async function removeTeamsFromProjectAction(
 
     // Check if user has permission to manage project teams (same logic as addTeamsToProjectAction)
     const hasPermission = await db
-      .select({ role: projectTeamMembers.role })
+      .select({
+        teamRole: teamMembers.role,
+        projectRole: projectTeamMembers.role,
+      })
       .from(projectTeams)
       .innerJoin(
         teamMembers,
@@ -1501,15 +1694,14 @@ export async function removeTeamsFromProjectAction(
           eq(teamMembers.userId, userId)
         )
       )
-      .where(
+      .leftJoin(
+        projectTeamMembers,
         and(
-          eq(projectTeams.projectId, projectId),
-          or(
-            eq(projectTeamMembers.role, "admin"),
-            inArray(teamMembers.role, ["owner", "admin"])
-          )
+          eq(projectTeams.projectId, projectTeamMembers.projectId),
+          eq(projectTeamMembers.teamMemberId, teamMembers.id)
         )
       )
+      .where(eq(projectTeams.projectId, projectId))
       .limit(1);
 
     // Also check if user is project owner
@@ -1520,8 +1712,13 @@ export async function removeTeamsFromProjectAction(
       .limit(1);
 
     const isOwner = projectOwner[0]?.ownerId === userId;
+    const hasAdminAccess =
+      hasPermission.length > 0 &&
+      (hasPermission[0].teamRole === "owner" ||
+        hasPermission[0].teamRole === "admin" ||
+        hasPermission[0].projectRole === "admin");
 
-    if (!isOwner && hasPermission.length === 0) {
+    if (!isOwner && !hasAdminAccess) {
       return {
         success: false,
         error: "You don't have permission to manage teams for this project",
@@ -1545,6 +1742,22 @@ export async function removeTeamsFromProjectAction(
           "Cannot remove all teams from a project. A project must be associated with at least one team.",
       };
     }
+
+    // Remove project team members for these teams first
+    await db
+      .delete(projectTeamMembers)
+      .where(
+        and(
+          eq(projectTeamMembers.projectId, projectId),
+          inArray(
+            projectTeamMembers.teamMemberId,
+            db
+              .select({ id: teamMembers.id })
+              .from(teamMembers)
+              .where(inArray(teamMembers.teamId, teamIds))
+          )
+        )
+      );
 
     // Remove the team relationships
     await db
@@ -1597,10 +1810,18 @@ export async function assignProjectTeamMemberRoleAction(
       .select({
         teamRole: teamMembers.role,
         projectOwnerId: projects.ownerId,
+        projectRole: projectTeamMembers.role,
       })
       .from(teamMembers)
       .innerJoin(projectTeams, eq(teamMembers.teamId, projectTeams.teamId))
       .innerJoin(projects, eq(projectTeams.projectId, projects.id))
+      .leftJoin(
+        projectTeamMembers,
+        and(
+          eq(projectTeams.projectId, projectTeamMembers.projectId),
+          eq(projectTeamMembers.teamMemberId, teamMembers.id)
+        )
+      )
       .where(
         and(
           eq(projects.id, projectId),
@@ -1613,8 +1834,9 @@ export async function assignProjectTeamMemberRoleAction(
     const isProjectOwner = actingUser?.projectOwnerId === userId;
     const isTeamAdminOrOwner =
       actingUser?.teamRole === "owner" || actingUser?.teamRole === "admin";
+    const isProjectAdmin = actingUser?.projectRole === "admin";
 
-    if (!isProjectOwner && !isTeamAdminOrOwner) {
+    if (!isProjectOwner && !isTeamAdminOrOwner && !isProjectAdmin) {
       return {
         success: false,
         error: "You don't have permission to assign this member's role",

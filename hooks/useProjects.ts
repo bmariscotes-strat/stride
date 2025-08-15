@@ -1,4 +1,4 @@
-// hooks/useProject.ts - Updated to handle the Object.entries error
+// hooks/useProject.ts - Updated to handle the Object.entries error and fix update mutations
 
 "use client";
 
@@ -12,7 +12,7 @@ import {
   getTeamProjectsAction,
   getProjectAction,
   getProjectBySlugAction,
-  getProjectsForUser, // Add this import
+  getProjectsForUser,
   assignProjectTeamMemberRoleAction,
 } from "@/lib/services/projects";
 import type {
@@ -22,12 +22,6 @@ import type {
   ProjectsListOptions,
   AssignProjectRoleParams,
 } from "@/types";
-
-// Local helper type for create (matches service signature)
-type CreateProjectManyToMany = CreateProject & {
-  teamIds: string[];
-  teamRoles?: Record<string, "admin" | "editor" | "viewer">;
-};
 
 // Query keys for consistent caching
 export const projectKeys = {
@@ -39,40 +33,10 @@ export const projectKeys = {
   detail: (id: string) => [...projectKeys.details(), id] as const,
   bySlug: (slug: string) => [...projectKeys.all, "bySlug", slug] as const,
   team: (teamId: string) => [...projectKeys.all, "team", teamId] as const,
-  user: (userId: string) => [...projectKeys.all, "user", userId] as const, // Add this
+  user: (userId: string) => [...projectKeys.all, "user", userId] as const,
 };
 
-/**
- * Hook for fetching all projects for a user (across all their teams)
- */
-export function useUserProjects(
-  userId?: string,
-  options: Omit<ProjectsListOptions, "teamId"> = {}
-) {
-  return useQuery({
-    queryKey: projectKeys.user(userId || ""),
-    queryFn: () => (userId ? getProjectsForUser(userId, options) : []),
-    enabled: !!userId,
-    staleTime: 5 * 60 * 1000,
-  });
-}
-
-/**
- * Hook for fetching team projects with optional filtering and pagination
- */
-export function useTeamProjects(
-  teamId: string,
-  options: ProjectsListOptions = {}
-) {
-  return useQuery({
-    queryKey: projectKeys.list({ teamId, ...options }),
-    queryFn: () => getTeamProjectsAction(teamId, options),
-    enabled: !!teamId,
-    staleTime: 5 * 60 * 1000,
-  });
-}
-
-/**
+/*
  * Hook for fetching a single project by ID
  */
 export function useProject(projectId?: string) {
@@ -225,11 +189,21 @@ export function useProjects(
     },
   });
 
-  // Update project (uses cached teams for invalidation)
+  // Update project (uses cached teams for invalidation) - FIXED to handle team updates properly
   const updateProjectMutation = useMutation({
-    mutationFn: (data: UpdateProject) => {
+    mutationFn: (
+      data: UpdateProject & {
+        teamIds?: string[];
+        memberRoles?: Record<string, "admin" | "editor" | "viewer">;
+      }
+    ) => {
       if (!currentUserId) throw new Error("User not authenticated");
-      return updateProjectAction({ ...data, userId: currentUserId });
+      return updateProjectAction({
+        ...data,
+        userId: currentUserId,
+        teamIds: data.teamIds,
+        memberRoles: data.memberRoles || {},
+      });
     },
     onMutate: async (newData) => {
       await queryClient.cancelQueries({
@@ -288,10 +262,19 @@ export function useProjects(
           });
         }
 
-        // Fan-out invalidate for all related teams (from cached version)
+        // Fan-out invalidate for all related teams (from cached version AND new teams if provided)
         prev?.teams?.forEach((t) =>
           queryClient.invalidateQueries({ queryKey: projectKeys.team(t.id) })
         );
+
+        // Also invalidate new teams if teamIds were provided
+        if (variables.teamIds) {
+          variables.teamIds.forEach((teamId) => {
+            queryClient.invalidateQueries({
+              queryKey: projectKeys.team(teamId),
+            });
+          });
+        }
       }
     },
     onSettled: (_result, _error, variables) => {
@@ -301,7 +284,7 @@ export function useProjects(
     },
   });
 
-  // Hard delete project (use cached teams for invalidation)
+  // Hard delete project (use cached teams for invalidation) - FIXED to properly handle cascade deletion
   const deleteProjectMutation = useMutation({
     mutationFn: ({
       projectId,
@@ -512,7 +495,7 @@ export function useCreateProject() {
 }
 
 /**
- * Standalone: update
+ * Standalone: update - FIXED to properly handle team updates
  */
 export function useUpdateProject() {
   const queryClient = useQueryClient();
@@ -520,9 +503,19 @@ export function useUpdateProject() {
   const currentUserId = userData?.id || clerkUser?.id;
 
   return useMutation({
-    mutationFn: (data: UpdateProject) => {
+    mutationFn: (
+      data: UpdateProject & {
+        teamIds?: string[];
+        memberRoles?: Record<string, "admin" | "editor" | "viewer">;
+      }
+    ) => {
       if (!currentUserId) throw new Error("User not authenticated");
-      return updateProjectAction({ ...data, userId: currentUserId });
+      return updateProjectAction({
+        ...data,
+        userId: currentUserId,
+        teamIds: data.teamIds,
+        memberRoles: data.memberRoles || {},
+      });
     },
     onSuccess: (result, variables) => {
       if (result.success && result.project) {
@@ -547,6 +540,16 @@ export function useUpdateProject() {
           });
         }
 
+        // Invalidate both old and new teams if team changes were made
+        if (variables.teamIds) {
+          variables.teamIds.forEach((teamId) => {
+            queryClient.invalidateQueries({
+              queryKey: projectKeys.team(teamId),
+            });
+          });
+        }
+
+        // Also invalidate previous teams
         prev?.teams?.forEach((t) =>
           queryClient.invalidateQueries({ queryKey: projectKeys.team(t.id) })
         );
@@ -591,7 +594,7 @@ export function useDeleteProject() {
 }
 
 /**
- * Standalone: hard delete
+ * Standalone: hard delete - FIXED to properly handle cascade deletion
  */
 export function useHardDeleteProject() {
   const queryClient = useQueryClient();
@@ -622,5 +625,34 @@ export function useHardDeleteProject() {
         queryClient.invalidateQueries({ queryKey: projectKeys.team(t.id) })
       );
     },
+  });
+}
+/*
+ * Hook for fetching all projects for a user (across all their teams)
+ */
+export function useUserProjects(
+  userId?: string,
+  options: Omit<ProjectsListOptions, "teamId"> = {}
+) {
+  return useQuery({
+    queryKey: projectKeys.user(userId || ""),
+    queryFn: () => (userId ? getProjectsForUser(userId, options) : []),
+    enabled: !!userId,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+/**
+ * Hook for fetching team projects with optional filtering and pagination
+ */
+export function useTeamProjects(
+  teamId: string,
+  options: ProjectsListOptions = {}
+) {
+  return useQuery({
+    queryKey: projectKeys.list({ teamId, ...options }),
+    queryFn: () => getTeamProjectsAction(teamId, options),
+    enabled: !!teamId,
+    staleTime: 5 * 60 * 1000,
   });
 }

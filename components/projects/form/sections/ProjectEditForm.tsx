@@ -1,4 +1,4 @@
-// components/projects/form/ProjectEditForm.tsx
+// components/projects/form/ProjectEditForm.tsx - Fixed version
 "use client";
 import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
@@ -73,22 +73,6 @@ export default function ProjectEditForm({
     }
   }, [project.projectTeamMembers]);
 
-  // Auto-generate slug from name (simple client-side generation) - disabled for edit
-  useEffect(() => {
-    if (formData.name && !isManualSlug && !true) {
-      // Disabled for edit mode
-      const baseSlug = formData.name
-        .toLowerCase()
-        .replace(/[^a-z0-9\s-]/g, "")
-        .replace(/\s+/g, "-")
-        .replace(/-+/g, "-")
-        .replace(/^-|-$/g, "")
-        .trim();
-
-      setFormData((prev) => ({ ...prev, slug: baseSlug }));
-    }
-  }, [formData.name, isManualSlug]);
-
   // Handle scroll to update active section
   useEffect(() => {
     const observerOptions: IntersectionObserverInit = {
@@ -121,7 +105,7 @@ export default function ProjectEditForm({
     field: keyof ProjectFormData,
     value: any
   ): void => {
-    if (field === "memberRoles" && "teamIds") {
+    if (field === "memberRoles") {
       return;
     }
 
@@ -135,10 +119,21 @@ export default function ProjectEditForm({
     if (error) setError("");
   };
 
-  // New handlers for team management (though teams can't be changed in edit mode)
+  // FIXED: Allow team changes in edit mode
   const handleTeamsChange = (teamIds: string[]): void => {
-    // Teams can't be changed in edit mode, but we need this for component compatibility
-    console.warn("Teams cannot be changed in edit mode");
+    setFormData((prev) => {
+      // Remove roles for teams that are no longer selected
+      const newMemberRoles = { ...prev.memberRoles };
+
+      // Keep existing roles for members who are still in selected teams
+      // We'll let the server handle the actual team membership changes
+
+      return {
+        ...prev,
+        teamIds,
+        // Don't modify memberRoles here - let ProjectInformationSection handle it
+      };
+    });
   };
 
   const handleMemberRolesChange = (
@@ -176,7 +171,7 @@ export default function ProjectEditForm({
           if (firstTeam) {
             router.push(`/team/${firstTeam.slug}`);
           } else {
-            router.push("/dashboard"); // or wherever you want to go
+            router.push("/dashboard");
           }
         }, 2000);
       } else {
@@ -261,6 +256,9 @@ export default function ProjectEditForm({
         name: formData.name.trim(),
         slug: formData.slug.trim(),
         description: formData.description.trim() || null,
+        // Add team and member role updates
+        teamIds: formData.teamIds,
+        memberRoles: formData.memberRoles,
       };
 
       const result = await updateProjectAsync(updateData);
