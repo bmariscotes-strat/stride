@@ -1,4 +1,4 @@
-// components/projects/form/ProjectEditForm.tsx - Fixed version
+// components/projects/form/ProjectEditForm.tsx - Fixed to pass project team members data
 "use client";
 import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
@@ -57,21 +57,43 @@ export default function ProjectEditForm({
   const { mutateAsync: deleteProjectAsync, isPending: isDeleting } =
     useHardDeleteProject();
 
-  // Initialize member roles from project data
   useEffect(() => {
-    if (project.projectTeamMembers) {
+    console.log("ProjectEditForm: Initializing member roles", {
+      projectTeamMembers: project.projectTeamMembers,
+      projectTeamMembersLength: project.projectTeamMembers?.length || 0,
+      projectId: project.id,
+    });
+
+    if (project.projectTeamMembers && project.projectTeamMembers.length > 0) {
       const memberRoles: Record<string, "admin" | "editor" | "viewer"> = {};
-      project.projectTeamMembers.forEach((ptm) => {
+      project.projectTeamMembers.forEach((ptm, index) => {
+        console.log(`ProjectTeamMember ${index}:`, {
+          ptmId: ptm.id,
+          role: ptm.role,
+          teamMember: ptm.teamMember,
+          userId: ptm.teamMember?.user?.id,
+          userEmail: ptm.teamMember?.user?.email,
+        });
+
         if (ptm.teamMember?.user?.id && ptm.role) {
           memberRoles[ptm.teamMember.user.id] = ptm.role;
         }
       });
-      setFormData((prev) => ({
-        ...prev,
-        memberRoles,
-      }));
+
+      console.log("Final memberRoles object:", memberRoles);
+
+      setFormData((prev) => {
+        // Only update if we actually have roles to set
+        if (Object.keys(memberRoles).length > 0) {
+          return {
+            ...prev,
+            memberRoles,
+          };
+        }
+        return prev;
+      });
     }
-  }, [project.projectTeamMembers]);
+  }, [project.id, project.projectTeamMembers]);
 
   // Handle scroll to update active section
   useEffect(() => {
@@ -119,19 +141,11 @@ export default function ProjectEditForm({
     if (error) setError("");
   };
 
-  // FIXED: Allow team changes in edit mode
   const handleTeamsChange = (teamIds: string[]): void => {
     setFormData((prev) => {
-      // Remove roles for teams that are no longer selected
-      const newMemberRoles = { ...prev.memberRoles };
-
-      // Keep existing roles for members who are still in selected teams
-      // We'll let the server handle the actual team membership changes
-
       return {
         ...prev,
         teamIds,
-        // Don't modify memberRoles here - let ProjectInformationSection handle it
       };
     });
   };
@@ -308,6 +322,7 @@ export default function ProjectEditForm({
           currentUserId={currentUserId}
           isEdit={true}
           projectId={project.id}
+          projectTeamMembers={project.projectTeamMembers}
         />
 
         {isProjectOwner && (

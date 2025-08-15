@@ -1,15 +1,24 @@
-// Updated ProjectInformationSection.tsx
+// Updated ProjectInformationSection.tsx - Use useProject hook for fresh data
 "use client";
 import React, { useState } from "react";
-import { Info, FolderOpen, Plus, X, Users, AlertTriangle } from "lucide-react";
+import {
+  Info,
+  FolderOpen,
+  Plus,
+  X,
+  Users,
+  AlertTriangle,
+  Settings,
+} from "lucide-react";
 import { Input } from "@/components/ui/Input";
 import { TextArea } from "@/components/ui/TextArea";
 import TeamSelectionModal from "@/components/projects/form/sections/TeamSelectionModal";
-import { useProjects } from "@/hooks/useProjects";
+import { useAssignProjectRole, useProject } from "@/hooks/useProjects"; // Add useProject import
 import type {
   ProjectFormSectionProps,
   TeamWithRelations,
   TeamWithMemberRoles,
+  ProjectTeamMemberWithRelations,
 } from "@/types";
 
 interface ProjectInformationSectionProps extends ProjectFormSectionProps {
@@ -17,6 +26,7 @@ interface ProjectInformationSectionProps extends ProjectFormSectionProps {
   isEdit?: boolean;
   teams: TeamWithRelations[];
   projectId?: string;
+  projectTeamMembers?: ProjectTeamMemberWithRelations[];
 }
 
 export default function ProjectInformationSection({
@@ -31,11 +41,16 @@ export default function ProjectInformationSection({
   currentUserId,
   isEdit = false,
   projectId,
+  projectTeamMembers = [],
 }: ProjectInformationSectionProps) {
   const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
 
-  // Use the projects hook for role assignment
-  const { assignProjectRole, isAssigningRole } = useProjects();
+  // Use the project hook to get fresh data in edit mode
+  const { data: freshProjectData } = useProject(isEdit ? projectId : undefined);
+
+  // Use the standalone role assignment hook
+  const { mutateAsync: assignProjectRoleAsync, isPending: isAssigningRole } =
+    useAssignProjectRole();
 
   const handleSlugChange = (value: string) => {
     const basicSlug = value
@@ -47,7 +62,8 @@ export default function ProjectInformationSection({
     onSlugChange(basicSlug);
   };
 
-  const handleTeamSelectionConfirm = (
+  // UPDATED: Handle team selection and role changes from modal
+  const handleTeamSelectionConfirm = async (
     selectedTeams: TeamWithMemberRoles[],
     memberRoles: Record<string, "admin" | "editor" | "viewer">
   ) => {
@@ -56,34 +72,83 @@ export default function ProjectInformationSection({
       .filter((id): id is string => Boolean(id));
 
     onTeamsChange(teamIds);
+
+    // Handle role assignments in edit mode
+    if (isEdit && projectId) {
+      try {
+        // Get the current project team members (fresh data if available)
+        const currentProjectTeamMembers =
+          freshProjectData?.projectTeamMembers || projectTeamMembers;
+
+        // Process role changes for existing members
+        for (const [userId, newRole] of Object.entries(memberRoles)) {
+          const projectTeamMember = currentProjectTeamMembers.find(
+            (ptm) => ptm.teamMember?.user?.id === userId
+          );
+
+          if (projectTeamMember && projectTeamMember.role !== newRole) {
+            await assignProjectRoleAsync({
+              projectId,
+              memberId: projectTeamMember.id,
+              newRole,
+            });
+          }
+        }
+
+        console.log("Successfully updated all member roles");
+      } catch (error) {
+        console.error("Failed to assign roles:", error);
+        // You might want to show a toast notification here
+      }
+    }
+
+    // Update form data with new roles
     if (onMemberRolesChange) {
       onMemberRolesChange(memberRoles);
     }
   };
 
-  const handleMemberRoleChangeInEditMode = async (
-    memberId: string,
-    newRole: "admin" | "editor" | "viewer"
-  ) => {
-    if (isEdit && projectId) {
-      try {
-        await assignProjectRole({
-          projectId,
-          memberId,
-          newRole,
-        });
-      } catch (error) {
-        console.error("Failed to assign role:", error);
-        // Handle error (show toast, etc.)
-      }
-    }
-  };
-
+  // Enable team removal in both edit and creation modes
   const removeTeam = (teamIdToRemove: string) => {
     const updatedTeamIds = formData.teamIds.filter(
       (id) => id !== teamIdToRemove
     );
+
+    // In edit mode, warn if trying to remove the last team
+    if (isEdit && updatedTeamIds.length === 0) {
+      alert(
+        "Cannot remove all teams from a project. A project must be associated with at least one team."
+      );
+      return;
+    }
+
+    // Update team IDs
     onTeamsChange(updatedTeamIds);
+
+    // Clean up member roles for users who are no longer in any selected teams
+    if (onMemberRolesChange) {
+      const remainingTeams = teams.filter((team) =>
+        updatedTeamIds.includes(team.id)
+      );
+      const remainingUserIds = new Set<string>();
+
+      remainingTeams.forEach((team) => {
+        team.members?.forEach((member) => {
+          if (member.user?.id) {
+            remainingUserIds.add(member.user.id);
+          }
+        });
+      });
+
+      const newMemberRoles = { ...formData.memberRoles };
+      Object.keys(newMemberRoles).forEach((userId) => {
+        if (!remainingUserIds.has(userId)) {
+          delete newMemberRoles[userId];
+        }
+      });
+
+      onMemberRolesChange(newMemberRoles);
+    }
   };
 
   // Get selected teams with their members
@@ -96,7 +161,7 @@ export default function ProjectInformationSection({
       }));
   };
 
-  // Get unique members across all selected teams
+  // Get unique members across all selected teams with proper null safety
   const getAllUniqueMembers = () => {
     const memberMap = new Map<
       string,
@@ -120,16 +185,48 @@ export default function ProjectInformationSection({
         if (member.user?.id) {
           const existing = memberMap.get(member.user.id);
           if (existing) {
-            existing.teams.push(team.name);
+            if (!existing.teams.includes(team.name)) {
+              existing.teams.push(team.name);
+            }
           } else {
+            // Get user role - prioritize fresh project data, then form data, then database data
+            let userRole: "admin" | "editor" | "viewer" = "editor";
+
+            if (isEdit) {
+              // First try fresh project data
+              if (freshProjectData?.projectTeamMembers) {
+                const freshMember = freshProjectData.projectTeamMembers.find(
+                  (ptm) => ptm.teamMember?.user?.id === member.user?.id
+                );
+                if (freshMember?.role) {
+                  userRole = freshMember.role;
+                }
+              }
+              // Then try formData (for updated roles during current session)
+              else if (formData.memberRoles?.[member.user.id]) {
+                userRole = formData.memberRoles[member.user.id] as
+                  | "admin"
+                  | "editor"
+                  | "viewer";
+              }
+              // Finally fallback to props data
+              else {
+                const ptm = projectTeamMembers.find(
+                  (ptm) => ptm.teamMember?.user?.id === member.user?.id
+                );
+                userRole = ptm?.role || "editor";
+              }
+            } else {
+              // In create mode, use form data or default
+              userRole = (formData.memberRoles?.[member.user.id] ||
+                "editor") as "admin" | "editor" | "viewer";
+            }
+
             memberMap.set(member.user.id, {
               ...member,
               user: member.user!,
               teams: [team.name],
-              role: (formData.memberRoles?.[member.user.id] || "editor") as
-                | "admin"
-                | "editor"
-                | "viewer",
+              role: userRole,
             });
           }
         }
@@ -185,16 +282,47 @@ export default function ProjectInformationSection({
                 Teams & Members{" "}
                 {!isEdit && <span className="text-red-500">*</span>}
               </label>
-              {!isEdit && (
-                <button
-                  type="button"
-                  onClick={() => setIsTeamModalOpen(true)}
-                  className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                >
-                  <Plus size={16} className="mr-2" />
-                  Add Teams
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={() => setIsTeamModalOpen(true)}
+                className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                disabled={isAssigningRole}
+              >
+                {isAssigningRole ? (
+                  <>
+                    <svg
+                      className="animate-spin -ml-1 mr-2 h-4 w-4"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      ></path>
+                    </svg>
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    {isEdit ? (
+                      <Settings size={16} className="mr-2" />
+                    ) : (
+                      <Plus size={16} className="mr-2" />
+                    )}
+                    {isEdit ? "Manage Teams & Roles" : "Add Teams"}
+                  </>
+                )}
+              </button>
             </div>
 
             {formData.teamIds.length > 0 ? (
@@ -217,7 +345,9 @@ export default function ProjectInformationSection({
                         <span className="text-gray-600">
                           ({team.members?.length || 0})
                         </span>
-                        {!isEdit && formData.teamIds.length > 1 && (
+                        {/* Enable team removal for both edit and create, with minimum team validation */}
+                        {((!isEdit && formData.teamIds.length > 0) ||
+                          (isEdit && formData.teamIds.length > 1)) && (
                           <button
                             type="button"
                             onClick={() => removeTeam(team.id)}
@@ -230,17 +360,29 @@ export default function ProjectInformationSection({
                       </div>
                     ))}
                   </div>
+
+                  {/* Show warning in edit mode if only one team */}
+                  {isEdit && formData.teamIds.length === 1 && (
+                    <div className="mt-2 flex items-center gap-2 text-xs text-amber-600">
+                      <AlertTriangle className="h-3 w-3" />
+                      <span>Cannot remove the last team from a project</span>
+                    </div>
+                  )}
                 </div>
 
-                {/* Members with Roles */}
+                {/* UPDATED: Members without role dropdowns - roles managed in modal only */}
                 <div className="bg-white border border-gray-200 rounded-md">
                   <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
-                    <h4 className="text-sm font-medium text-gray-900">
-                      Project Members ({uniqueMembers.length})
-                    </h4>
-                    <p className="text-xs text-gray-600 mt-1">
-                      Individual member roles across all selected teams
-                    </p>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="text-sm font-medium text-gray-900">
+                          Project Members ({uniqueMembers.length})
+                        </h4>
+                        <p className="text-xs text-gray-600 mt-1">
+                          Individual member roles across all selected teams
+                        </p>
+                      </div>
+                    </div>
                   </div>
                   <div className="divide-y divide-gray-100 max-h-64 overflow-y-auto">
                     {uniqueMembers.map((member, index) => (
@@ -288,30 +430,7 @@ export default function ProjectInformationSection({
                               </div>
                             </div>
                           </div>
-                          {isEdit ? (
-                            <select
-                              value={member.role}
-                              onChange={(e) =>
-                                handleMemberRoleChangeInEditMode(
-                                  member.id,
-                                  e.target.value as
-                                    | "admin"
-                                    | "editor"
-                                    | "viewer"
-                                )
-                              }
-                              disabled={isAssigningRole}
-                              className="text-sm border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
-                            >
-                              <option value="admin">Admin</option>
-                              <option value="editor">Editor</option>
-                              <option value="viewer">Viewer</option>
-                            </select>
-                          ) : (
-                            <div className="text-sm text-gray-500">
-                              Role set during team selection
-                            </div>
-                          )}
+                          {/* REMOVED: Role dropdown - now only showing current role badge */}
                         </div>
                       </div>
                     ))}
@@ -329,19 +448,11 @@ export default function ProjectInformationSection({
               </div>
             )}
 
-            {!isEdit && (
-              <p className="text-xs text-gray-500">
-                Choose which teams this project belongs to. Set individual
-                member roles during team selection.
-              </p>
-            )}
-
-            {isEdit && (
-              <p className="text-xs text-gray-500">
-                Teams cannot be changed after project creation. You can modify
-                individual member roles above.
-              </p>
-            )}
+            <p className="text-xs text-gray-500">
+              {isEdit
+                ? "Use 'Manage Teams & Roles' to add/remove teams and modify individual member roles."
+                : "Choose which teams this project belongs to. Set individual member roles during team selection."}
+            </p>
           </div>
 
           <Input
@@ -377,6 +488,7 @@ export default function ProjectInformationSection({
         currentUserId={currentUserId}
         preSelectedTeamIds={formData.teamIds}
         preSelectedMemberRoles={formData.memberRoles || {}}
+        isEditMode={isEdit}
       />
     </>
   );

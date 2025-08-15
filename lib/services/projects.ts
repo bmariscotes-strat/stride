@@ -420,9 +420,78 @@ export async function getProjectAction(
       .innerJoin(teams, eq(projectTeams.teamId, teams.id))
       .where(eq(projectTeams.projectId, projectId));
 
+    // Get project team members with ALL required fields
+    const projectTeamMembersResult = await db
+      .select({
+        // ALL ProjectTeamMember fields
+        id: projectTeamMembers.id,
+        projectId: projectTeamMembers.projectId,
+        teamMemberId: projectTeamMembers.teamMemberId,
+        role: projectTeamMembers.role,
+        addedBy: projectTeamMembers.addedBy,
+        createdAt: projectTeamMembers.createdAt,
+        updatedAt: projectTeamMembers.updatedAt,
+        // TeamMember info
+        teamMemberTeamId: teamMembers.teamId,
+        teamMemberUserId: teamMembers.userId,
+        teamMemberRole: teamMembers.role,
+        teamMemberJoinedAt: teamMembers.joinedAt,
+        // ALL User fields
+        userId: users.id,
+        userClerkUserId: users.clerkUserId,
+        userFirstName: users.firstName,
+        userLastName: users.lastName,
+        userUsername: users.username,
+        userEmail: users.email,
+        userAvatarUrl: users.avatarUrl,
+        userPersonalTeamId: users.personalTeamId,
+        userSchemaVersion: users.schemaVersion,
+        userCreatedAt: users.createdAt,
+        userUpdatedAt: users.updatedAt,
+      })
+      .from(projectTeamMembers)
+      .innerJoin(
+        teamMembers,
+        eq(projectTeamMembers.teamMemberId, teamMembers.id)
+      )
+      .innerJoin(users, eq(teamMembers.userId, users.id))
+      .where(eq(projectTeamMembers.projectId, projectId));
+
+    // Transform to match ProjectTeamMemberWithRelations type
+    const formattedProjectTeamMembers = projectTeamMembersResult.map((row) => ({
+      id: row.id,
+      projectId: row.projectId,
+      teamMemberId: row.teamMemberId,
+      role: row.role,
+      addedBy: row.addedBy,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+      teamMember: {
+        id: row.teamMemberId,
+        teamId: row.teamMemberTeamId,
+        userId: row.teamMemberUserId,
+        role: row.teamMemberRole,
+        joinedAt: row.teamMemberJoinedAt,
+        user: {
+          id: row.userId,
+          clerkUserId: row.userClerkUserId,
+          firstName: row.userFirstName,
+          lastName: row.userLastName,
+          username: row.userUsername,
+          email: row.userEmail,
+          avatarUrl: row.userAvatarUrl,
+          personalTeamId: row.userPersonalTeamId,
+          schemaVersion: row.userSchemaVersion,
+          createdAt: row.userCreatedAt,
+          updatedAt: row.userUpdatedAt,
+        },
+      },
+    }));
+
     return {
       ...result[0],
       teams: teamsResult,
+      projectTeamMembers: formattedProjectTeamMembers,
     };
   } catch (error) {
     console.error("Error fetching project:", error);
