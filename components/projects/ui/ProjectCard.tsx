@@ -69,9 +69,7 @@ export default function ProjectCard({ project, canEdit }: ProjectCardProps) {
 
   return (
     <div
-      className={`rounded-lg border-2 p-6 hover:shadow-md transition-shadow group ${getColorThemeStyles(
-        project.colorTheme
-      )}`}
+      className={`rounded-lg border-2 p-6 hover:shadow-md transition-shadow group`}
     >
       {/* Project Header */}
       <div className="flex items-start justify-between mb-3">
@@ -118,20 +116,10 @@ export default function ProjectCard({ project, canEdit }: ProjectCardProps) {
       <div className="mt-4 pt-4 border-t border-gray-200 flex items-center justify-between">
         <Link
           href={`/projects/${project.slug}`}
-          className={`text-sm font-medium hover:underline ${getColorThemeAccent(
-            project.colorTheme
-          )}`}
+          className={`text-sm font-medium hover:underline`}
         >
           Open Project →
         </Link>
-
-        {project.colorTheme && (
-          <div
-            className={`w-3 h-3 rounded-full ${getColorThemeBackground(
-              project.colorTheme
-            )}`}
-          />
-        )}
       </div>
     </div>
   );
