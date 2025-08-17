@@ -1,5 +1,5 @@
 // types/create.ts
-import type { TeamRole } from "@/types/enums/permissions";
+import type { TeamRole } from "@/types/enums/roles";
 import type { Priority, NotificationType } from "./enums/notif";
 
 // =============================================================================

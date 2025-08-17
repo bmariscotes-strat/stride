@@ -77,7 +77,7 @@ export type ProjectWithColumns = ProjectWithRelations & {
 
 export type ProjectSummary = Pick<
   Project,
-  "id" | "name" | "slug" | "description" | "colorTheme" | "isArchived"
+  "id" | "name" | "slug" | "description" | "isArchived"
 > & {
   cardCount: number;
   memberCount: number;

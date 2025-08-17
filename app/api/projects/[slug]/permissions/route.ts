@@ -5,11 +5,11 @@ import { PERMISSIONS } from "@/types/enums/permissions";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { projectId: string } }
+  { params }: { params: Promise<{ projectId: string }> }
 ) {
   try {
     const userId = await getRequiredUserId();
-    const { projectId } = params;
+    const { projectId } = await params;
 
     const permissionChecker = new ProjectPermissionChecker();
     const context = await permissionChecker.loadContext(userId, projectId);

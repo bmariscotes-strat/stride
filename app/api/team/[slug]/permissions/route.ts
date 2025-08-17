@@ -4,11 +4,11 @@ import { TeamPermissionChecker } from "@/lib/permissions/checkers/team-permissio
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { teamId: string } }
+  { params }: { params: Promise<{ teamId: string }> }
 ) {
   try {
     const userId = await getRequiredUserId();
-    const { teamId } = params;
+    const { teamId } = await params; // Await the params Promise
 
     const permissionChecker = new TeamPermissionChecker();
     const context = await permissionChecker.loadContext(userId, teamId);
