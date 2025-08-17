@@ -16,8 +16,7 @@ import type {
   TeamRole,
 } from "@/types";
 
-// Import the permissions interface
-import type { TeamPermissions } from "./page";
+import { TeamPermissions } from "@/lib/permissions/checkers/team-permission-checker";
 
 // Import components
 import NavigationSidebar from "@/components/layout/shared/NavigationSidebar";
@@ -38,10 +37,10 @@ interface FormData {
   settings: TeamSettings;
 }
 
-type UpdateTeamPageProps = {
-  team: TeamWithRelations & { currentUserRole: TeamRole | null };
+interface UpdateTeamPageProps {
+  team: any;
   permissions: TeamPermissions;
-};
+}
 
 export default function UpdateTeamPage({
   team,
@@ -49,16 +48,6 @@ export default function UpdateTeamPage({
 }: UpdateTeamPageProps) {
   const { userData, clerkUser, loading } = useUserContext();
   const router = useRouter();
-
-  // Destructure permissions for easier use
-  const {
-    canEditTeam,
-    canManageMembers,
-    canManageRoles,
-    canDeleteTeam,
-    canInviteMembers,
-    canRemoveMembers,
-  } = permissions;
 
   // Early return if team is not loaded yet
   if (!team) {
@@ -216,7 +205,7 @@ export default function UpdateTeamPage({
     }
 
     // Check if user has permission to edit team
-    if (!canEditTeam) {
+    if (!permissions.canEditTeam) {
       handleError("You don't have permission to edit this team");
       return;
     }
@@ -271,7 +260,7 @@ export default function UpdateTeamPage({
     }
 
     // Check permission (typically only owners/admins can archive)
-    if (!canDeleteTeam) {
+    if (!permissions.canDeleteTeam) {
       setArchiveError("You don't have permission to archive this team");
       return;
     }
@@ -305,7 +294,7 @@ export default function UpdateTeamPage({
     }
 
     // Check permission
-    if (!canDeleteTeam) {
+    if (!permissions.canDeleteTeam) {
       handleError("You don't have permission to delete this team");
       return;
     }
@@ -356,22 +345,22 @@ export default function UpdateTeamPage({
   // Build navigation items based on permissions
   const navigationItems: NavigationItem[] = [
     // Information section - available if can edit team
-    ...(canEditTeam
+    ...(permissions.canEditTeam
       ? [{ id: "information", label: "Information", icon: Info }]
       : []),
 
     // Members section - available if can manage members or roles
-    ...(canManageMembers || canManageRoles
+    ...(permissions.canManageMembers || permissions.canManageRoles
       ? [{ id: "members", label: "Members", icon: Users }]
       : []),
 
     // Settings section - available if can edit team
-    ...(canEditTeam
+    ...(permissions.canEditTeam
       ? [{ id: "settings", label: "Settings", icon: Settings }]
       : []),
 
     // Danger zone - available if can delete team
-    ...(canDeleteTeam
+    ...(permissions.canDeleteTeam
       ? [
           {
             id: "danger-zone",
@@ -424,7 +413,7 @@ export default function UpdateTeamPage({
 
             <form onSubmit={handleUpdate} className="space-y-12">
               {/* Information Section - Only show if user can edit team */}
-              {canEditTeam && (
+              {permissions.canEditTeam && (
                 <TeamInformationSection
                   team={team}
                   formData={formData}
@@ -434,7 +423,7 @@ export default function UpdateTeamPage({
               )}
 
               {/* Members Section - Only show if user can manage members/roles */}
-              {(canManageMembers || canManageRoles) && (
+              {(permissions.canManageMembers || permissions.canManageRoles) && (
                 <TeamMembersSection
                   team={team}
                   currentUserId={currentUserId}
@@ -445,7 +434,7 @@ export default function UpdateTeamPage({
               )}
 
               {/* Settings Section - Only show if user can edit team */}
-              {canEditTeam && (
+              {permissions.canEditTeam && (
                 <TeamSettingsSection
                   formData={formData}
                   onSettingChange={handleSettingChange}
@@ -454,7 +443,7 @@ export default function UpdateTeamPage({
               )}
 
               {/* Danger Zone Section - Only show if user can delete team */}
-              {canDeleteTeam && (
+              {permissions.canDeleteTeam && (
                 <DangerZoneSection
                   team={team}
                   onArchive={handleArchiveClick}
@@ -465,7 +454,7 @@ export default function UpdateTeamPage({
               )}
 
               {/* Submit Button - Only show if user can edit team */}
-              {canEditTeam && (
+              {permissions.canEditTeam && (
                 <div className="pt-6 border-t border-gray-200">
                   <div className="flex justify-end gap-3">
                     <button
@@ -517,20 +506,12 @@ export default function UpdateTeamPage({
                 </div>
               )}
             </form>
-
-            {/* Debug info - remove in production */}
-            <div className="mt-4 text-xs text-gray-500 bg-gray-50 px-2 py-1 rounded">
-              Your permissions: {canEditTeam && "Edit"}{" "}
-              {canManageMembers && "Manage Members"}{" "}
-              {canManageRoles && "Manage Roles"} {canDeleteTeam && "Delete"}{" "}
-              {canInviteMembers && "Invite"} {canRemoveMembers && "Remove"}
-            </div>
           </div>
         }
       />
 
       {/* Archive Confirmation Modal - Only show if user can delete */}
-      {canDeleteTeam && (
+      {permissions.canDeleteTeam && (
         <ArchiveTeamDialog
           isOpen={showArchiveModal}
           onClose={() => setShowArchiveModal(false)}
@@ -542,7 +523,7 @@ export default function UpdateTeamPage({
       )}
 
       {/* Delete Confirmation Modal - Only show if user can delete */}
-      {canDeleteTeam && (
+      {permissions.canDeleteTeam && (
         <DeleteTeamModal
           isOpen={showDeleteModal}
           onClose={closeDeleteModal}

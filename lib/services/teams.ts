@@ -9,6 +9,12 @@ import { bulkInviteUsersAction, getUsersByEmailsAction } from "./user-search";
 import { ActivityService } from "@/lib/services/activity";
 import { NotificationService } from "@/lib/services/notification";
 import type { Team } from "@/types";
+import {
+  TeamPermissionChecker,
+  type TeamPermissions,
+} from "@/lib/permissions/checkers/team-permission-checker";
+import type { TeamWithRelations } from "@/types";
+import type { TeamRole } from "@/types/enums/roles";
 
 interface CreateTeamData {
   name: string;

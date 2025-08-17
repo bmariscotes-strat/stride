@@ -1,3 +1,4 @@
+// lib/permissions/checkers/team-permission-checkers.ts
 import { db } from "@/lib/db/db";
 import { eq, and } from "drizzle-orm";
 import { teams, teamMembers } from "@/lib/db/schema";
@@ -8,6 +9,22 @@ import type {
 import type { TeamRole } from "@/types/enums/roles";
 import { PERMISSIONS } from "@/types/enums/permissions";
 import { PermissionCache } from "@/lib/cache/permission/permission-cache";
+
+// Add this interface to your types
+export interface TeamPermissions {
+  canViewTeam: boolean;
+  canEditTeam: boolean;
+  canDeleteTeam: boolean;
+  canManageMembers: boolean;
+  canManageRoles: boolean;
+  canInviteMembers: boolean;
+  canRemoveMembers: boolean;
+  canLeaveTeam: boolean;
+  // Add computed permissions for convenience
+  canViewSettings: boolean;
+  hasAnySettingsPermission: boolean;
+  hasAnyMemberPermission: boolean;
+}
 
 export class TeamPermissionChecker {
   private static cache = new PermissionCache<TeamPermissionContext>();
@@ -195,6 +212,49 @@ export class TeamPermissionChecker {
 
   canLeaveTeam(): boolean {
     return this.hasPermission(PERMISSIONS.TEAM_LEAVE);
+  }
+
+  // Get all permissions as an object
+  getAllPermissions(): TeamPermissions {
+    const canViewTeam = this.canViewTeam();
+    const canEditTeam = this.canEditTeam();
+    const canDeleteTeam = this.canDeleteTeam();
+    const canManageMembers = this.canManageMembers();
+    const canManageRoles = this.canManageRoles();
+    const canInviteMembers = this.canInviteMembers();
+    const canRemoveMembers = this.canRemoveMembers();
+    const canLeaveTeam = this.canLeaveTeam();
+
+    // Computed permissions
+    const canViewSettings = canEditTeam || canManageMembers || canManageRoles;
+    const hasAnySettingsPermission =
+      canEditTeam || canManageMembers || canManageRoles;
+    const hasAnyMemberPermission =
+      canManageMembers || canInviteMembers || canRemoveMembers;
+
+    return {
+      canViewTeam,
+      canEditTeam,
+      canDeleteTeam,
+      canManageMembers,
+      canManageRoles,
+      canInviteMembers,
+      canRemoveMembers,
+      canLeaveTeam,
+      canViewSettings,
+      hasAnySettingsPermission,
+      hasAnyMemberPermission,
+    };
+  }
+
+  // Static helper to check if user has any settings permission
+  static hasAnySettingsPermission(permissions: TeamPermissions): boolean {
+    return permissions.hasAnySettingsPermission;
+  }
+
+  // Static helper to check if user has any member management permission
+  static hasAnyMemberPermission(permissions: TeamPermissions): boolean {
+    return permissions.hasAnyMemberPermission;
   }
 
   // Get cache statistics (useful for debugging/monitoring)
