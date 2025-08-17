@@ -10,66 +10,9 @@ interface ProjectCardProps {
 }
 
 export default function ProjectCard({ project, canEdit }: ProjectCardProps) {
-  const getColorThemeStyles = (colorTheme: string | null) => {
-    switch (colorTheme) {
-      case "blue":
-        return "border-blue-200 bg-blue-50";
-      case "green":
-        return "border-green-200 bg-green-50";
-      case "purple":
-        return "border-purple-200 bg-purple-50";
-      case "red":
-        return "border-red-200 bg-red-50";
-      case "yellow":
-        return "border-yellow-200 bg-yellow-50";
-      case "indigo":
-        return "border-indigo-200 bg-indigo-50";
-      default:
-        return "border-gray-200 bg-white";
-    }
-  };
-
-  const getColorThemeAccent = (colorTheme: string | null) => {
-    switch (colorTheme) {
-      case "blue":
-        return "text-blue-600";
-      case "green":
-        return "text-green-600";
-      case "purple":
-        return "text-purple-600";
-      case "red":
-        return "text-red-600";
-      case "yellow":
-        return "text-yellow-600";
-      case "indigo":
-        return "text-indigo-600";
-      default:
-        return "text-gray-600";
-    }
-  };
-
-  const getColorThemeBackground = (colorTheme: string | null) => {
-    switch (colorTheme) {
-      case "blue":
-        return "bg-blue-400";
-      case "green":
-        return "bg-green-400";
-      case "purple":
-        return "bg-purple-400";
-      case "red":
-        return "bg-red-400";
-      case "yellow":
-        return "bg-yellow-400";
-      case "indigo":
-        return "bg-indigo-400";
-      default:
-        return "bg-gray-400";
-    }
-  };
-
   return (
     <div
-      className={`rounded-lg border-2 p-6 hover:shadow-md transition-shadow group`}
+      className={`rounded-lg border-2 p-6 hover:shadow-md transition-shadow group border-gray-200 bg-white`}
     >
       {/* Project Header */}
       <div className="flex items-start justify-between mb-3">
@@ -116,7 +59,7 @@ export default function ProjectCard({ project, canEdit }: ProjectCardProps) {
       <div className="mt-4 pt-4 border-t border-gray-200 flex items-center justify-between">
         <Link
           href={`/projects/${project.slug}`}
-          className={`text-sm font-medium hover:underline`}
+          className={`text-sm font-medium hover:underline}`}
         >
           Open Project →
         </Link>
