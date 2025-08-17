@@ -70,6 +70,31 @@ export const PERMISSIONS = {
   ATTACHMENT_DELETE: { action: "delete", resource: "attachment" },
 } as const;
 
+export interface ProjectPermissions {
+  canViewProject: boolean;
+  canEditProject: boolean;
+  canDeleteProject: boolean;
+  canArchiveProject: boolean;
+  canManageTeams: boolean;
+  canCreateCards: boolean;
+  canEditCards: boolean;
+  canDeleteCards: boolean;
+  canCreateColumns: boolean;
+  canEditColumns: boolean;
+  canDeleteColumns: boolean;
+  canCreateComments: boolean;
+  canEditComments: boolean;
+  canDeleteComments: boolean;
+  canUploadAttachments: boolean;
+  canDeleteAttachments: boolean;
+  canCreateLabels: boolean;
+  canEditLabels: boolean;
+  canDeleteLabels: boolean;
+  hasAnyEditPermission: boolean;
+  hasAnyManagementPermission: boolean;
+  canViewSettings: boolean;
+}
+
 // Responses
 export interface ProjectPermissionsResponse {
   role: "owner" | "admin" | "editor" | "viewer";

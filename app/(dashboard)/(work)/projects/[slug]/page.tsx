@@ -229,13 +229,6 @@ export default async function ProjectPage({
             )}
           </div>
 
-          <div className="mb-4">
-            <div className="text-xs text-gray-500 bg-gray-50 px-2 py-1 rounded">
-              Your role:{" "}
-              {isProjectOwner ? "Owner" : project.currentUserRole || "Member"}
-            </div>
-          </div>
-
           <div className="border-t border-gray-200 pt-4">
             <h3 className="font-medium text-gray-900 mb-3">Views</h3>
             <div className="space-y-1">

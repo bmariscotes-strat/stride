@@ -14,36 +14,29 @@ export default async function ProjectSettingsPage({
   const { slug } = await params;
 
   const project = await getProjectBySlugForUser(slug, userId);
-
   if (!project) {
     notFound();
   }
 
-  // Check permissions on the SERVER
+  // Check permissions
   const permissionChecker = new ProjectPermissionChecker();
   const context = await permissionChecker.loadContext(userId, project.id);
+  const permissions = permissionChecker.getAllPermissions();
 
-  // Get specific permissions
-  const canEditProject = permissionChecker.canEditProject();
-  const canManageTeams = permissionChecker.canManageTeams();
-  const canViewProject = permissionChecker.canViewProject();
-
-  // If user doesn't have basic access, redirect or show error
-  if (!canViewProject) {
+  // Basic access check
+  if (!permissions.canViewProject) {
     redirect(`/dashboard?error=no-project-access`);
   }
 
-  // If user can't edit or manage teams, redirect back to project
-  if (!canEditProject && !canManageTeams) {
-    redirect(
-      `/team/${project.team?.slug}/project/${project.slug}?error=no-settings-access`
-    );
+  // Settings access check
+  if (!ProjectPermissionChecker.canViewSettings(permissions)) {
+    notFound();
   }
 
-  // Get teams only if needed
+  // Get teams
   const teams = await getTeamsForUser(userId);
 
-  // Determine user's role for display
+  // Get user role for display
   const isProjectOwner = context.isProjectOwner;
   const userRole = getUserDisplayRole(context, isProjectOwner);
 
@@ -52,14 +45,12 @@ export default async function ProjectSettingsPage({
       project={project}
       teams={teams}
       currentUserId={userId}
-      canEditProject={canEditProject}
-      canManageTeams={canManageTeams}
+      permissions={permissions}
       isProjectOwner={isProjectOwner}
       userRole={userRole}
     />
   );
 }
-
 // Helper function to get display role
 function getUserDisplayRole(context: any, isProjectOwner: boolean): string {
   if (isProjectOwner) {

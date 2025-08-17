@@ -58,11 +58,7 @@ export default async function TeamPage({
   // Check permissions using TeamPermissionChecker
   const permissionChecker = new TeamPermissionChecker();
   await permissionChecker.loadContext(userId, team.id);
-
-  const canEditTeam = permissionChecker.canEditTeam();
-  const canManageMembers = permissionChecker.canManageMembers();
-  const canManageRoles = permissionChecker.canManageRoles();
-  const showSettings = canEditTeam || canManageMembers || canManageRoles;
+  const permissions = permissionChecker.getAllPermissions();
 
   // Fetch team projects
   const projects = await getTeamProjectsAction(team.id, {
@@ -85,11 +81,6 @@ export default async function TeamPage({
                   <h2 className="font-bold text-xl text-gray-900">
                     {team.name}
                   </h2>
-                  {/* {team.isPrivate ? (
-                    <Lock size={16} className="text-gray-400" />
-                  ) : (
-                    <Globe size={16} className="text-gray-400" />
-                  )} */}
                 </div>
                 <p className="text-sm text-gray-600 flex items-center gap-1">
                   <LinkIcon className="w-4 h-4 text-blue-500" />
@@ -104,7 +95,7 @@ export default async function TeamPage({
                 </p>
               </div>
               {/* Show settings button only if user has permission */}
-              {showSettings && (
+              {permissions.canViewSettings && (
                 <Link
                   href={`/team/${team.slug}/settings`}
                   className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md"
@@ -200,18 +191,19 @@ export default async function TeamPage({
             </div>
 
             {/* Show create button based on permissions and project count */}
-            {(projects.length > 0 || canEditTeam) && projects.length !== 0 && (
-              <Link href="/projects/create">
-                <Button
-                  leftIcon={<Plus />}
-                  variant="primary"
-                  style="filled"
-                  size="sm"
-                >
-                  New Project
-                </Button>
-              </Link>
-            )}
+            {(projects.length > 0 || permissions.canEditTeam) &&
+              projects.length !== 0 && (
+                <Link href="/projects/create">
+                  <Button
+                    leftIcon={<Plus />}
+                    variant="primary"
+                    style="filled"
+                    size="sm"
+                  >
+                    New Project
+                  </Button>
+                </Link>
+              )}
           </div>
 
           {/* Projects Content */}
@@ -226,7 +218,7 @@ export default async function TeamPage({
                 Get started by creating your first project for this team.
               </p>
               {/* Only show create button if user has permission */}
-              {canEditTeam && (
+              {permissions.canEditTeam && (
                 <div className="mt-6">
                   <Link href="/projects/create">
                     <Button
@@ -248,7 +240,7 @@ export default async function TeamPage({
                 <ProjectCard
                   key={project.id}
                   project={project}
-                  canEdit={canEditTeam} // Pass permission to ProjectCard
+                  canEdit={permissions.canEditTeam} // Pass permission to ProjectCard
                 />
               ))}
             </div>

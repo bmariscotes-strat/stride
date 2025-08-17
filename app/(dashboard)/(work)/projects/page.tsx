@@ -105,13 +105,6 @@ export default function ProjectsPage() {
                         {project.team?.name}
                       </p>
                     </div>
-                    {project.colorTheme && (
-                      <div
-                        className="w-4 h-4 rounded-full border border-gray-200"
-                        style={{ backgroundColor: project.colorTheme }}
-                        title="Project color theme"
-                      />
-                    )}
                   </div>
 
                   {project.description && (

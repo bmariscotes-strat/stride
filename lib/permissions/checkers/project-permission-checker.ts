@@ -10,6 +10,7 @@ import {
 import type {
   UserPermissionContext,
   Permission,
+  ProjectPermissions,
 } from "@/types/enums/permissions";
 import type { TeamRole, ProjectTeamRole } from "@/types/enums/roles";
 
@@ -269,6 +270,77 @@ export class ProjectPermissionChecker {
     }
 
     return false;
+  }
+
+  getAllPermissions(): ProjectPermissions {
+    const canViewProject = this.canViewProject();
+    const canEditProject = this.canEditProject();
+    const canDeleteProject = this.hasPermission(PERMISSIONS.PROJECT_DELETE);
+    const canArchiveProject = this.hasPermission(PERMISSIONS.PROJECT_ARCHIVE);
+    const canManageTeams = this.canManageTeams();
+    const canCreateCards = this.canCreateCards();
+    const canEditCards = this.canEditCards();
+    const canDeleteCards = this.canDeleteCards();
+    const canCreateColumns = this.hasPermission(PERMISSIONS.COLUMN_CREATE);
+    const canEditColumns = this.hasPermission(PERMISSIONS.COLUMN_EDIT);
+    const canDeleteColumns = this.hasPermission(PERMISSIONS.COLUMN_DELETE);
+    const canCreateComments = this.hasPermission(PERMISSIONS.COMMENT_CREATE);
+    const canEditComments = this.hasPermission(PERMISSIONS.COMMENT_EDIT);
+    const canDeleteComments = this.hasPermission(PERMISSIONS.COMMENT_DELETE);
+    const canUploadAttachments = this.hasPermission(
+      PERMISSIONS.ATTACHMENT_UPLOAD
+    );
+    const canDeleteAttachments = this.hasPermission(
+      PERMISSIONS.ATTACHMENT_DELETE
+    );
+    const canCreateLabels = this.hasPermission(PERMISSIONS.LABEL_CREATE);
+    const canEditLabels = this.hasPermission(PERMISSIONS.LABEL_EDIT);
+    const canDeleteLabels = this.hasPermission(PERMISSIONS.LABEL_DELETE);
+
+    // Computed permissions
+    const hasAnyEditPermission =
+      canEditProject || canEditCards || canEditColumns;
+    const hasAnyManagementPermission =
+      canEditProject || canManageTeams || canDeleteProject;
+    const canViewSettings = canEditProject || canManageTeams;
+
+    return {
+      canViewProject,
+      canEditProject,
+      canDeleteProject,
+      canArchiveProject,
+      canManageTeams,
+      canCreateCards,
+      canEditCards,
+      canDeleteCards,
+      canCreateColumns,
+      canEditColumns,
+      canDeleteColumns,
+      canCreateComments,
+      canEditComments,
+      canDeleteComments,
+      canUploadAttachments,
+      canDeleteAttachments,
+      canCreateLabels,
+      canEditLabels,
+      canDeleteLabels,
+      hasAnyEditPermission,
+      hasAnyManagementPermission,
+      canViewSettings,
+    };
+  }
+
+  // Static helper methods
+  static hasAnyEditPermission(permissions: ProjectPermissions): boolean {
+    return permissions.hasAnyEditPermission;
+  }
+
+  static hasAnyManagementPermission(permissions: ProjectPermissions): boolean {
+    return permissions.hasAnyManagementPermission;
+  }
+
+  static canViewSettings(permissions: ProjectPermissions): boolean {
+    return permissions.canViewSettings;
   }
 
   // Get cache statistics (useful for debugging/monitoring)

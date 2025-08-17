@@ -132,6 +132,7 @@ export type { ActivityLogResult } from "./enums/activity";
 export type {
   ProjectPermissionsResponse,
   TeamPermissionsResponse,
+  ProjectPermissions,
 } from "./enums/permissions";
 
 export type { TeamRole, ProjectTeamRole } from "./enums/roles";

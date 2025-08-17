@@ -1,3 +1,4 @@
+// app\(dashboard)\(work)\projects\[slug]\settings\ProjectSettings.client.tsx
 "use client";
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -11,15 +12,14 @@ import type {
   ProjectWithPartialRelations,
   NavigationItem,
   TeamWithRelations,
+  ProjectPermissions,
 } from "@/types";
 
 interface ProjectSettingsProps {
   project: ProjectWithPartialRelations;
   teams: TeamWithRelations[];
   currentUserId: string;
-  // Server-computed permissions
-  canEditProject: boolean;
-  canManageTeams: boolean;
+  permissions: ProjectPermissions;
   isProjectOwner: boolean;
   userRole: string;
 }
@@ -28,8 +28,7 @@ export default function ProjectSettings({
   project,
   teams,
   currentUserId,
-  canEditProject,
-  canManageTeams,
+  permissions,
   isProjectOwner,
   userRole,
 }: ProjectSettingsProps) {
@@ -75,7 +74,7 @@ export default function ProjectSettings({
     { id: "information", label: "Information", icon: Info },
   ];
 
-  if (canEditProject || canManageTeams) {
+  if (permissions.canEditProject || permissions.canManageTeams) {
     navigationItems.push({ id: "settings", label: "Settings", icon: Settings });
   }
 
@@ -127,8 +126,8 @@ export default function ProjectSettings({
           currentUserId={currentUserId}
           isProjectOwner={isProjectOwner}
           onNavigateBack={navigateBack}
-          canEditProject={canEditProject}
-          canManageTeams={canManageTeams}
+          canEditProject={permissions.canEditProject}
+          canManageTeams={permissions.canManageTeams}
         />
       }
     />
