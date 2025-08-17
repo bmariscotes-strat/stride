@@ -1,8 +1,6 @@
 import { db } from "@/lib/db/db";
 import { eq, and } from "drizzle-orm";
 import {
-  users,
-  teams,
   projects,
   projectTeams,
   projectTeamMembers,
@@ -12,12 +10,14 @@ import {
 import type {
   UserPermissionContext,
   Permission,
-  TeamRole,
-  ProjectTeamRole,
-} from "./types";
-import { PERMISSIONS } from "./types";
+} from "@/types/enums/permissions";
+import type { TeamRole, ProjectTeamRole } from "@/types/enums/roles";
+
+import { PERMISSIONS } from "../../../types/enums/permissions";
+import { PermissionCache } from "@/lib/cache/permission/permission-cache";
 
 export class ProjectPermissionChecker {
+  private static cache = new PermissionCache<UserPermissionContext>();
   private context: UserPermissionContext | null = null;
 
   constructor() {}
@@ -25,8 +25,20 @@ export class ProjectPermissionChecker {
   // Load user's permission context for a specific project
   async loadContext(
     userId: string,
-    projectId: string
+    projectId: string,
+    useCache: boolean = true
   ): Promise<UserPermissionContext> {
+    const cacheKey = `project:${userId}:${projectId}`;
+
+    // Try to get from cache first
+    if (useCache) {
+      const cachedContext = ProjectPermissionChecker.cache.get(cacheKey);
+      if (cachedContext) {
+        this.context = cachedContext;
+        return cachedContext;
+      }
+    }
+
     // Get project owner info
     const project = await db
       .select({ ownerId: projects.ownerId })
@@ -64,14 +76,41 @@ export class ProjectPermissionChecker {
         )
       );
 
-    this.context = {
+    const context: UserPermissionContext = {
       userId,
       projectId,
       teamMemberships,
       isProjectOwner,
     };
 
-    return this.context;
+    // Cache the result
+    if (useCache) {
+      ProjectPermissionChecker.cache.set(cacheKey, context);
+    }
+
+    this.context = context;
+    return context;
+  }
+
+  // Static method to invalidate cache when permissions change
+  static invalidateUserProjectCache(userId: string, projectId?: string): void {
+    if (projectId) {
+      // Invalidate specific user-project combination
+      this.cache.invalidate(`project:${userId}:${projectId}`);
+    } else {
+      // Invalidate all project permissions for a user
+      this.cache.invalidatePattern(`project:${userId}:`);
+    }
+  }
+
+  // Static method to invalidate all caches for a project (when project changes)
+  static invalidateProjectCache(projectId: string): void {
+    this.cache.invalidatePattern(`:${projectId}`);
+  }
+
+  // Static method to clear all cache
+  static clearCache(): void {
+    this.cache.clear();
   }
 
   // Check if user has a specific permission
@@ -230,5 +269,10 @@ export class ProjectPermissionChecker {
     }
 
     return false;
+  }
+
+  // Get cache statistics (useful for debugging/monitoring)
+  static getCacheStats() {
+    return ProjectPermissionChecker.cache.getStats();
   }
 }

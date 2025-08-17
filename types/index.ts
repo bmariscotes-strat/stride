@@ -128,5 +128,8 @@ export type {
 
 // Activity
 export type { ActivityLogResult } from "./enums/activity";
-// RBAC
-export type { TeamRole, UserRole } from "./enums/permissions";
+
+export type {
+  ProjectPermissionsResponse,
+  TeamPermissionsResponse,
+} from "./enums/permissions";

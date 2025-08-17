@@ -1,58 +1,106 @@
-// app/api/projects/[slug]/permissions/route.ts
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getRequiredUserId } from "@/lib/utils/get-current-user";
-import { getProjectPermissions } from "@/lib/permissions/server";
+import { ProjectPermissionChecker } from "@/lib/permissions/checkers/project-permission-checker";
+import { PERMISSIONS } from "@/types/enums/permissions";
 
 export async function GET(
-  req: Request,
-  { params }: { params: { slug: string } }
+  request: NextRequest,
+  { params }: { params: { projectId: string } }
 ) {
   try {
-    console.log("[PERMISSIONS API] params:", params);
-
     const userId = await getRequiredUserId();
-    console.log("[PERMISSIONS API] userId:", userId);
+    const { projectId } = params;
 
-    // Use the server permissions helper which uses your ProjectPermissionChecker
-    const permissionsData = await getProjectPermissions(params.slug, userId);
+    const permissionChecker = new ProjectPermissionChecker();
+    const context = await permissionChecker.loadContext(userId, projectId);
 
-    console.log("[PERMISSIONS API] permissionsData:", {
-      role: permissionsData.role,
-      hasAccess: permissionsData.hasAccess,
-      isProjectOwner: permissionsData.isProjectOwner,
-    });
+    // Determine user's role for display
+    const role = getUserDisplayRole(context);
 
-    if (!permissionsData.hasAccess) {
-      console.log("[PERMISSIONS API] No access → returning 403");
-      return NextResponse.json(
-        {
-          error: "Access denied",
-          role: null,
-          permissions: permissionsData.permissions,
-          hasAccess: false,
-          isProjectOwner: false,
-        },
-        { status: 403 }
-      );
-    }
+    // Check all relevant permissions
+    const permissions = {
+      canViewProject: permissionChecker.canViewProject(),
+      canEditProject: permissionChecker.canEditProject(),
+      canManageTeams: permissionChecker.canManageTeams(),
+      canCreateCards: permissionChecker.canCreateCards(),
+      canEditCards: permissionChecker.canEditCards(),
+      canDeleteCards: permissionChecker.canDeleteCards(),
+      canCreateColumns: permissionChecker.hasPermission(
+        PERMISSIONS.COLUMN_CREATE
+      ),
+      canEditColumns: permissionChecker.hasPermission(PERMISSIONS.COLUMN_EDIT),
+      canDeleteColumns: permissionChecker.hasPermission(
+        PERMISSIONS.COLUMN_DELETE
+      ),
+      canReorderColumns: permissionChecker.hasPermission(
+        PERMISSIONS.COLUMN_REORDER
+      ),
+      canCreateComments: permissionChecker.hasPermission(
+        PERMISSIONS.COMMENT_CREATE
+      ),
+      canEditComments: permissionChecker.hasPermission(
+        PERMISSIONS.COMMENT_EDIT
+      ),
+      canDeleteComments: permissionChecker.hasPermission(
+        PERMISSIONS.COMMENT_DELETE
+      ),
+      canCreateLabels: permissionChecker.hasPermission(
+        PERMISSIONS.LABEL_CREATE
+      ),
+      canEditLabels: permissionChecker.hasPermission(PERMISSIONS.LABEL_EDIT),
+      canDeleteLabels: permissionChecker.hasPermission(
+        PERMISSIONS.LABEL_DELETE
+      ),
+      canUploadAttachments: permissionChecker.hasPermission(
+        PERMISSIONS.ATTACHMENT_UPLOAD
+      ),
+      canDeleteAttachments: permissionChecker.hasPermission(
+        PERMISSIONS.ATTACHMENT_DELETE
+      ),
+      canAssignCards: permissionChecker.hasPermission(PERMISSIONS.CARD_ASSIGN),
+      canMoveCards: permissionChecker.hasPermission(PERMISSIONS.CARD_MOVE),
+      canArchiveProject: permissionChecker.hasPermission(
+        PERMISSIONS.PROJECT_ARCHIVE
+      ),
+    };
 
     return NextResponse.json({
-      role: permissionsData.role,
-      permissions: permissionsData.permissions,
-      hasAccess: permissionsData.hasAccess,
-      isProjectOwner: permissionsData.isProjectOwner,
+      role,
+      permissions,
+      isProjectOwner: context.isProjectOwner,
+      teamMemberships: context.teamMemberships.length,
     });
   } catch (error) {
-    console.error("[GET_PROJECT_PERMISSIONS_ERROR]", error);
+    console.error("Error fetching project permissions:", error);
+
+    if (error instanceof Error && error.message === "Project not found") {
+      return NextResponse.json({ error: "Project not found" }, { status: 404 });
+    }
+
     return NextResponse.json(
-      {
-        error: "Internal server error",
-        role: null,
-        permissions: {},
-        hasAccess: false,
-        isProjectOwner: false,
-      },
+      { error: "Failed to fetch permissions" },
       { status: 500 }
     );
   }
+}
+
+// Helper function to get display role
+function getUserDisplayRole(
+  context: any
+): "owner" | "admin" | "editor" | "viewer" {
+  if (context.isProjectOwner) {
+    return "owner";
+  }
+
+  if (!context?.teamMemberships || context.teamMemberships.length === 0) {
+    return "viewer";
+  }
+
+  const roles = context.teamMemberships
+    .map((m: any) => m.projectRole)
+    .filter(Boolean);
+
+  if (roles.includes("admin")) return "admin";
+  if (roles.includes("editor")) return "editor";
+  return "viewer";
 }

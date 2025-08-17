@@ -1,7 +1,7 @@
 import { getRequiredUserId } from "@/lib/utils/get-current-user";
 import { getProjectBySlugForUser } from "@/lib/services/projects";
 import { getTeamsForUser } from "@/lib/services/teams";
-import { ProjectPermissionChecker } from "@/lib/permissions/project-permission-checker";
+import { ProjectPermissionChecker } from "@/lib/permissions/checkers/project-permission-checker";
 import { notFound, redirect } from "next/navigation";
 import ProjectSettings from "./ProjectSettings.client";
 
@@ -52,7 +52,6 @@ export default async function ProjectSettingsPage({
       project={project}
       teams={teams}
       currentUserId={userId}
-      // Pass only what the client needs to know
       canEditProject={canEditProject}
       canManageTeams={canManageTeams}
       isProjectOwner={isProjectOwner}

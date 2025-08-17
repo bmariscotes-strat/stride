@@ -1,10 +1,16 @@
 import { db } from "@/lib/db/db";
 import { eq, and } from "drizzle-orm";
 import { teams, teamMembers } from "@/lib/db/schema";
-import type { TeamPermissionContext, Permission, TeamRole } from "./types";
-import { PERMISSIONS } from "./types";
+import type {
+  TeamPermissionContext,
+  Permission,
+} from "@/types/enums/permissions";
+import type { TeamRole } from "@/types/enums/roles";
+import { PERMISSIONS } from "../../../types/enums/permissions";
+import { PermissionCache } from "@/lib/cache/permission/permission-cache";
 
 export class TeamPermissionChecker {
+  private static cache = new PermissionCache<TeamPermissionContext>();
   private context: TeamPermissionContext | null = null;
 
   constructor() {}
@@ -12,8 +18,20 @@ export class TeamPermissionChecker {
   // Load user's permission context for a specific team
   async loadContext(
     userId: string,
-    teamId: string
+    teamId: string,
+    useCache: boolean = true
   ): Promise<TeamPermissionContext> {
+    const cacheKey = `team:${userId}:${teamId}`;
+
+    // Try to get from cache first
+    if (useCache) {
+      const cachedContext = TeamPermissionChecker.cache.get(cacheKey);
+      if (cachedContext) {
+        this.context = cachedContext;
+        return cachedContext;
+      }
+    }
+
     // Get team info
     const team = await db
       .select({ createdById: teams.createdBy })
@@ -36,14 +54,41 @@ export class TeamPermissionChecker {
       )
       .limit(1);
 
-    this.context = {
+    const context: TeamPermissionContext = {
       userId,
       teamId,
       userRole: membership[0]?.role || null,
       isTeamCreator,
     };
 
-    return this.context;
+    // Cache the result
+    if (useCache) {
+      TeamPermissionChecker.cache.set(cacheKey, context);
+    }
+
+    this.context = context;
+    return context;
+  }
+
+  // Static method to invalidate cache when permissions change
+  static invalidateUserTeamCache(userId: string, teamId?: string): void {
+    if (teamId) {
+      // Invalidate specific user-team combination
+      this.cache.invalidate(`team:${userId}:${teamId}`);
+    } else {
+      // Invalidate all team permissions for a user
+      this.cache.invalidatePattern(`team:${userId}:`);
+    }
+  }
+
+  // Static method to invalidate all caches for a team (when team changes)
+  static invalidateTeamCache(teamId: string): void {
+    this.cache.invalidatePattern(`:${teamId}`);
+  }
+
+  // Static method to clear all cache
+  static clearCache(): void {
+    this.cache.clear();
   }
 
   // Check if user has a specific permission
@@ -150,5 +195,10 @@ export class TeamPermissionChecker {
 
   canLeaveTeam(): boolean {
     return this.hasPermission(PERMISSIONS.TEAM_LEAVE);
+  }
+
+  // Get cache statistics (useful for debugging/monitoring)
+  static getCacheStats() {
+    return TeamPermissionChecker.cache.getStats();
   }
 }

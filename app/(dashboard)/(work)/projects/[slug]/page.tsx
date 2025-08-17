@@ -3,7 +3,7 @@ import React from "react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/services/users";
-import { ProjectPermissionChecker } from "@/lib/permissions/project-permission-checker";
+import { ProjectPermissionChecker } from "@/lib/permissions/checkers/project-permission-checker";
 import DualPanelLayout from "@/components/layout/shared/DualPanelLayout";
 import AppBreadcrumb from "@/components/shared/AppBreadcrumb";
 import {

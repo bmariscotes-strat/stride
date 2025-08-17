@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { ProjectPermissionChecker } from "./project-permission-checker";
-import { TeamPermissionChecker } from "./team-permission-checker";
+import { ProjectPermissionChecker } from "./checkers/project-permission-checker";
+import { TeamPermissionChecker } from "./checkers/team-permission-checker";
 import { getRequiredUserId } from "@/lib/utils/get-current-user";
-import type { Permission } from "./types";
+import type { Permission } from "@/types/enums/permissions";
 
 // Extend NextRequest to include permissionChecker
 interface ExtendedRequest extends NextRequest {
