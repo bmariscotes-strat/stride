@@ -108,7 +108,7 @@ export default function TeamsPage() {
                   <div className="flex items-center justify-between text-sm text-gray-500">
                     <div className="flex items-center gap-1">
                       <Users size={14} />
-                      <span>{team.memberCount} members</span>
+                      <span>{team.members?.length || 0} members</span>
                     </div>
                     <div className="flex items-center gap-1">
                       <Calendar size={14} />

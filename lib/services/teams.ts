@@ -9,6 +9,12 @@ import { bulkInviteUsersAction, getUsersByEmailsAction } from "./user-search";
 import { ActivityService } from "@/lib/services/activity";
 import { NotificationService } from "@/lib/services/notification";
 import type { Team } from "@/types";
+import {
+  TeamPermissionChecker,
+  type TeamPermissions,
+} from "@/lib/permissions/checkers/team-permission-checker";
+import type { TeamWithRelations } from "@/types";
+import type { TeamRole } from "@/types/enums/roles";
 
 interface CreateTeamData {
   name: string;
@@ -568,35 +574,44 @@ export async function updateTeamMemberRoleAction(
 }
 
 // ... (keeping all the existing query functions unchanged)
+// Replace your current getTeamsForUser function with this fixed version
+
 export async function getTeamsForUser(userId: string) {
   try {
     const userTeams = await db
       .select({
         team: teams,
         role: teamMembers.role,
-        memberCount: teamMembers.id,
       })
       .from(teamMembers)
       .innerJoin(teams, eq(teamMembers.teamId, teams.id))
       .where(and(eq(teamMembers.userId, userId), eq(teams.isArchived, false)));
 
-    // Get member counts for each team
-    const teamsWithCounts = await Promise.all(
+    // Attach full members array to each team
+    const teamsWithMembers = await Promise.all(
       userTeams.map(async (item) => {
-        const memberCount = await db
-          .select({ count: teamMembers.id })
+        const members = await db
+          .select({
+            id: teamMembers.id,
+            teamId: teamMembers.teamId, // Add this missing field
+            userId: teamMembers.userId, // Add this missing field
+            role: teamMembers.role,
+            joinedAt: teamMembers.joinedAt, // Add this missing field
+            user: users, // assumes you have `users` table imported
+          })
           .from(teamMembers)
+          .innerJoin(users, eq(teamMembers.userId, users.id))
           .where(eq(teamMembers.teamId, item.team.id));
 
         return {
           ...item.team,
           role: item.role,
-          memberCount: memberCount.length,
+          members, // full array of members with user details
         };
       })
     );
 
-    return teamsWithCounts;
+    return teamsWithMembers;
   } catch (error) {
     console.error("Error fetching teams:", error);
     return [];
@@ -613,8 +628,14 @@ export async function getTeamBySlug(slug: string, userId: string) {
             user: true,
           },
         },
-        projects: true,
-        labels: true,
+        projects: {
+          with: {
+            project: true,
+          },
+          where: (pt, { eq }) => {
+            return undefined;
+          },
+        },
       },
     });
 
@@ -627,9 +648,18 @@ export async function getTeamBySlug(slug: string, userId: string) {
       (member) => member.user.id === userId
     );
 
-    // Return team with current user role
+    // Transform the projects data to get actual project objects
+    const projectsData = team.projects
+      .filter((projectTeam) => !projectTeam.project.isArchived)
+      .map((projectTeam) => ({
+        ...projectTeam.project,
+        addedAt: projectTeam.createdAt,
+      }));
+
+    // Return team with current user role and properly mapped projects
     return {
       ...team,
+      projects: projectsData, // Replace the junction data with actual project data
       currentUserRole: currentUserMembership?.role || null,
     };
   } catch (error) {
@@ -906,11 +936,16 @@ export async function deleteTeamAction(
       };
     }
 
-    // Get team details
+    // Get team details with proper project relationships
     const team = await db.query.teams.findFirst({
       where: eq(teams.id, teamId),
       with: {
-        projects: true,
+        projects: {
+          // This gets projectTeams records
+          with: {
+            project: true, // Get the actual project data
+          },
+        },
       },
     });
 
@@ -937,9 +972,13 @@ export async function deleteTeamAction(
       };
     }
 
-    // Check if team has active projects
+    // Check if team has active projects - need to access through junction table
     if (team.projects && team.projects.length > 0) {
-      const activeProjects = team.projects.filter((p) => !p.isArchived);
+      // Extract actual projects from the junction table and filter archived ones
+      const activeProjects = team.projects
+        .map((pt) => pt.project) // Get the actual project from projectTeam
+        .filter((project) => !project.isArchived); // Now we can access isArchived
+
       if (activeProjects.length > 0) {
         return {
           success: false,
@@ -957,7 +996,6 @@ export async function deleteTeamAction(
       metadata: {
         teamId: team.id,
         slug: team.slug,
-
         deletedAt: new Date().toISOString(),
         confirmationText: confirmationText,
       },

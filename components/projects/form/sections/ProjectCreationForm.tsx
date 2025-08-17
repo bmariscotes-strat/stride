@@ -1,21 +1,15 @@
-// components/projects/form/ProjectCreationForm.tsx
 "use client";
 import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useUserContext } from "@/contexts/UserContext";
 import { useCreateProject } from "@/hooks/useProjects";
-import type { CreateProject } from "@/types";
 import AlertMessages from "@/components/projects/form/AlertMessages";
 import ProjectInformationSection from "./ProjectInformationSection";
-import ProjectSettingsSection from "./ProjectSettingsSection";
-import type {
-  ProjectCreationProps,
-  ProjectFormData,
-  ProjectSettings,
-} from "@/types";
+import type { ProjectCreationProps, ProjectFormData } from "@/types";
 
 interface ProjectCreationFormProps extends ProjectCreationProps {
   onNavigateBack: () => void;
+  currentUserId: string;
 }
 
 export default function ProjectCreationForm({
@@ -30,19 +24,38 @@ export default function ProjectCreationForm({
   const currentUser = userData || clerkUser;
   const currentUserId = userData?.id || clerkUser?.id;
 
+  // Early return if no user ID is available
+  if (!currentUserId) {
+    return (
+      <div className="p-6 max-w-2xl">
+        <div className="text-center py-8">
+          <p className="text-red-600">
+            You must be logged in to create a project.
+          </p>
+          <button
+            onClick={onNavigateBack}
+            className="mt-4 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+          >
+            Go Back
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   const [activeSection, setActiveSection] = useState<string>("information");
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [error, setError] = useState<string>("");
   const [success, setSuccess] = useState<boolean>(false);
   const [isManualSlug, setIsManualSlug] = useState(false);
+
+  // Updated formData structure to support multiple teams and roles
   const [formData, setFormData] = useState<ProjectFormData>({
     name: "",
     slug: "",
     description: "",
-    teamId: selectedTeamId || "",
-    settings: {
-      colorTheme: "#3b82f6", // Default blue
-    },
+    teamIds: selectedTeamId ? [selectedTeamId] : [],
+    memberRoles: selectedTeamId ? { [selectedTeamId]: "editor" } : {},
   });
 
   // Refs
@@ -50,16 +63,19 @@ export default function ProjectCreationForm({
   const settingsRef = useRef<HTMLElement>(null);
 
   // Use the create project hook
-  const { mutateAsync: createProjectAsync, isPending: isCreating } =
-    useCreateProject();
+  const {
+    mutateAsync: createProjectAsync,
+    isPending: isCreating,
+    error: createError,
+  } = useCreateProject();
 
   // Auto-generate slug from name (simple client-side generation)
   useEffect(() => {
     if (formData.name && !isManualSlug) {
       const baseSlug = formData.name
         .toLowerCase()
-        .replace(/[^a-z0-9\s-]/g, "")
-        .replace(/\s+/g, "-")
+        .replace(/[^a-z0-9\s-]/g, "") // Fixed regex
+        .replace(/\s+/g, "-") // Fixed: use \s+ instead of \\s+
         .replace(/-+/g, "-")
         .replace(/^-|-$/g, "")
         .trim();
@@ -95,34 +111,91 @@ export default function ProjectCreationForm({
     return () => observer.disconnect();
   }, []);
 
+  // Clear error when form data changes
+  useEffect(() => {
+    if (
+      error &&
+      (createError || formData.name || formData.slug || formData.teamIds.length)
+    ) {
+      setError("");
+    }
+  }, [formData.name, formData.slug, formData.teamIds, createError, error]);
+
   const handleInputChange = (
-    field: keyof Omit<ProjectFormData, "settings">,
-    value: string
+    field: keyof ProjectFormData,
+    value: any
   ): void => {
+    if (field === "memberRoles") {
+      return;
+    }
+
     setFormData((prev) => ({ ...prev, [field]: value }));
-    // Clear errors when user starts typing
-    if (error) setError("");
   };
 
   const handleSlugChange = (value: string): void => {
     setIsManualSlug(true);
     setFormData((prev) => ({ ...prev, slug: value }));
-    // Clear errors when user starts typing
-    if (error) setError("");
   };
 
-  const handleSettingChange = (
-    setting: keyof ProjectSettings,
-    value: string
-  ): void => {
+  // New handlers for team management
+  const handleTeamsChange = (teamIds: string[]): void => {
+    setFormData((prev) => {
+      // Remove roles for teams that are no longer selected
+      const newTeamRoles = { ...prev.memberRoles };
+      Object.keys(newTeamRoles).forEach((teamId) => {
+        if (!teamIds.includes(teamId)) {
+          delete newTeamRoles[teamId];
+        }
+      });
+
+      // Add default roles for new teams
+      teamIds.forEach((teamId) => {
+        if (!newTeamRoles[teamId]) {
+          newTeamRoles[teamId] = "editor";
+        }
+      });
+
+      return {
+        ...prev,
+        teamIds,
+        memberRoles: newTeamRoles,
+      };
+    });
+  };
+
+  const handleMemberRolesChange = (
+    updatedRoles: Record<string, "admin" | "editor" | "viewer">
+  ) => {
     setFormData((prev) => ({
       ...prev,
-      settings: { ...prev.settings, [setting]: value },
+      memberRoles: updatedRoles,
     }));
   };
 
-  const navigateToProject = (teamSlug: string, projectSlug: string) => {
-    router.push(`${projectSlug}`);
+  const navigateToProject = (projectSlug: string) => {
+    router.push(`/projects/${projectSlug}`);
+  };
+
+  const validateForm = (): string | null => {
+    if (!formData.name.trim()) {
+      return "Project name is required";
+    }
+    if (!formData.slug.trim()) {
+      return "Project slug is required";
+    }
+    if (!formData.teamIds.length) {
+      return "Please select at least one team for this project";
+    }
+    if (formData.name.trim().length < 2) {
+      return "Project name must be at least 2 characters long";
+    }
+    if (formData.slug.trim().length < 2) {
+      return "Project slug must be at least 2 characters long";
+    }
+    if (!/^[a-z0-9-]+$/.test(formData.slug.trim())) {
+      return "Project slug can only contain lowercase letters, numbers, and hyphens";
+    }
+    return null;
   };
 
   const handleSubmit = async (
@@ -130,13 +203,10 @@ export default function ProjectCreationForm({
   ): Promise<void> => {
     e.preventDefault();
 
-    if (!currentUserId) {
-      setError("You must be logged in to create a project");
-      return;
-    }
-
-    if (!formData.teamId) {
-      setError("Please select a team for this project");
+    // Validate form
+    const validationError = validateForm();
+    if (validationError) {
+      setError(validationError);
       return;
     }
 
@@ -145,14 +215,17 @@ export default function ProjectCreationForm({
     setSuccess(false);
 
     try {
-      const createData: CreateProject = {
+      // Prepare data for the create project API
+      const createData = {
         name: formData.name.trim(),
         slug: formData.slug.trim(),
         description: formData.description.trim() || null,
-        teamId: formData.teamId,
         ownerId: currentUserId,
-        colorTheme: formData.settings.colorTheme || null,
+        teamIds: formData.teamIds,
+        memberRoles: formData.memberRoles,
       };
+
+      console.log("Creating project with data:", createData);
 
       const result = await createProjectAsync(createData);
 
@@ -164,34 +237,47 @@ export default function ProjectCreationForm({
           name: "",
           slug: "",
           description: "",
-          teamId: selectedTeamId || "",
-          settings: {
-            colorTheme: "#3b82f6",
-          },
+          teamIds: selectedTeamId ? [selectedTeamId] : [],
+          memberRoles: selectedTeamId ? { [selectedTeamId]: "editor" } : {},
         });
         setIsManualSlug(false);
 
-        // Find the team to get its slug for navigation
-        const selectedTeam = teams.find((team) => team.id === formData.teamId);
-
         // Redirect to the newly created project page after a short delay
         setTimeout(() => {
-          if (selectedTeam) {
-            navigateToProject(selectedTeam.slug, result.project.slug);
-          }
+          navigateToProject(result.project.slug);
         }, 2000);
       } else {
         throw new Error(result.error || "Failed to create project");
       }
     } catch (err) {
-      const errorMessage =
-        err instanceof Error ? err.message : "An unexpected error occurred";
+      let errorMessage = "An unexpected error occurred";
+
+      if (err instanceof Error) {
+        errorMessage = err.message;
+      } else if (typeof err === "string") {
+        errorMessage = err;
+      } else if (createError) {
+        errorMessage = createError.message || "Failed to create project";
+      }
+
       setError(errorMessage);
       console.error("Error creating project:", err);
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  // Show loading if teams are being fetched
+  if (!teams) {
+    return (
+      <div className="p-6 max-w-2xl">
+        <div className="text-center py-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-2 text-gray-600">Loading teams...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 max-w-2xl">
@@ -202,20 +288,12 @@ export default function ProjectCreationForm({
           formData={formData}
           onInputChange={handleInputChange}
           onSlugChange={handleSlugChange}
-          onSettingChange={handleSettingChange}
+          onTeamsChange={handleTeamsChange}
+          onMemberRolesChange={handleMemberRolesChange}
           teams={teams}
           error={error}
           informationRef={informationRef}
-        />
-
-        <ProjectSettingsSection
-          formData={formData}
-          onInputChange={handleInputChange}
-          onSlugChange={handleSlugChange}
-          onSettingChange={handleSettingChange}
-          teams={teams}
-          error={error}
-          settingsRef={settingsRef}
+          currentUserId={currentUserId}
         />
 
         {/* Submit Button */}
@@ -223,7 +301,7 @@ export default function ProjectCreationForm({
           <div className="flex justify-end gap-3">
             <button
               type="button"
-              disabled={isSubmitting}
+              disabled={isSubmitting || isCreating}
               onClick={onNavigateBack}
               className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
@@ -236,7 +314,7 @@ export default function ProjectCreationForm({
                 isCreating ||
                 !formData.name.trim() ||
                 !formData.slug.trim() ||
-                !formData.teamId
+                !formData.teamIds.length
               }
               className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >

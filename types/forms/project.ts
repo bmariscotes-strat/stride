@@ -1,8 +1,13 @@
-// types/forms/project
-import type { Team, User, Project, TeamWithRelations } from "@/types";
+// types/forms/project.ts - Updated types
+import type {
+  Team,
+  User,
+  Project,
+  TeamWithRelations,
+  ProjectTeamMemberWithRelations,
+} from "@/types";
 
 // Basic Types
-export type TeamBasic = Pick<Team, "id" | "name" | "slug">;
 export type UserBasic = Pick<
   User,
   "id" | "firstName" | "lastName" | "email" | "avatarUrl"
@@ -15,16 +20,30 @@ export type ProjectSortableFields = keyof Pick<
   "name" | "createdAt" | "updatedAt"
 >;
 
+export type TeamBasic = Pick<Team, "id" | "name" | "slug">;
+
+export interface ProjectWithPartialRelations extends Project {
+  teams: TeamWithProjectRole[];
+  owner?: UserBasic;
+  team?: TeamBasic;
+  projectTeamMembers?: ProjectTeamMemberWithRelations[];
+}
+
+export interface TeamWithProjectRole extends TeamBasic {
+  role?: "admin" | "editor" | "viewer";
+}
+
 export interface ProjectSettings {
   colorTheme?: string;
 }
 
+// Updated to support multiple teams
 export interface ProjectFormData {
   name: string;
   slug: string;
   description: string;
-  teamId: string;
-  settings: ProjectSettings;
+  teamIds: string[];
+  memberRoles: Record<string, "admin" | "editor" | "viewer">;
 }
 
 export interface NavigationItem {
@@ -38,16 +57,27 @@ export interface ProjectCreationProps {
   selectedTeamId?: string;
 }
 
+// Updated to support multiple teams and roles
 export interface ProjectFormSectionProps {
   formData: ProjectFormData;
-  onInputChange: (
-    field: keyof Omit<ProjectFormData, "settings">,
-    value: string
+  onInputChange: (field: keyof ProjectFormData, value: any) => void;
+  onSlugChange: (slug: string) => void;
+  onTeamsChange: (teamIds: string[]) => void;
+  onMemberRolesChange: (
+    memberRoles: Record<string, "admin" | "editor" | "viewer">
   ) => void;
-  onSlugChange: (value: string) => void;
-  onSettingChange: (setting: keyof ProjectSettings, value: string) => void;
-  teams: Team[];
-  error: string;
+  currentUserId: string;
+  error?: string | null;
+}
+
+export interface ProjectEditFormProps {
+  project: ProjectWithPartialRelations;
+  teams: TeamWithRelations[];
+  currentUserId: string;
+  isProjectOwner: boolean;
+  onNavigateBack: () => void;
+  canEditProject: boolean;
+  canManageTeams: boolean;
 }
 
 export interface ProjectFormNavigationProps {
@@ -57,20 +87,9 @@ export interface ProjectFormNavigationProps {
   canDelete?: boolean;
 }
 
-export interface ProjectEditProps {
-  project: ProjectWithPartialRelations;
-  teams: TeamWithRelations[];
-  currentUserId: string;
-}
-
 export interface ProjectFormMessagesProps {
   success: boolean;
   error: string;
-}
-
-export interface ProjectWithPartialRelations extends Project {
-  team?: TeamBasic;
-  owner?: UserBasic;
 }
 
 // Base filtering and pagination options (reusable across entities)
@@ -88,3 +107,24 @@ export interface ProjectsListOptions extends BaseListOptions {
   isArchived?: boolean;
   orderBy?: ProjectSortableFields;
 }
+
+// New interfaces for team member role assignment
+export interface TeamMemberWithRole {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  avatarUrl?: string;
+  role: "admin" | "editor" | "viewer";
+}
+
+export interface TeamWithMembersAndRoles extends Team {
+  members: TeamMemberWithRole[];
+  projectRole: "admin" | "editor" | "viewer";
+}
+
+export type AssignProjectRoleParams = {
+  projectId: string;
+  memberId: string;
+  newRole: "admin" | "editor" | "viewer";
+};

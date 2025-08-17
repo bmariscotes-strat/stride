@@ -29,6 +29,8 @@ export interface UpdateProject {
   slug?: string;
   description?: string | null;
   colorTheme?: string | null;
+  teamIds?: string[];
+  memberRoles?: Record<string, "admin" | "editor" | "viewer">;
   isArchived?: boolean;
 }
 

@@ -11,6 +11,8 @@ import {
   projects,
   teams,
   teamMembers,
+  projectTeams,
+  projectTeamMembers,
 } from "@/lib/db/schema";
 import { ActivityService } from "@/lib/services/activity";
 import { eq, gt, and, inArray, desc, not } from "drizzle-orm";
@@ -707,29 +709,59 @@ export class NotificationService {
     projectId: string,
     excludeUserIds: string[] = []
   ) {
-    // First get the project's team ID
-    const project = await db
-      .select({ teamId: projects.teamId })
-      .from(projects)
-      .where(eq(projects.id, projectId))
-      .limit(1);
+    // Build the where conditions for projectTeamMembers
+    const whereConditions = [eq(projectTeamMembers.projectId, projectId)];
 
-    if (!project[0]) return [];
+    if (excludeUserIds.length > 0) {
+      // We need to join with teamMembers to filter by userId
+      const subquery = db
+        .select({ teamMemberId: teamMembers.id })
+        .from(teamMembers)
+        .where(inArray(teamMembers.userId, excludeUserIds));
 
+      whereConditions.push(
+        not(inArray(projectTeamMembers.teamMemberId, subquery))
+      );
+    }
+
+    // Get project team members with their roles and user information
+    const result = await db
+      .select({
+        userId: teamMembers.userId,
+        teamRole: teamMembers.role, // Role in the team (owner/admin/member/viewer)
+        projectRole: projectTeamMembers.role, // Role in the project (admin/editor/viewer)
+      })
+      .from(projectTeamMembers)
+      .innerJoin(
+        teamMembers,
+        eq(projectTeamMembers.teamMemberId, teamMembers.id)
+      )
+      .where(and(...whereConditions));
+
+    return result;
+  }
+
+  // Alternative version if you only need users from all teams in the project
+  private static async getAllProjectTeamMembers(
+    projectId: string,
+    excludeUserIds: string[] = []
+  ) {
     // Build the where conditions
-    const whereConditions = [eq(teamMembers.teamId, project[0].teamId)];
+    const whereConditions = [eq(projectTeams.projectId, projectId)];
 
     if (excludeUserIds.length > 0) {
       whereConditions.push(not(inArray(teamMembers.userId, excludeUserIds)));
     }
 
-    // Execute the query with all conditions
+    // Get all team members from teams that are part of this project
     return await db
       .select({
         userId: teamMembers.userId,
-        role: teamMembers.role,
+        teamRole: teamMembers.role,
+        teamId: teamMembers.teamId,
       })
-      .from(teamMembers)
+      .from(projectTeams)
+      .innerJoin(teamMembers, eq(projectTeams.teamId, teamMembers.teamId))
       .where(and(...whereConditions));
   }
 

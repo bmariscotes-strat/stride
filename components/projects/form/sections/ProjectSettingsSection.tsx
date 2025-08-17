@@ -22,7 +22,6 @@ const colorThemeOptions: SelectOption[] = [
 
 export default function ProjectSettingsSection({
   formData,
-  onSettingChange,
   settingsRef,
 }: ProjectSettingsSectionProps) {
   return (
@@ -36,30 +35,6 @@ export default function ProjectSettingsSection({
           Configure your project appearance and preferences. You can change
           these settings later.
         </p>
-      </div>
-
-      <div className="mt-6 space-y-6">
-        <Select
-          label="Color Theme"
-          value={formData.settings.colorTheme || ""}
-          onChange={(e) => onSettingChange("colorTheme", e.target.value)}
-          options={colorThemeOptions}
-          helperText="Choose a color theme for your project"
-        />
-
-        {/* Color Preview */}
-        {formData.settings.colorTheme && (
-          <div className="flex items-center gap-3">
-            <span className="text-sm text-gray-700">Preview:</span>
-            <div
-              className="w-8 h-8 rounded-md border border-gray-200"
-              style={{ backgroundColor: formData.settings.colorTheme }}
-            />
-            <span className="text-sm text-gray-500">
-              {formData.settings.colorTheme}
-            </span>
-          </div>
-        )}
       </div>
     </section>
   );

@@ -1,32 +1,21 @@
-// components/projects/form/ProjectEditForm.tsx
+// components/projects/form/ProjectEditForm.tsx - Fixed to pass project team members data
 "use client";
 import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useUpdateProject, useHardDeleteProject } from "@/hooks/useProjects";
 import type {
   UpdateProject,
-  ProjectWithPartialRelations,
-  TeamWithRelations,
+  ProjectEditFormProps,
+  ProjectFormData,
 } from "@/types";
 
 import {
   ProjectAlertMessages,
   ProjectInformationSection,
-  ProjectSettingsSection,
   ProjectDangerZoneSection,
   DeleteProjectDialog,
   ArchiveProjectDialog,
 } from "@/components/projects";
-
-import type { ProjectFormData, ProjectSettings } from "@/types";
-
-interface ProjectEditFormProps {
-  project: ProjectWithPartialRelations;
-  teams: TeamWithRelations[];
-  currentUserId: string;
-  isProjectOwner: boolean;
-  onNavigateBack: () => void;
-}
 
 export default function ProjectEditForm({
   project,
@@ -34,6 +23,8 @@ export default function ProjectEditForm({
   currentUserId,
   isProjectOwner,
   onNavigateBack,
+  canEditProject,
+  canManageTeams,
 }: ProjectEditFormProps) {
   const router = useRouter();
 
@@ -53,10 +44,8 @@ export default function ProjectEditForm({
     name: project.name,
     slug: project.slug,
     description: project.description || "",
-    teamId: project.teamId,
-    settings: {
-      colorTheme: project.colorTheme || "#3b82f6",
-    },
+    teamIds: project.teams?.map((t) => t.id).filter(Boolean) || [],
+    memberRoles: {},
   });
 
   // Refs
@@ -70,20 +59,35 @@ export default function ProjectEditForm({
   const { mutateAsync: deleteProjectAsync, isPending: isDeleting } =
     useHardDeleteProject();
 
-  // Auto-generate slug from name (simple client-side generation)
   useEffect(() => {
-    if (formData.name && !isManualSlug) {
-      const baseSlug = formData.name
-        .toLowerCase()
-        .replace(/[^a-z0-9\s-]/g, "")
-        .replace(/\s+/g, "-")
-        .replace(/-+/g, "-")
-        .replace(/^-|-$/g, "")
-        .trim();
+    if (project.projectTeamMembers && project.projectTeamMembers.length > 0) {
+      const memberRoles: Record<string, "admin" | "editor" | "viewer"> = {};
+      project.projectTeamMembers.forEach((ptm, index) => {
+        console.log(`ProjectTeamMember ${index}:`, {
+          ptmId: ptm.id,
+          role: ptm.role,
+          teamMember: ptm.teamMember,
+          userId: ptm.teamMember?.user?.id,
+          userEmail: ptm.teamMember?.user?.email,
+        });
 
-      setFormData((prev) => ({ ...prev, slug: baseSlug }));
+        if (ptm.teamMember?.user?.id && ptm.role) {
+          memberRoles[ptm.teamMember.user.id] = ptm.role;
+        }
+      });
+
+      setFormData((prev) => {
+        // Only update if we actually have roles to set
+        if (Object.keys(memberRoles).length > 0) {
+          return {
+            ...prev,
+            memberRoles,
+          };
+        }
+        return prev;
+      });
     }
-  }, [formData.name, isManualSlug]);
+  }, [project.id, project.projectTeamMembers]);
 
   // Handle scroll to update active section
   useEffect(() => {
@@ -114,12 +118,14 @@ export default function ProjectEditForm({
   }, []);
 
   const handleInputChange = (
-    field: keyof Omit<ProjectFormData, "settings">,
-    value: string
+    field: keyof ProjectFormData,
+    value: any
   ): void => {
+    if (field === "memberRoles") {
+      return;
+    }
+
     setFormData((prev) => ({ ...prev, [field]: value }));
-    // Clear errors when user starts typing
-    if (error) setError("");
   };
 
   const handleSlugChange = (value: string): void => {
@@ -129,13 +135,21 @@ export default function ProjectEditForm({
     if (error) setError("");
   };
 
-  const handleSettingChange = (
-    setting: keyof ProjectSettings,
-    value: string
-  ): void => {
+  const handleTeamsChange = (teamIds: string[]): void => {
+    setFormData((prev) => {
+      return {
+        ...prev,
+        teamIds,
+      };
+    });
+  };
+
+  const handleMemberRolesChange = (
+    updatedRoles: Record<string, "admin" | "editor" | "viewer">
+  ) => {
     setFormData((prev) => ({
       ...prev,
-      settings: { ...prev.settings, [setting]: value },
+      memberRoles: updatedRoles,
     }));
   };
 
@@ -160,7 +174,13 @@ export default function ProjectEditForm({
         setShowArchiveModal(false);
         setSuccess(true);
         setTimeout(() => {
-          router.push(`/team/${project.team?.slug}`);
+          // Navigate back to the first team in the list, or a general projects page
+          const firstTeam = project.teams?.[0];
+          if (firstTeam) {
+            router.push(`/team/${firstTeam.slug}`);
+          } else {
+            router.push("/dashboard");
+          }
         }, 2000);
       } else {
         throw new Error(result.error || "Failed to archive project");
@@ -206,7 +226,13 @@ export default function ProjectEditForm({
 
       if (result.success) {
         setShowDeleteModal(false);
-        router.push(`/team/${project.team?.slug}`);
+        // Navigate back to the first team in the list, or a general projects page
+        const firstTeam = project.teams?.[0];
+        if (firstTeam) {
+          router.push(`/team/${firstTeam.slug}`);
+        } else {
+          router.push("/dashboard");
+        }
       } else {
         throw new Error(result.error || "Failed to delete project");
       }
@@ -223,8 +249,8 @@ export default function ProjectEditForm({
   ): Promise<void> => {
     e.preventDefault();
 
-    if (!formData.teamId) {
-      setError("Please select a team for this project");
+    if (!formData.teamIds.length) {
+      setError("Project must belong to at least one team");
       return;
     }
 
@@ -238,7 +264,9 @@ export default function ProjectEditForm({
         name: formData.name.trim(),
         slug: formData.slug.trim(),
         description: formData.description.trim() || null,
-        colorTheme: formData.settings.colorTheme || null,
+        // Add team and member role updates
+        teamIds: formData.teamIds,
+        memberRoles: formData.memberRoles,
       };
 
       const result = await updateProjectAsync(updateData);
@@ -280,21 +308,15 @@ export default function ProjectEditForm({
           formData={formData}
           onInputChange={handleInputChange}
           onSlugChange={handleSlugChange}
-          onSettingChange={handleSettingChange}
+          onTeamsChange={handleTeamsChange}
+          onMemberRolesChange={handleMemberRolesChange}
           teams={teams}
           error={error}
           informationRef={informationRef}
+          currentUserId={currentUserId}
           isEdit={true}
-        />
-
-        <ProjectSettingsSection
-          formData={formData}
-          onInputChange={handleInputChange}
-          onSlugChange={handleSlugChange}
-          onSettingChange={handleSettingChange}
-          teams={teams}
-          error={error}
-          settingsRef={settingsRef}
+          projectId={project.id}
+          projectTeamMembers={project.projectTeamMembers}
         />
 
         {isProjectOwner && (
@@ -325,7 +347,7 @@ export default function ProjectEditForm({
                 isUpdating ||
                 !formData.name.trim() ||
                 !formData.slug.trim() ||
-                !formData.teamId
+                !formData.teamIds.length
               }
               className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
