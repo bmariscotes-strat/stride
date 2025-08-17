@@ -15,6 +15,27 @@
       "when": 1754551825141,
       "tag": "0001_tired_morlocks",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1755056324058,
+      "tag": "0002_dapper_terror",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1755064553146,
+      "tag": "0003_huge_stick",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1755158653268,
+      "tag": "0004_funny_redwing",
+      "breakpoints": true
     }
   ]
 }

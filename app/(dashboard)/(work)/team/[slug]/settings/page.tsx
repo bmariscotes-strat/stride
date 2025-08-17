@@ -1,6 +1,7 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/services/users";
 import { getTeamBySlug } from "@/lib/services/teams";
+import { TeamPermissionChecker } from "@/lib/permissions/checkers/team-permission-checker";
 import UpdateTeamPage from "./Settings.client";
 
 export default async function TeamSettingsPage({
@@ -9,24 +10,30 @@ export default async function TeamSettingsPage({
   params: Promise<{ slug: string }>;
 }) {
   const currentUser = await getCurrentUser();
+  const userId = currentUser?.id || null;
 
-  // ✅ Await params before accessing its properties
-  const { slug } = await params;
-
-  // Fetch the team data using the slug and current user ID
-  const team = await getTeamBySlug(slug, currentUser!.id);
-
-  if (!team) {
-    notFound(); // Redirect to 404 if team not found
+  if (!userId) {
+    redirect("/sign-in");
   }
 
-  // Check if user has permission to access team settings
-  if (
-    !team.currentUserRole ||
-    !["owner", "admin"].includes(team.currentUserRole)
-  ) {
+  const { slug } = await params;
+  const team = await getTeamBySlug(slug, userId);
+
+  if (!team) {
     notFound();
   }
 
-  return <UpdateTeamPage team={team as any} />;
+  // Check permissions
+  const permissionChecker = new TeamPermissionChecker();
+  await permissionChecker.loadContext(userId, team.id);
+
+  // Get all permissions as object
+  const permissions = permissionChecker.getAllPermissions();
+
+  // Check if user has any settings permission
+  if (!TeamPermissionChecker.hasAnySettingsPermission(permissions)) {
+    notFound();
+  }
+
+  return <UpdateTeamPage team={team} permissions={permissions} />;
 }

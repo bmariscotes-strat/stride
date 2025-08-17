@@ -5,6 +5,65 @@ export const NOTIFICATION_TEMPLATES: Record<
   NotificationType,
   NotificationTemplate
 > = {
+  // Projects
+  project_created: {
+    title: "New project created",
+    message: ({
+      actorName,
+      projectName,
+    }: {
+      actorName: string;
+      projectName: string;
+    }) => `${actorName} created a new project: ${projectName}`,
+  },
+
+  project_updated: {
+    title: "Project updated",
+    message: ({
+      actorName,
+      projectName,
+      updateSummary,
+    }: {
+      actorName: string;
+      projectName: string;
+      updateSummary: string;
+    }) => `${actorName} updated ${projectName}: ${updateSummary}`,
+  },
+
+  project_archived: {
+    title: "Project archived",
+    message: ({
+      actorName,
+      projectName,
+    }: {
+      actorName: string;
+      projectName: string;
+    }) => `${actorName} archived the project: ${projectName}`,
+  },
+
+  project_deleted: {
+    title: "Project deleted",
+    message: ({
+      actorName,
+      projectName,
+    }: {
+      actorName: string;
+      projectName: string;
+    }) => `${actorName} permanently deleted the project: ${projectName}`,
+  },
+
+  project_restored: {
+    title: "Project restored",
+    message: ({
+      actorName,
+      projectName,
+    }: {
+      actorName: string;
+      projectName: string;
+    }) => `${actorName} restored the project from archive: ${projectName}`,
+  },
+
+  // Tasks
   task_created: {
     title: "New card created",
     message: ({
@@ -69,6 +128,7 @@ export const NOTIFICATION_TEMPLATES: Record<
     }) => `"${cardTitle}" has been reassigned to ${assigneeName}`,
   },
 
+  // Comments + Mentions
   comment_added: {
     title: "New comment on your card",
     message: ({
@@ -107,6 +167,7 @@ export const NOTIFICATION_TEMPLATES: Record<
       `${actorName} ${actionText} the due date for "${cardTitle}" to ${dueDateStr}`,
   },
 
+  // Teams
   team_invitation: {
     title: "Added to team",
     message: ({

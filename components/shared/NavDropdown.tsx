@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Plus, Rocket } from "lucide-react";
 
 interface NavItem {
   readonly slug?: string; // Optional for direct links
@@ -22,6 +22,8 @@ interface NavDropdownProps {
   readonly className?: string;
   readonly maxVisibleItems?: number;
   readonly onItemClick?: (item: NavItem) => void;
+  readonly emptyStateText?: string;
+  readonly createButtonText?: string;
 }
 
 const NavDropdown = React.memo<NavDropdownProps>(
@@ -33,6 +35,8 @@ const NavDropdown = React.memo<NavDropdownProps>(
     className = "",
     maxVisibleItems = 8,
     onItemClick,
+    emptyStateText,
+    createButtonText,
   }) => {
     const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
@@ -175,6 +179,7 @@ const NavDropdown = React.memo<NavDropdownProps>(
     const visibleItems = items.slice(0, maxVisibleItems);
     const hasMoreItems = items.length > maxVisibleItems;
     const routeActive = isRouteActive();
+    const isEmpty = items.length === 0;
 
     return (
       <div
@@ -225,83 +230,109 @@ const NavDropdown = React.memo<NavDropdownProps>(
             role="menu"
             aria-label={`${title} options`}
           >
-            {/* Items List */}
-            <div className="max-h-64 overflow-y-auto">
-              {visibleItems.map((item, index) => {
-                const href = getItemHref(item);
-                const isActive = pathname === href;
-                // Use a combination of slug/href and index for unique keys
-                const key = item.slug || item.href || `item-${index}`;
-
-                return (
-                  <Link
-                    key={key}
-                    href={href}
-                    className={`
-                    flex items-center gap-3 px-4 py-2 text-sm transition-colors
-                    focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-inset
-                    ${
-                      isActive
-                        ? "bg-blue-50 text-primary border-r-2 border-blue-600"
-                        : "text-gray-700 hover:bg-gray-50 hover:text-gray-900"
-                    }
-                  `}
-                    onClick={() => handleItemClick(item)}
-                    prefetch={false}
-                    role="menuitem"
-                  >
-                    {item.icon && (
-                      <div
-                        className={`flex-shrink-0 w-5 h-5 ${
-                          isActive ? "text-primary" : "text-gray-400"
-                        }`}
-                        aria-hidden="true"
-                      >
-                        {item.icon}
-                      </div>
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <div className="font-medium truncate">{item.name}</div>
-                      {(item.description || item.type) && (
-                        <div
-                          className={`text-xs mt-0.5 overflow-hidden text-ellipsis whitespace-nowrap ${
-                            isActive ? "text-primary" : "text-gray-500"
-                          }`}
-                          style={{ maxWidth: "100%" }}
-                          title={item.description || item.type} // Show full text on hover
-                        >
-                          {item.description || item.type}
-                        </div>
-                      )}
-                    </div>
-                  </Link>
-                );
-              })}
-            </div>
-
-            {/* Items Counter */}
-            {hasMoreItems && (
-              <div className="border-t border-gray-100 mt-2 pt-2">
-                <div className="px-4 py-1 text-xs text-gray-500">
-                  Showing {visibleItems.length} of {items.length}{" "}
-                  {title.toLowerCase()}
+            {isEmpty ? (
+              /* Empty State */
+              <div className="px-4 py-6 text-center">
+                <div className="text-gray-400 mb-3">
+                  <Rocket className="w-8 h-8 mx-auto opacity-50" />
                 </div>
-              </div>
-            )}
-
-            {/* View All Link - Only show if not all items are direct links or if there are more items */}
-            {(hasMoreItems || items.some((item) => item.slug)) && (
-              <div className="border-t border-gray-100 mt-2 pt-2">
+                <div className="text-sm text-gray-500 mb-4">
+                  {emptyStateText || `No ${title.toLowerCase()} yet`}
+                </div>
                 <Link
                   href={viewAllHref}
-                  className="flex items-center justify-center px-4 py-2 text-sm font-medium text-primary hover:text-primary hover:bg-blue-50 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-inset"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white text-sm font-medium rounded-md hover:bg-primary/90 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
                   onClick={closeDropdown}
                   prefetch={false}
                   role="menuitem"
                 >
-                  View All {title}
+                  <Plus className="w-4 h-4" />
+                  {createButtonText || `Create ${title.slice(0, -1)}`}
                 </Link>
               </div>
+            ) : (
+              <>
+                {/* Items List */}
+                <div className="max-h-64 overflow-y-auto">
+                  {visibleItems.map((item, index) => {
+                    const href = getItemHref(item);
+                    const isActive = pathname === href;
+                    // Use a combination of slug/href and index for unique keys
+                    const key = item.slug || item.href || `item-${index}`;
+
+                    return (
+                      <Link
+                        key={key}
+                        href={href}
+                        className={`
+                        flex items-center gap-3 px-4 py-2 text-sm transition-colors
+                        focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-inset
+                        ${
+                          isActive
+                            ? "bg-blue-50 text-primary border-r-2 border-blue-600"
+                            : "text-gray-700 hover:bg-gray-50 hover:text-gray-900"
+                        }
+                      `}
+                        onClick={() => handleItemClick(item)}
+                        prefetch={false}
+                        role="menuitem"
+                      >
+                        {item.icon && (
+                          <div
+                            className={`flex-shrink-0 w-5 h-5 ${
+                              isActive ? "text-primary" : "text-gray-400"
+                            }`}
+                            aria-hidden="true"
+                          >
+                            {item.icon}
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium truncate">
+                            {item.name}
+                          </div>
+                          {(item.description || item.type) && (
+                            <div
+                              className={`text-xs mt-0.5 overflow-hidden text-ellipsis whitespace-nowrap ${
+                                isActive ? "text-primary" : "text-gray-500"
+                              }`}
+                              style={{ maxWidth: "220px" }}
+                              title={item.description || item.type}
+                            >
+                              {item.description || item.type}
+                            </div>
+                          )}
+                        </div>
+                      </Link>
+                    );
+                  })}
+                </div>
+
+                {/* Items Counter */}
+                {hasMoreItems && (
+                  <div className="border-t border-gray-100 mt-2 pt-2">
+                    <div className="px-4 py-1 text-xs text-gray-500">
+                      Showing {visibleItems.length} of {items.length}{" "}
+                      {title.toLowerCase()}
+                    </div>
+                  </div>
+                )}
+
+                {/* View All Link */}
+                {(hasMoreItems || items.some((item) => item.slug)) && (
+                  <div className="border-t border-gray-100 mt-2 pt-2">
+                    <Link
+                      href={viewAllHref}
+                      className="flex items-center justify-center px-4 py-2 text-sm font-medium text-primary hover:text-primary hover:bg-blue-50 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-inset"
+                      onClick={closeDropdown}
+                      prefetch={false}
+                      role="menuitem"
+                    >
+                      View All {title}
+                    </Link>
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}

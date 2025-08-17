@@ -3,28 +3,35 @@ import React from "react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/services/users";
+import { TeamPermissionChecker } from "@/lib/permissions/checkers/team-permission-checker";
 import DualPanelLayout from "@/components/layout/shared/DualPanelLayout";
 import AppBreadcrumb from "@/components/shared/AppBreadcrumb";
 import Button from "@/components/ui/Button";
+import { ProjectCard } from "@/components/projects";
 import {
   Users,
   Settings,
   Calendar,
   Plus,
   FolderOpen,
-  MoreVerticalIcon as MoreVertical,
   Link as LinkIcon,
 } from "lucide-react";
 import { getTeamBySlug } from "@/lib/services/teams";
+import { getTeamProjectsAction } from "@/lib/services/projects";
 import type {
+  Project,
   TeamWithRelations,
   TeamMemberWithRelations,
-} from "@/types/relations";
+} from "@/types";
 import UserAvatar from "@/components/shared/UserAvatar";
 
 // Define the expected team type with members that include user data
-interface TeamPageData extends TeamWithRelations {
+export interface TeamPageData
+  extends Omit<TeamWithRelations, "projects" | "members"> {
   members: TeamMemberWithRelations[];
+  projects: (Project & {
+    addedAt: Date;
+  })[];
   currentUserRole?: string;
 }
 
@@ -48,13 +55,22 @@ export default async function TeamPage({
     notFound();
   }
 
-  const canEdit =
-    team.currentUserRole === "owner" || team.currentUserRole === "admin";
+  // Check permissions using TeamPermissionChecker
+  const permissionChecker = new TeamPermissionChecker();
+  await permissionChecker.loadContext(userId, team.id);
+  const permissions = permissionChecker.getAllPermissions();
+
+  // Fetch team projects
+  const projects = await getTeamProjectsAction(team.id, {
+    isArchived: false,
+    orderBy: "updatedAt",
+    orderDirection: "desc",
+  });
 
   return (
     <DualPanelLayout
       left={
-        <div className="p-4 h-full">
+        <>
           <AppBreadcrumb />
 
           {/* Team Info Section */}
@@ -65,25 +81,21 @@ export default async function TeamPage({
                   <h2 className="font-bold text-xl text-gray-900">
                     {team.name}
                   </h2>
-                  {/* {team.isPrivate ? (
-                    <Lock size={16} className="text-gray-400" />
-                  ) : (
-                    <Globe size={16} className="text-gray-400" />
-                  )} */}
                 </div>
                 <p className="text-sm text-gray-600 flex items-center gap-1">
                   <LinkIcon className="w-4 h-4 text-blue-500" />
                   <Link
-                    href={`${team.slug}`}
+                    href={`/team/${team.slug}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="hover:underline text-blue-500"
                   >
-                    {`${team.slug}`}
+                    {team.slug}
                   </Link>
                 </p>
               </div>
-              {canEdit && (
+              {/* Show settings button only if user has permission */}
+              {permissions.canViewSettings && (
                 <Link
                   href={`/team/${team.slug}/settings`}
                   className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md"
@@ -105,6 +117,10 @@ export default async function TeamPage({
                 <span>{team.members?.length || 0} members</span>
               </div>
               <div className="flex items-center gap-2 text-sm text-gray-600">
+                <FolderOpen size={14} />
+                <span>{projects.length} projects</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm text-gray-600">
                 <Calendar size={14} />
                 <span>
                   Created {new Date(team.createdAt).toLocaleDateString()}
@@ -114,10 +130,6 @@ export default async function TeamPage({
 
             {/* Members Section */}
             <div className="border-t border-gray-200 pt-4">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="font-medium text-gray-900">Members</h3>
-              </div>
-
               <div className="space-y-2 max-h-60 overflow-y-auto">
                 {team.members?.map((member) => (
                   <div
@@ -154,6 +166,7 @@ export default async function TeamPage({
                           : member.user?.username ||
                             member.user?.email ||
                             "Unknown User"}
+                        {member.user?.id === userId && " (You)"}
                       </p>
                       <p className="text-xs text-gray-500 truncate">
                         {member.role}
@@ -164,7 +177,7 @@ export default async function TeamPage({
               </div>
             </div>
           </div>
-        </div>
+        </>
       }
       right={
         <div className="p-6">
@@ -177,44 +190,61 @@ export default async function TeamPage({
               </p>
             </div>
 
-            {/* This button should be hidden during empty state.
-             */}
-
-            {/* <button className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
-              <Plus size={16} />
-              New Project
-            </button> */}
+            {/* Show create button based on permissions and project count */}
+            {(projects.length > 0 || permissions.canEditTeam) &&
+              projects.length !== 0 && (
+                <Link href="/projects/create">
+                  <Button
+                    leftIcon={<Plus />}
+                    variant="primary"
+                    style="filled"
+                    size="sm"
+                  >
+                    New Project
+                  </Button>
+                </Link>
+              )}
           </div>
 
-          {/* Projects Placeholder */}
-          <div className="text-center py-12">
-            <FolderOpen className="mx-auto h-12 w-12 text-gray-400" />
-            <h3 className="mt-2 text-sm font-medium text-gray-900">
-              No projects yet
-            </h3>
-            <p className="mt-1 text-sm text-gray-500">
-              Get started by creating your first project for this team.
-            </p>
-            <div className="mt-6">
-              <Link href="/team/create">
-                <Button
-                  leftIcon={<Plus />}
-                  variant="primary"
-                  style="filled"
-                  size="sm"
-                >
-                  Create Project
-                </Button>
-              </Link>
+          {/* Projects Content */}
+          {projects.length === 0 ? (
+            /* Empty State */
+            <div className="text-center py-12">
+              <FolderOpen className="mx-auto h-12 w-12 text-gray-400" />
+              <h3 className="mt-2 text-sm font-medium text-gray-900">
+                No projects yet
+              </h3>
+              <p className="mt-1 text-sm text-gray-500">
+                Get started by creating your first project for this team.
+              </p>
+              {/* Only show create button if user has permission */}
+              {permissions.canEditTeam && (
+                <div className="mt-6">
+                  <Link href="/projects/create">
+                    <Button
+                      leftIcon={<Plus />}
+                      variant="primary"
+                      style="filled"
+                      size="sm"
+                    >
+                      Create Project
+                    </Button>
+                  </Link>
+                </div>
+              )}
             </div>
-          </div>
-
-          {/* Future: Projects will be displayed here */}
-          {/* 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            // Project cards will go here
-          </div>
-          */}
+          ) : (
+            /* Projects Grid */
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {projects.map((project) => (
+                <ProjectCard
+                  key={project.id}
+                  project={project}
+                  canEdit={permissions.canEditTeam} // Pass permission to ProjectCard
+                />
+              ))}
+            </div>
+          )}
         </div>
       }
     />

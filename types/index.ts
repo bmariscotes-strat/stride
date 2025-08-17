@@ -8,6 +8,8 @@ export type {
   User,
   Team,
   Project,
+  ProjectTeam,
+  ProjectTeamMember,
   Column,
   Card,
   Label,
@@ -24,6 +26,7 @@ export type {
 export type {
   UserWithRelations,
   TeamWithRelations,
+  TeamWithMemberRoles,
   ProjectWithRelations,
   ColumnWithRelations,
   CardWithRelations,
@@ -35,6 +38,8 @@ export type {
   ActivityLogWithRelations,
   NotificationWithRelations,
   MentionWithRelations,
+  TeamWithProjectRoleRelations,
+  ProjectTeamMemberWithRelations,
 } from "./relations";
 
 // Create interfaces
@@ -42,6 +47,7 @@ export type {
   CreateUser,
   CreateTeam,
   CreateProject,
+  CreateProjectWithMembers,
   CreateColumn,
   CreateCard,
   CreateLabel,
@@ -88,13 +94,27 @@ export type {
   BaseNavSource,
 } from "./utility";
 
-// Non-object types
+// Teams
 export type {
   InviteFormMember,
   PendingTeamMember,
-  FormData,
+  TeamFormData,
   TeamSettings,
 } from "./forms/team";
+
+export type {
+  ProjectSettings,
+  ProjectCreationProps,
+  ProjectFormSectionProps,
+  ProjectFormNavigationProps,
+  ProjectEditFormProps,
+  ProjectFormMessagesProps,
+  ProjectFormData,
+  ProjectWithPartialRelations,
+  AssignProjectRoleParams,
+  ProjectsListOptions,
+  UserBasic,
+} from "./forms/project";
 
 // Notification
 export type {
@@ -108,5 +128,11 @@ export type {
 
 // Activity
 export type { ActivityLogResult } from "./enums/activity";
-// RBAC
-export type { TeamRole, UserRole } from "./enums/permissions";
+
+export type {
+  ProjectPermissionsResponse,
+  TeamPermissionsResponse,
+  ProjectPermissions,
+} from "./enums/permissions";
+
+export type { TeamRole, ProjectTeamRole } from "./enums/roles";

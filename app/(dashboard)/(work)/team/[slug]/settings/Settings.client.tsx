@@ -16,14 +16,19 @@ import type {
   TeamRole,
 } from "@/types";
 
+import { TeamPermissions } from "@/lib/permissions/checkers/team-permission-checker";
+
 // Import components
-import NavigationSidebar from "@/components/team/settings/NavigationSidebar";
-import AlertMessages from "@/components/team/settings/AlertMessages";
-import TeamInformationSection from "@/components/team/settings/sections/InformationSection";
-import TeamMembersSection from "@/components/team/settings/sections/MembersSection";
-import TeamSettingsSection from "@/components/team/settings/sections/SettingsSection";
-import DangerZoneSection from "@/components/team/settings/sections/DangerZoneSection";
-import DeleteTeamModal from "@/components/team/settings/dialog/DeleteTeamDialog";
+import NavigationSidebar from "@/components/layout/shared/NavigationSidebar";
+import {
+  AlertMessages,
+  TeamInformationSection,
+  TeamMembersSection,
+  TeamSettingsSection,
+  DangerZoneSection,
+  DeleteTeamModal,
+  ArchiveTeamDialog,
+} from "@/components/team";
 
 interface FormData {
   name: string;
@@ -32,11 +37,15 @@ interface FormData {
   settings: TeamSettings;
 }
 
-type UpdateTeamPageProps = {
-  team: TeamWithRelations & { currentUserRole: TeamRole | null };
-};
+interface UpdateTeamPageProps {
+  team: any;
+  permissions: TeamPermissions;
+}
 
-export default function UpdateTeamPage({ team }: UpdateTeamPageProps) {
+export default function UpdateTeamPage({
+  team,
+  permissions,
+}: UpdateTeamPageProps) {
   const { userData, clerkUser, loading } = useUserContext();
   const router = useRouter();
 
@@ -73,8 +82,10 @@ export default function UpdateTeamPage({ team }: UpdateTeamPageProps) {
   const [isArchiving, setIsArchiving] = useState<boolean>(false);
   const [isDeleting, setIsDeleting] = useState<boolean>(false);
   const [error, setError] = useState<string>("");
+  const [archiveError, setArchiveError] = useState<string>("");
   const [success, setSuccess] = useState<boolean>(false);
   const [showDeleteModal, setShowDeleteModal] = useState<boolean>(false);
+  const [showArchiveModal, setShowArchiveModal] = useState<boolean>(false);
   const [deleteStep, setDeleteStep] = useState<number>(1);
   const [confirmationText, setConfirmationText] = useState<string>("");
 
@@ -94,33 +105,35 @@ export default function UpdateTeamPage({ team }: UpdateTeamPageProps) {
   const settingsRef = useRef<HTMLDivElement>(null);
   const dangerZoneRef = useRef<HTMLDivElement>(null);
 
-  // Handle scroll to update active section
+  // Optional: Add scroll spy to automatically update active section based on scroll position
   useEffect(() => {
-    const observerOptions: IntersectionObserverInit = {
-      root: null,
-      rootMargin: "-20% 0px -80% 0px",
-      threshold: 0,
-    };
+    const handleScroll = () => {
+      const sections = ["information", "members", "settings", "danger-zone"];
+      let currentSection = "information";
 
-    const observerCallback: IntersectionObserverCallback = (entries) => {
-      entries.forEach((entry) => {
-        if (entry.isIntersecting) {
-          setActiveSection(entry.target.id);
+      for (const sectionId of sections) {
+        const element = document.getElementById(sectionId);
+        if (element) {
+          const rect = element.getBoundingClientRect();
+          // If the section is in the upper half of the viewport, consider it active
+          if (rect.top <= window.innerHeight / 2 && rect.bottom >= 0) {
+            currentSection = sectionId;
+          }
         }
-      });
+      }
+
+      setActiveSection(currentSection);
     };
 
-    const observer = new IntersectionObserver(
-      observerCallback,
-      observerOptions
-    );
+    // Add scroll listener for scroll spy functionality
+    window.addEventListener("scroll", handleScroll);
 
-    if (informationRef.current) observer.observe(informationRef.current);
-    if (membersRef.current) observer.observe(membersRef.current);
-    if (settingsRef.current) observer.observe(settingsRef.current);
-    if (dangerZoneRef.current) observer.observe(dangerZoneRef.current);
+    // Initial check
+    handleScroll();
 
-    return () => observer.disconnect();
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+    };
   }, []);
 
   // Auto-generate slug from name
@@ -152,7 +165,9 @@ export default function UpdateTeamPage({ team }: UpdateTeamPageProps) {
     }));
   };
 
+  // Fixed: Update both scroll and active section
   const scrollToSection = (sectionId: string): void => {
+    setActiveSection(sectionId); // Add this line to update the active section
     const element = document.getElementById(sectionId);
     if (element) {
       element.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -186,6 +201,12 @@ export default function UpdateTeamPage({ team }: UpdateTeamPageProps) {
 
     if (!currentUserId) {
       handleError("You must be logged in to update a team");
+      return;
+    }
+
+    // Check if user has permission to edit team
+    if (!permissions.canEditTeam) {
+      handleError("You don't have permission to edit this team");
       return;
     }
 
@@ -227,27 +248,39 @@ export default function UpdateTeamPage({ team }: UpdateTeamPageProps) {
     }
   };
 
+  const handleArchiveClick = () => {
+    setShowArchiveModal(true);
+    setArchiveError("");
+  };
+
   const handleArchive = async (): Promise<void> => {
     if (!currentUserId) {
-      handleError("You must be logged in to archive a team");
+      setArchiveError("You must be logged in to archive a team");
+      return;
+    }
+
+    // Check permission (typically only owners/admins can archive)
+    if (!permissions.canDeleteTeam) {
+      setArchiveError("You don't have permission to archive this team");
       return;
     }
 
     setIsArchiving(true);
-    setError("");
+    setArchiveError("");
 
     try {
       const result = await archiveTeamAction(team.id, currentUserId);
 
       if (result.success) {
+        setShowArchiveModal(false);
         router.push("/team");
       } else {
-        handleError(result.error || "Failed to archive team");
+        setArchiveError(result.error || "Failed to archive team");
       }
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : "An unexpected error occurred";
-      handleError(errorMessage);
+      setArchiveError(errorMessage);
       console.error("Error archiving team:", err);
     } finally {
       setIsArchiving(false);
@@ -257,6 +290,12 @@ export default function UpdateTeamPage({ team }: UpdateTeamPageProps) {
   const handleDelete = async (): Promise<void> => {
     if (!currentUserId) {
       handleError("You must be logged in to delete a team");
+      return;
+    }
+
+    // Check permission
+    if (!permissions.canDeleteTeam) {
+      handleError("You don't have permission to delete this team");
       return;
     }
 
@@ -303,11 +342,33 @@ export default function UpdateTeamPage({ team }: UpdateTeamPageProps) {
     setDeleteStep(2);
   };
 
+  // Build navigation items based on permissions
   const navigationItems: NavigationItem[] = [
-    { id: "information", label: "Information", icon: Info },
-    { id: "members", label: "Members", icon: Users },
-    { id: "settings", label: "Settings", icon: Settings },
-    { id: "danger-zone", label: "Danger Zone", icon: Trash2 },
+    // Information section - available if can edit team
+    ...(permissions.canEditTeam
+      ? [{ id: "information", label: "Information", icon: Info }]
+      : []),
+
+    // Members section - available if can manage members or roles
+    ...(permissions.canManageMembers || permissions.canManageRoles
+      ? [{ id: "members", label: "Members", icon: Users }]
+      : []),
+
+    // Settings section - available if can edit team
+    ...(permissions.canEditTeam
+      ? [{ id: "settings", label: "Settings", icon: Settings }]
+      : []),
+
+    // Danger zone - available if can delete team
+    ...(permissions.canDeleteTeam
+      ? [
+          {
+            id: "danger-zone",
+            label: "Danger Zone",
+            icon: AlertTriangle,
+          },
+        ]
+      : []),
   ];
 
   // Show loading if user is not loaded yet
@@ -342,6 +403,8 @@ export default function UpdateTeamPage({ team }: UpdateTeamPageProps) {
             activeSection={activeSection}
             navigationItems={navigationItems}
             onScrollToSection={scrollToSection}
+            title="Team Settings"
+            subtitle={`Manage ${team.name} settings`}
           />
         }
         right={
@@ -349,107 +412,131 @@ export default function UpdateTeamPage({ team }: UpdateTeamPageProps) {
             <AlertMessages success={success} error={error} />
 
             <form onSubmit={handleUpdate} className="space-y-12">
-              {/* Information Section */}
-              <TeamInformationSection
-                team={team}
-                formData={formData}
-                onInputChange={handleInputChange}
-                sectionRef={informationRef}
-              />
+              {/* Information Section - Only show if user can edit team */}
+              {permissions.canEditTeam && (
+                <TeamInformationSection
+                  team={team}
+                  formData={formData}
+                  onInputChange={handleInputChange}
+                  sectionRef={informationRef}
+                />
+              )}
 
-              {/* Members Section */}
-              <TeamMembersSection
-                team={team}
-                currentUserId={currentUserId}
-                onSuccess={handleSuccess}
-                onError={handleError}
-                sectionRef={membersRef}
-              />
+              {/* Members Section - Only show if user can manage members/roles */}
+              {(permissions.canManageMembers || permissions.canManageRoles) && (
+                <TeamMembersSection
+                  team={team}
+                  currentUserId={currentUserId}
+                  onSuccess={handleSuccess}
+                  onError={handleError}
+                  sectionRef={membersRef}
+                />
+              )}
 
-              {/* Settings Section */}
-              <TeamSettingsSection
-                formData={formData}
-                onSettingChange={handleSettingChange}
-                sectionRef={settingsRef}
-              />
+              {/* Settings Section - Only show if user can edit team */}
+              {permissions.canEditTeam && (
+                <TeamSettingsSection
+                  formData={formData}
+                  onSettingChange={handleSettingChange}
+                  sectionRef={settingsRef}
+                />
+              )}
 
-              {/* Danger Zone Section */}
-              <DangerZoneSection
-                team={team}
-                onArchive={handleArchive}
-                onDelete={openDeleteModal}
-                isArchiving={isArchiving}
-                sectionRef={dangerZoneRef}
-              />
+              {/* Danger Zone Section - Only show if user can delete team */}
+              {permissions.canDeleteTeam && (
+                <DangerZoneSection
+                  team={team}
+                  onArchive={handleArchiveClick}
+                  onDelete={openDeleteModal}
+                  isArchiving={isArchiving}
+                  sectionRef={dangerZoneRef}
+                />
+              )}
 
-              {/* Submit Button */}
-              <div className="pt-6 border-t border-gray-200">
-                <div className="flex justify-end gap-3">
-                  <button
-                    type="button"
-                    disabled={isSubmitting}
-                    onClick={navigateBack}
-                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={
-                      isSubmitting ||
-                      !formData.name.trim() ||
-                      !formData.slug.trim()
-                    }
-                    className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                  >
-                    {isSubmitting ? (
-                      <>
-                        <svg
-                          className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
-                          xmlns="http://www.w3.org/2000/svg"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                        >
-                          <circle
-                            className="opacity-25"
-                            cx="12"
-                            cy="12"
-                            r="10"
-                            stroke="currentColor"
-                            strokeWidth="4"
-                          ></circle>
-                          <path
-                            className="opacity-75"
-                            fill="currentColor"
-                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                          ></path>
-                        </svg>
-                        Updating Team...
-                      </>
-                    ) : (
-                      "Update Team"
-                    )}
-                  </button>
+              {/* Submit Button - Only show if user can edit team */}
+              {permissions.canEditTeam && (
+                <div className="pt-6 border-t border-gray-200">
+                  <div className="flex justify-end gap-3">
+                    <button
+                      type="button"
+                      disabled={isSubmitting}
+                      onClick={navigateBack}
+                      className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={
+                        isSubmitting ||
+                        !formData.name.trim() ||
+                        !formData.slug.trim()
+                      }
+                      className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    >
+                      {isSubmitting ? (
+                        <>
+                          <svg
+                            className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                          >
+                            <circle
+                              className="opacity-25"
+                              cx="12"
+                              cy="12"
+                              r="10"
+                              stroke="currentColor"
+                              strokeWidth="4"
+                            ></circle>
+                            <path
+                              className="opacity-75"
+                              fill="currentColor"
+                              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                            ></path>
+                          </svg>
+                          Updating Team...
+                        </>
+                      ) : (
+                        "Update Team"
+                      )}
+                    </button>
+                  </div>
                 </div>
-              </div>
+              )}
             </form>
           </div>
         }
       />
 
-      {/* Delete Confirmation Modal */}
-      <DeleteTeamModal
-        isOpen={showDeleteModal}
-        onClose={closeDeleteModal}
-        team={team}
-        deleteStep={deleteStep}
-        confirmationText={confirmationText}
-        setConfirmationText={setConfirmationText}
-        onProceedToStep2={proceedToDeleteStep2}
-        onDelete={handleDelete}
-        isDeleting={isDeleting}
-        error={error}
-      />
+      {/* Archive Confirmation Modal - Only show if user can delete */}
+      {permissions.canDeleteTeam && (
+        <ArchiveTeamDialog
+          isOpen={showArchiveModal}
+          onClose={() => setShowArchiveModal(false)}
+          team={team}
+          onArchive={handleArchive}
+          isArchiving={isArchiving}
+          error={archiveError}
+        />
+      )}
+
+      {/* Delete Confirmation Modal - Only show if user can delete */}
+      {permissions.canDeleteTeam && (
+        <DeleteTeamModal
+          isOpen={showDeleteModal}
+          onClose={closeDeleteModal}
+          team={team}
+          deleteStep={deleteStep}
+          confirmationText={confirmationText}
+          setConfirmationText={setConfirmationText}
+          onProceedToStep2={proceedToDeleteStep2}
+          onDelete={handleDelete}
+          isDeleting={isDeleting}
+          error={error}
+        />
+      )}
     </>
   );
 }

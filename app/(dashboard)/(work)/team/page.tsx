@@ -67,12 +67,15 @@ export default function TeamsPage() {
               Get started by creating your first team.
             </p>
             <div className="mt-6">
-              <Link
-                href="/team/create"
-                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-              >
-                <Plus size={16} />
-                Create Team
+              <Link href="/team/create">
+                <Button
+                  leftIcon={<Plus />}
+                  variant="primary"
+                  style="filled"
+                  size="sm"
+                >
+                  Create Team
+                </Button>
               </Link>
             </div>
           </div>
@@ -105,7 +108,7 @@ export default function TeamsPage() {
                   <div className="flex items-center justify-between text-sm text-gray-500">
                     <div className="flex items-center gap-1">
                       <Users size={14} />
-                      <span>{team.memberCount} members</span>
+                      <span>{team.members?.length || 0} members</span>
                     </div>
                     <div className="flex items-center gap-1">
                       <Calendar size={14} />

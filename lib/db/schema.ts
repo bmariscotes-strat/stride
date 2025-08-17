@@ -22,7 +22,16 @@ export const teamRoleEnum = pgEnum("team_role", [
   "member",
   "viewer",
 ]);
+
+// NEW: Project-specific roles for teams
+export const projectTeamRoleEnum = pgEnum("project_team_role", [
+  "admin", // Can manage project settings, invite teams, delete project
+  "editor", // Can create/edit/delete cards, manage columns
+  "viewer", // Can only view project content
+]);
+
 export const priorityEnum = pgEnum("priority", ["high", "medium", "low"]);
+
 export const notificationTypeEnum = pgEnum("notification_type", [
   "task_assigned",
   "task_updated",
@@ -34,6 +43,14 @@ export const notificationTypeEnum = pgEnum("notification_type", [
   "task_created",
   "task_moved",
   "task_reassigned",
+  "project_created",
+  "project_updated",
+  "project_archived",
+  "project_deleted",
+  "project_restored",
+  "project_team_added",
+  "project_team_removed",
+  "project_permissions_changed",
 ]);
 
 // =============================================================================
@@ -79,7 +96,6 @@ export const teams = pgTable(
   (table) => ({
     slugIdx: index("teams_slug_idx").on(table.slug),
     createdByIdx: index("teams_created_by_idx").on(table.createdBy),
-    // Add foreign key constraint with proper cascade behavior
     createdByFk: foreignKey({
       columns: [table.createdBy],
       foreignColumns: [users.id],
@@ -88,7 +104,35 @@ export const teams = pgTable(
   })
 );
 
-// Projects - Individual kanban boards that belong to teams
+// Team Members - Links users to teams with roles (owner/admin/member/viewer)
+// MOVED: This needs to be defined before projectTeamMembers since it's referenced
+export const teamMembers = pgTable(
+  "team_members",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    teamId: uuid("team_id").notNull(),
+    userId: uuid("user_id").notNull(),
+    role: teamRoleEnum("role").default("member").notNull(),
+    joinedAt: timestamp("joined_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    teamUserUnique: unique("team_user_unique").on(table.teamId, table.userId),
+    teamIdIdx: index("team_members_team_id_idx").on(table.teamId),
+    userIdIdx: index("team_members_user_id_idx").on(table.userId),
+    teamIdFk: foreignKey({
+      columns: [table.teamId],
+      foreignColumns: [teams.id],
+      name: "fk_team_members_team_id",
+    }).onDelete("cascade"),
+    userIdFk: foreignKey({
+      columns: [table.userId],
+      foreignColumns: [users.id],
+      name: "fk_team_members_user_id",
+    }).onDelete("cascade"),
+  })
+);
+
+// REFACTORED: Projects - Individual kanban boards with many-to-many team relationships
 export const projects = pgTable(
   "projects",
   {
@@ -96,8 +140,8 @@ export const projects = pgTable(
     name: varchar("name", { length: 255 }).notNull(),
     slug: varchar("slug", { length: 255 }).notNull(),
     description: text("description"),
-    teamId: uuid("team_id").notNull(),
-    ownerId: uuid("owner_id").notNull(),
+    // REMOVED: teamId - projects no longer belong to a single team
+    ownerId: uuid("owner_id").notNull(), // Keep owner for administrative purposes
     colorTheme: varchar("color_theme", { length: 50 }),
     isArchived: boolean("is_archived").default(false).notNull(),
     schemaVersion: integer("schema_version").default(1).notNull(),
@@ -105,19 +149,94 @@ export const projects = pgTable(
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
   (table) => ({
-    teamSlugUnique: unique("team_slug_unique").on(table.teamId, table.slug),
-    teamIdIdx: index("projects_team_id_idx").on(table.teamId),
+    // UPDATED: Slug uniqueness is now global since we removed teamId
+    slugUnique: unique("project_slug_unique").on(table.slug),
     ownerIdIdx: index("projects_owner_id_idx").on(table.ownerId),
-    // Foreign key constraints
-    teamIdFk: foreignKey({
-      columns: [table.teamId],
-      foreignColumns: [teams.id],
-      name: "fk_projects_team_id",
-    }).onDelete("cascade"),
     ownerIdFk: foreignKey({
       columns: [table.ownerId],
       foreignColumns: [users.id],
       name: "fk_projects_owner_id",
+    }).onDelete("restrict"),
+  })
+);
+
+export const projectTeams = pgTable(
+  "project_teams",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    projectId: uuid("project_id").notNull(),
+    teamId: uuid("team_id").notNull(),
+    addedBy: uuid("added_by").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    projectTeamUnique: unique("project_team_unique").on(
+      table.projectId,
+      table.teamId
+    ),
+    projectIdIdx: index("project_teams_project_id_idx").on(table.projectId),
+    teamIdIdx: index("project_teams_team_id_idx").on(table.teamId),
+    addedByIdx: index("project_teams_added_by_idx").on(table.addedBy),
+    projectIdFk: foreignKey({
+      columns: [table.projectId],
+      foreignColumns: [projects.id],
+      name: "fk_project_teams_project_id",
+    }).onDelete("cascade"),
+    teamIdFk: foreignKey({
+      columns: [table.teamId],
+      foreignColumns: [teams.id],
+      name: "fk_project_teams_team_id",
+    }).onDelete("cascade"),
+    addedByFk: foreignKey({
+      columns: [table.addedBy],
+      foreignColumns: [users.id],
+      name: "fk_project_teams_added_by",
+    }).onDelete("restrict"),
+  })
+);
+
+// NEW: Assign project roles to team members
+export const projectTeamMembers = pgTable(
+  "project_team_members",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    projectId: uuid("project_id").notNull(),
+    teamMemberId: uuid("team_member_id").notNull(),
+    role: projectTeamRoleEnum("role").notNull(),
+    addedBy: uuid("added_by").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    projectMemberUnique: unique("project_member_unique").on(
+      table.projectId,
+      table.teamMemberId
+    ),
+    projectIdIdx: index("project_team_members_project_id_idx").on(
+      table.projectId
+    ),
+    teamMemberIdIdx: index("project_team_members_team_member_id_idx").on(
+      table.teamMemberId
+    ),
+    addedByIdx: index("project_team_members_added_by_idx").on(table.addedBy),
+
+    projectIdFk: foreignKey({
+      columns: [table.projectId],
+      foreignColumns: [projects.id],
+      name: "fk_project_team_members_project_id",
+    }).onDelete("cascade"),
+
+    teamMemberIdFk: foreignKey({
+      columns: [table.teamMemberId],
+      foreignColumns: [teamMembers.id],
+      name: "fk_project_team_members_team_member_id",
+    }).onDelete("cascade"),
+
+    addedByFk: foreignKey({
+      columns: [table.addedBy],
+      foreignColumns: [users.id],
+      name: "fk_project_team_members_added_by",
     }).onDelete("restrict"),
   })
 );
@@ -186,22 +305,22 @@ export const cards = pgTable(
   })
 );
 
-// Labels - Tags/categories that can be applied to cards (scoped to teams)
+// UPDATED: Labels - Now scoped to projects instead of teams since teams can have different roles per project
 export const labels = pgTable(
   "labels",
   {
     id: uuid("id").primaryKey().defaultRandom(),
     name: varchar("name", { length: 100 }).notNull(),
     color: varchar("color", { length: 50 }).notNull(),
-    teamId: uuid("team_id").notNull(),
+    projectId: uuid("project_id").notNull(), // Changed from teamId to projectId
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (table) => ({
-    teamIdIdx: index("labels_team_id_idx").on(table.teamId),
-    teamIdFk: foreignKey({
-      columns: [table.teamId],
-      foreignColumns: [teams.id],
-      name: "fk_labels_team_id",
+    projectIdIdx: index("labels_project_id_idx").on(table.projectId),
+    projectIdFk: foreignKey({
+      columns: [table.projectId],
+      foreignColumns: [projects.id],
+      name: "fk_labels_project_id",
     }).onDelete("cascade"),
   })
 );
@@ -209,33 +328,6 @@ export const labels = pgTable(
 // =============================================================================
 // RELATIONSHIP/JUNCTION TABLES - Many-to-many relationships
 // =============================================================================
-
-// Team Members - Links users to teams with roles (owner/admin/member/viewer)
-export const teamMembers = pgTable(
-  "team_members",
-  {
-    id: uuid("id").primaryKey().defaultRandom(),
-    teamId: uuid("team_id").notNull(),
-    userId: uuid("user_id").notNull(),
-    role: teamRoleEnum("role").default("member").notNull(),
-    joinedAt: timestamp("joined_at").defaultNow().notNull(),
-  },
-  (table) => ({
-    teamUserUnique: unique("team_user_unique").on(table.teamId, table.userId),
-    teamIdIdx: index("team_members_team_id_idx").on(table.teamId),
-    userIdIdx: index("team_members_user_id_idx").on(table.userId),
-    teamIdFk: foreignKey({
-      columns: [table.teamId],
-      foreignColumns: [teams.id],
-      name: "fk_team_members_team_id",
-    }).onDelete("cascade"),
-    userIdFk: foreignKey({
-      columns: [table.userId],
-      foreignColumns: [users.id],
-      name: "fk_team_members_user_id",
-    }).onDelete("cascade"),
-  })
-);
 
 // Card Labels - Links cards to labels (many-to-many)
 export const cardLabels = pgTable(
@@ -451,8 +543,76 @@ export const mentions = pgTable(
 );
 
 // =============================================================================
-// DRIZZLE RELATIONS - Define relationships between tables for type-safe queries
+// UPDATED DRIZZLE RELATIONS
 // =============================================================================
+
+// Projects Relations - Updated to reflect many-to-many with teams
+export const projectsRelations = relations(projects, ({ one, many }) => ({
+  owner: one(users, {
+    fields: [projects.ownerId],
+    references: [users.id],
+  }),
+  teams: many(projectTeams), // Changed from single team to many teams
+  columns: many(columns),
+  labels: many(labels), // Added labels relation
+  activities: many(activityLog),
+  notifications: many(notifications),
+}));
+
+// NEW: Project Teams Relations
+export const projectTeamsRelations = relations(projectTeams, ({ one }) => ({
+  project: one(projects, {
+    fields: [projectTeams.projectId],
+    references: [projects.id],
+  }),
+  team: one(teams, {
+    fields: [projectTeams.teamId],
+    references: [teams.id],
+  }),
+  addedBy: one(users, {
+    fields: [projectTeams.addedBy],
+    references: [users.id],
+  }),
+}));
+
+// NEW: Project Team Members Relations
+export const projectTeamMembersRelations = relations(
+  projectTeamMembers,
+  ({ one }) => ({
+    project: one(projects, {
+      fields: [projectTeamMembers.projectId],
+      references: [projects.id],
+    }),
+    teamMember: one(teamMembers, {
+      fields: [projectTeamMembers.teamMemberId],
+      references: [teamMembers.id],
+    }),
+    addedBy: one(users, {
+      fields: [projectTeamMembers.addedBy],
+      references: [users.id],
+    }),
+  })
+);
+
+// Teams Relations - Updated to include project relationships
+export const teamsRelations = relations(teams, ({ one, many }) => ({
+  creator: one(users, {
+    fields: [teams.createdBy],
+    references: [users.id],
+  }),
+  members: many(teamMembers),
+  projects: many(projectTeams), // Changed from direct projects to projectTeams
+  // Removed labels since they're now project-scoped
+}));
+
+// Labels Relations - Updated to use projectId
+export const labelsRelations = relations(labels, ({ one, many }) => ({
+  project: one(projects, {
+    fields: [labels.projectId],
+    references: [projects.id],
+  }),
+  cards: many(cardLabels),
+}));
 
 // Users Relations - Connect users to all their related data
 export const usersRelations = relations(users, ({ one, many }) => ({
@@ -465,32 +625,6 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   assignedCards: many(cards),
   comments: many(cardComments),
   attachments: many(cardAttachments),
-  activities: many(activityLog),
-  notifications: many(notifications),
-}));
-
-// Teams Relations - Connect teams to their members, projects, and labels
-export const teamsRelations = relations(teams, ({ one, many }) => ({
-  creator: one(users, {
-    fields: [teams.createdBy],
-    references: [users.id],
-  }),
-  members: many(teamMembers),
-  projects: many(projects),
-  labels: many(labels),
-}));
-
-// Projects Relations - Connect projects to their team, owner, and content
-export const projectsRelations = relations(projects, ({ one, many }) => ({
-  team: one(teams, {
-    fields: [projects.teamId],
-    references: [teams.id],
-  }),
-  owner: one(users, {
-    fields: [projects.ownerId],
-    references: [users.id],
-  }),
-  columns: many(columns),
   activities: many(activityLog),
   notifications: many(notifications),
 }));
@@ -521,17 +655,8 @@ export const cardsRelations = relations(cards, ({ one, many }) => ({
   notifications: many(notifications),
 }));
 
-// Labels Relations - Connect labels to their team and cards
-export const labelsRelations = relations(labels, ({ one, many }) => ({
-  team: one(teams, {
-    fields: [labels.teamId],
-    references: [teams.id],
-  }),
-  cards: many(cardLabels),
-}));
-
 // Team Members Relations - Connect team memberships to users and teams
-export const teamMembersRelations = relations(teamMembers, ({ one }) => ({
+export const teamMembersRelations = relations(teamMembers, ({ one, many }) => ({
   team: one(teams, {
     fields: [teamMembers.teamId],
     references: [teams.id],
@@ -540,6 +665,7 @@ export const teamMembersRelations = relations(teamMembers, ({ one }) => ({
     fields: [teamMembers.userId],
     references: [users.id],
   }),
+  projectMemberships: many(projectTeamMembers), // Added relation to project memberships
 }));
 
 // Card Labels Relations - Junction table relations
@@ -591,6 +717,10 @@ export const activityLogRelations = relations(activityLog, ({ one }) => ({
     fields: [activityLog.projectId],
     references: [projects.id],
   }),
+  team: one(teams, {
+    fields: [activityLog.teamId],
+    references: [teams.id],
+  }),
   card: one(cards, {
     fields: [activityLog.cardId],
     references: [cards.id],
@@ -614,6 +744,10 @@ export const notificationsRelations = relations(notifications, ({ one }) => ({
   project: one(projects, {
     fields: [notifications.projectId],
     references: [projects.id],
+  }),
+  team: one(teams, {
+    fields: [notifications.teamId],
+    references: [teams.id],
   }),
 }));
 
