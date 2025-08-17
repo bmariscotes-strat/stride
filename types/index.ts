@@ -133,3 +133,5 @@ export type {
   ProjectPermissionsResponse,
   TeamPermissionsResponse,
 } from "./enums/permissions";
+
+export type { TeamRole, ProjectTeamRole } from "./enums/roles";

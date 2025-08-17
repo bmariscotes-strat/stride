@@ -6,7 +6,7 @@ import type {
   Permission,
 } from "@/types/enums/permissions";
 import type { TeamRole } from "@/types/enums/roles";
-import { PERMISSIONS } from "../../../types/enums/permissions";
+import { PERMISSIONS } from "@/types/enums/permissions";
 import { PermissionCache } from "@/lib/cache/permission/permission-cache";
 
 export class TeamPermissionChecker {
