@@ -23,6 +23,8 @@ export default function ProjectEditForm({
   currentUserId,
   isProjectOwner,
   onNavigateBack,
+  canEditProject,
+  canManageTeams,
 }: ProjectEditFormProps) {
   const router = useRouter();
 

@@ -1,4 +1,3 @@
-// app/(dashboard)/(work)/projects/[id]/settings/ProjectSettings.client.tsx
 "use client";
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -18,31 +17,31 @@ interface ProjectSettingsProps {
   project: ProjectWithPartialRelations;
   teams: TeamWithRelations[];
   currentUserId: string;
+  // Server-computed permissions
+  canEditProject: boolean;
+  canManageTeams: boolean;
+  isProjectOwner: boolean;
+  userRole: string;
 }
 
 export default function ProjectSettings({
   project,
   teams,
   currentUserId,
+  canEditProject,
+  canManageTeams,
+  isProjectOwner,
+  userRole,
 }: ProjectSettingsProps) {
   const { userData, clerkUser, loading } = useUserContext();
   const router = useRouter();
   const [activeSection, setActiveSection] = useState<string>("information");
 
-  // Use userData if available, otherwise fall back to clerkUser
   const user = userData || clerkUser;
 
-  const isProjectOwner = project.ownerId === currentUserId;
-  const userTeam = teams.find((team) => team.id === project.team?.id);
-  const userRole = userTeam?.members?.find(
-    (member) => member.userId === currentUserId
-  )?.role;
-  const canManageProject =
-    isProjectOwner || userRole === "owner" || userRole === "admin";
-
-  // Fixed: Update both scroll and active section
+  // Scroll handling
   const scrollToSection = (sectionId: string): void => {
-    setActiveSection(sectionId); // Add this line to update the active section
+    setActiveSection(sectionId);
     const element = document.getElementById(sectionId);
     if (element) {
       element.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -58,42 +57,28 @@ export default function ProjectSettings({
         const element = document.getElementById(sectionId);
         if (element) {
           const rect = element.getBoundingClientRect();
-          // If the section is in the upper half of the viewport, consider it active
           if (rect.top <= window.innerHeight / 2 && rect.bottom >= 0) {
             currentSection = sectionId;
           }
         }
       }
-
       setActiveSection(currentSection);
     };
 
-    // Add scroll listener for scroll spy functionality
     window.addEventListener("scroll", handleScroll);
-
-    // Initial check
     handleScroll();
-
-    return () => {
-      window.removeEventListener("scroll", handleScroll);
-    };
+    return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // Navigation items for the sidebar
+  // Navigation items based on server-computed permissions
   const navigationItems: NavigationItem[] = [
-    {
-      id: "information",
-      label: "Information",
-      icon: Info,
-    },
-    {
-      id: "settings",
-      label: "Settings",
-      icon: Settings,
-    },
+    { id: "information", label: "Information", icon: Info },
   ];
 
-  // Add danger zone for project owners - now isProjectOwner is available
+  if (canEditProject || canManageTeams) {
+    navigationItems.push({ id: "settings", label: "Settings", icon: Settings });
+  }
+
   if (isProjectOwner) {
     navigationItems.push({
       id: "danger-zone",
@@ -106,15 +91,11 @@ export default function ProjectSettings({
     router.push(`/team/${project.team?.slug}/project/${project.slug}`);
   };
 
-  // Show loading if user is not loaded yet
+  // Loading state
   if (loading || !user) {
     return (
       <DualPanelLayout
-        left={
-          <>
-            <AppBreadcrumb />
-          </>
-        }
+        left={<AppBreadcrumb />}
         right={
           <div className="p-6 flex items-center justify-center">
             <div className="text-center">
@@ -127,41 +108,7 @@ export default function ProjectSettings({
     );
   }
 
-  // Show unauthorized access
-  if (!canManageProject) {
-    return (
-      <DualPanelLayout
-        left={
-          <>
-            <AppBreadcrumb />
-            <h2 className="font-bold text-lg pt-2">Project Settings</h2>
-          </>
-        }
-        right={
-          <div className="p-6 flex items-center justify-center">
-            <div className="text-center">
-              <div className="mb-4">
-                <AlertTriangle className="h-12 w-12 text-red-400 mx-auto" />
-              </div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
-                Access Denied
-              </h3>
-              <p className="text-gray-600 mb-4">
-                You don't have permission to manage this project's settings.
-              </p>
-              <button
-                onClick={navigateBack}
-                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              >
-                Back to Project
-              </button>
-            </div>
-          </div>
-        }
-      />
-    );
-  }
-
+  // Since server already checked permissions, we can just render
   return (
     <DualPanelLayout
       left={
@@ -170,7 +117,7 @@ export default function ProjectSettings({
           navigationItems={navigationItems}
           onScrollToSection={scrollToSection}
           title="Project Settings"
-          subtitle={`Manage ${project.name} settings`}
+          subtitle={`Manage ${project.name} settings (${userRole})`}
         />
       }
       right={
@@ -180,6 +127,8 @@ export default function ProjectSettings({
           currentUserId={currentUserId}
           isProjectOwner={isProjectOwner}
           onNavigateBack={navigateBack}
+          canEditProject={canEditProject}
+          canManageTeams={canManageTeams}
         />
       }
     />

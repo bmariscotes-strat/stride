@@ -1953,3 +1953,48 @@ export async function assignProjectTeamMemberRoleAction(
     };
   }
 }
+
+export async function getProjectRoleForUser(
+  projectSlug: string,
+  userId: string
+) {
+  // Step 0: Resolve slug to project ID
+  const project = await db.query.projects.findFirst({
+    where: eq(projects.slug, projectSlug),
+    columns: { id: true },
+  });
+
+  if (!project) return null;
+  const projectId = project.id;
+
+  // Step 1: Find all team IDs assigned to this project
+  const teams = await db.query.projectTeams.findMany({
+    where: eq(projectTeams.projectId, projectId),
+    columns: { teamId: true },
+  });
+
+  if (!teams.length) return null;
+  const teamIds = teams.map((t) => t.teamId);
+
+  // Step 2: Find the teamMember.id for this user
+  const member = await db.query.teamMembers.findFirst({
+    where: and(
+      inArray(teamMembers.teamId, teamIds),
+      eq(teamMembers.userId, userId) // also make sure to filter by user!
+    ),
+    columns: { id: true },
+  });
+
+  if (!member) return null;
+
+  // Step 3: Find their role in projectTeamMembers
+  const projectMember = await db.query.projectTeamMembers.findFirst({
+    where: and(
+      eq(projectTeamMembers.projectId, projectId),
+      eq(projectTeamMembers.teamMemberId, member.id)
+    ),
+    columns: { role: true },
+  });
+
+  return projectMember?.role || null;
+}

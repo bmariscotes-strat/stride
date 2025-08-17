@@ -76,6 +76,8 @@ export interface ProjectEditFormProps {
   currentUserId: string;
   isProjectOwner: boolean;
   onNavigateBack: () => void;
+  canEditProject: boolean;
+  canManageTeams: boolean;
 }
 
 export interface ProjectFormNavigationProps {
