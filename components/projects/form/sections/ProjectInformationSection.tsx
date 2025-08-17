@@ -292,6 +292,29 @@ export default function ProjectInformationSection({
             maxLength={100}
           />
 
+          <Input
+            label="Project URL Slug"
+            value={formData.slug}
+            onChange={(e) => handleSlugChange(e.target.value)}
+            placeholder="project-url"
+            required
+            pattern="[a-z0-9-]+"
+            maxLength={50}
+            leftAddon="stride-pm.app/.../projects/"
+            helperText="Only lowercase letters, numbers, and hyphens. The server will ensure uniqueness."
+            disabled={isEdit}
+          />
+
+          <TextArea
+            label="Description"
+            rows={4}
+            value={formData.description}
+            onChange={(e) => onInputChange("description", e.target.value)}
+            placeholder="What's this project about?"
+            maxLength={500}
+            showCharCount
+          />
+
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <label className="block text-sm font-medium text-gray-700">
@@ -481,29 +504,6 @@ export default function ProjectInformationSection({
                 : "Choose which teams this project belongs to. Set individual member roles during team selection."}
             </p>
           </div>
-
-          <Input
-            label="Project URL Slug"
-            value={formData.slug}
-            onChange={(e) => handleSlugChange(e.target.value)}
-            placeholder="project-url"
-            required
-            pattern="[a-z0-9-]+"
-            maxLength={50}
-            leftAddon="stride-pm.app/.../projects/"
-            helperText="Only lowercase letters, numbers, and hyphens. The server will ensure uniqueness."
-            disabled={isEdit}
-          />
-
-          <TextArea
-            label="Description"
-            rows={4}
-            value={formData.description}
-            onChange={(e) => onInputChange("description", e.target.value)}
-            placeholder="What's this project about?"
-            maxLength={500}
-            showCharCount
-          />
         </div>
       </section>
 

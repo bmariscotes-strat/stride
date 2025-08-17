@@ -74,10 +74,6 @@ export default function ProjectSettings({
     { id: "information", label: "Information", icon: Info },
   ];
 
-  if (permissions.canEditProject || permissions.canManageTeams) {
-    navigationItems.push({ id: "settings", label: "Settings", icon: Settings });
-  }
-
   if (isProjectOwner) {
     navigationItems.push({
       id: "danger-zone",

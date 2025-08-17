@@ -101,9 +101,6 @@ export default function ProjectsPage() {
                       <h3 className="text-lg font-semibold text-gray-900 truncate">
                         {project.name}
                       </h3>
-                      <p className="text-sm text-gray-500">
-                        {project.team?.name}
-                      </p>
                     </div>
                   </div>
 
@@ -117,7 +114,9 @@ export default function ProjectsPage() {
                     <div className="flex items-center gap-1">
                       <Users size={14} />
                       <span>
-                        {project.owner?.firstName} {project.owner?.lastName}
+                        {project.teams?.length === 1
+                          ? "1 team"
+                          : `${project.teams?.length || 0} teams`}
                       </span>
                     </div>
                     <div className="flex items-center gap-1">
@@ -130,9 +129,21 @@ export default function ProjectsPage() {
                   </div>
 
                   <div className="mt-4 pt-4 border-t border-gray-100">
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                      {project.team?.name}
-                    </span>
+                    <div className="flex flex-wrap gap-1">
+                      {project.teams?.slice(0, 2).map((team, index) => (
+                        <span
+                          key={team.id || index}
+                          className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
+                        >
+                          {team.name}
+                        </span>
+                      ))}
+                      {project.teams && project.teams.length > 2 && (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+                          +{project.teams.length - 2} more
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
               </Link>

@@ -1,4 +1,3 @@
-
 "use client";
 import React, { useState, useEffect } from "react";
 import { X, Check, Users, Crown, Shield, Eye } from "lucide-react";
@@ -167,7 +166,7 @@ export default function TeamSelectionModal({
     onClose();
   };
 
-  // Get unique members across all selected teams - FIXED to handle duplicates properly and show correct roles
+  // Get unique members across all selected teams - handle duplicates properly and show correct roles
   const getUniqueMembers = (): UniqueUser[] => {
     const memberMap = new Map<string, UniqueUser>();
     const currentRoles = getCurrentMemberRoles();
@@ -257,14 +256,14 @@ export default function TeamSelectionModal({
             </button>
           </div>
 
-          <div className="flex h-[calc(90vh-120px)]">
+          <div className="flex h-[calc(90vh-180px)]">
             {/* Teams Selection */}
             <div className="w-1/3 border-r border-gray-200 p-6">
               <h4 className="text-sm font-medium text-gray-900 mb-4">
                 Available Teams ({availableTeams.length})
               </h4>
 
-              <div className="space-y-2 max-h-full overflow-y-auto">
+              <div className="space-y-2 max-h-[calc(90vh-260px)] overflow-y-auto">
                 {availableTeams.map((team) => (
                   <div
                     key={team.id}
@@ -317,7 +316,7 @@ export default function TeamSelectionModal({
               </div>
 
               {uniqueMembers.length > 0 ? (
-                <div className="space-y-3 max-h-full overflow-y-auto">
+                <div className="space-y-3 max-h-[calc(90vh-260px)] overflow-y-auto">
                   {uniqueMembers.map((member) => (
                     <div
                       key={member.userId}

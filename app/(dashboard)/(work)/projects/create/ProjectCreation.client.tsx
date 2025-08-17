@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import DualPanelLayout from "@/components/layout/shared/DualPanelLayout";
 import AppBreadcrumb from "@/components/shared/AppBreadcrumb";
-import { FolderOpen, Settings, AlertTriangle, Info } from "lucide-react";
+import { FolderOpen, Users, AlertTriangle, Info } from "lucide-react";
 import { useUserContext } from "@/contexts/UserContext";
 import { useRouter } from "next/navigation";
 import { ProjectCreationForm } from "@/components/projects";
@@ -35,9 +35,9 @@ export default function ProjectCreation({
       icon: Info,
     },
     {
-      id: "settings",
-      label: "Settings",
-      icon: Settings,
+      id: "teams",
+      label: "Teams",
+      icon: Users,
     },
   ];
 
