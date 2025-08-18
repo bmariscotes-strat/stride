@@ -116,6 +116,22 @@ export type {
   UserBasic,
 } from "./forms/project";
 
+export type {
+  CreateCardInput,
+  UpdateCardInput,
+  MoveCardInput,
+  CardFilters,
+  PaginationOptions,
+  SortOptions,
+  CardQueryResult,
+  ProjectCardsStats,
+  BulkUpdateCardsInput,
+  BulkArchiveCardsInput,
+  DuplicateCardInput,
+  CardWithServiceRelations,
+  CardWithPartialRelations,
+} from "./forms/tasks";
+
 // Notification
 export type {
   Priority,
