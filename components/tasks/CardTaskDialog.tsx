@@ -146,30 +146,7 @@ const PRIORITY_OPTIONS: { value: Priority; label: string; color: string }[] = [
   { value: "low", label: "Low", color: "text-green-600" },
 ];
 
-// Mock comment service - replace with your actual service
-const commentService = {
-  async addComment(cardId: string, content: string, userId: string) {
-    // Replace with actual API call
-    return {
-      id: Date.now(),
-      cardId,
-      content,
-      userId,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      user: {
-        id: userId,
-        firstName: "Current",
-        lastName: "User",
-        avatarUrl: null,
-      },
-    };
-  },
-  async deleteComment(commentId: number, userId: string) {
-    // Replace with actual API call
-    return true;
-  },
-};
+import { CommentService } from "@/lib/services/comments";
 
 const updateTaskSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -217,7 +194,7 @@ const CommentItem: React.FC<CommentItemProps> = ({
     <div className="space-y-3">
       <div className="flex items-start gap-3">
         <Avatar className="w-8 h-8">
-          <AvatarImage src={comment.user.avatarUrl || undefined} />
+          <AvatarImage src={comment.user.avatarUrl} />
           <AvatarFallback className="text-xs">
             {comment.user.firstName.charAt(0)}
             {comment.user.lastName.charAt(0)}
@@ -363,11 +340,14 @@ export default function CardTaskDialog({
 
     setAddingComment(true);
     try {
-      const comment = await commentService.addComment(
-        cardId,
-        newComment,
+      const comment = await CommentService.addComment(
+        {
+          cardId,
+          content: newComment,
+        },
         userId
       );
+
       setComments((prev) => [comment, ...prev]);
       setNewComment("");
     } catch (error) {
@@ -379,7 +359,7 @@ export default function CardTaskDialog({
 
   const handleDeleteComment = async (commentId: number) => {
     try {
-      await commentService.deleteComment(commentId, userId);
+      await CommentService.deleteComment(commentId, userId);
       setComments((prev) => prev.filter((c) => c.id !== commentId));
     } catch (error) {
       console.error("Failed to delete comment:", error);

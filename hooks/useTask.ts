@@ -1,15 +1,35 @@
 // hooks/useTask.ts
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  TaskService,
-  type CreateCardInput,
-  type UpdateCardInput,
-  type MoveCardInput,
-  type CardFilters,
-  type PaginationOptions,
-  type SortOptions,
-} from "@/lib/services/tasks";
 import { toast } from "sonner";
+
+// Remove the TaskService import - we'll use API calls instead
+import type {
+  CreateCardInput,
+  UpdateCardInput,
+  MoveCardInput,
+  CardFilters,
+  PaginationOptions,
+  SortOptions,
+} from "@/lib/services/tasks";
+
+async function apiCall(url: string, options: RequestInit = {}) {
+  const response = await fetch(url, {
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+    ...options,
+  });
+
+  if (!response.ok) {
+    const error = await response
+      .json()
+      .catch(() => ({ error: "Request failed" }));
+    throw new Error(error.error || `HTTP ${response.status}`);
+  }
+
+  return response.json();
+}
 
 // Query Keys
 export const taskKeys = {
@@ -26,13 +46,15 @@ export const taskKeys = {
   stats: (projectId: string) => [...taskKeys.all, "stats", projectId] as const,
   assignees: (projectId: string) =>
     [...taskKeys.all, "assignees", projectId] as const,
+  labels: (projectId: string) =>
+    [...taskKeys.all, "labels", projectId] as const,
 };
 
 // Hook for getting a single task
 export function useTask(cardId: string, enabled: boolean = true) {
   return useQuery({
     queryKey: taskKeys.card(cardId),
-    queryFn: () => TaskService.getCardById(cardId),
+    queryFn: () => apiCall(`/api/cards/${cardId}`),
     enabled,
   });
 }
@@ -40,22 +62,22 @@ export function useTask(cardId: string, enabled: boolean = true) {
 // Hook for getting tasks by project
 export function useProjectTasks(
   projectId: string,
-  userId: string,
   filters?: CardFilters,
   pagination?: PaginationOptions,
   sort?: SortOptions,
   enabled: boolean = true
 ) {
+  const params = new URLSearchParams();
+  if (filters?.status) params.append("status", filters.status);
+  if (filters?.assigneeId) params.append("assigneeId", filters.assigneeId);
+  if (filters?.priority) params.append("priority", filters.priority);
+  if (pagination?.page) params.append("page", pagination.page.toString());
+  if (pagination?.limit) params.append("limit", pagination.limit.toString());
+  if (sort?.field) params.append("sortField", sort.field);
+
   return useQuery({
     queryKey: [...taskKeys.projects(projectId), filters, pagination, sort],
-    queryFn: () =>
-      TaskService.getCardsByProject(
-        projectId,
-        userId,
-        filters,
-        pagination,
-        sort
-      ),
+    queryFn: () => apiCall(`/api/projects/${projectId}/cards?${params}`),
     enabled,
     staleTime: 30000, // 30 seconds
   });
@@ -64,14 +86,15 @@ export function useProjectTasks(
 // Hook for getting tasks by column (for Kanban)
 export function useColumnTasks(
   columnId: string,
-  userId: string,
   includeArchived: boolean = false,
   enabled: boolean = true
 ) {
+  const params = new URLSearchParams();
+  if (includeArchived) params.append("includeArchived", "true");
+
   return useQuery({
     queryKey: [...taskKeys.columns(columnId), includeArchived],
-    queryFn: () =>
-      TaskService.getCardsByColumn(columnId, userId, includeArchived),
+    queryFn: () => apiCall(`/api/columns/${columnId}/cards?${params}`),
     enabled,
     staleTime: 10000, // 10 seconds for real-time feel
   });
@@ -84,10 +107,14 @@ export function useAssignedTasks(
   pagination?: PaginationOptions,
   enabled: boolean = true
 ) {
+  const params = new URLSearchParams();
+  if (projectId) params.append("projectId", projectId);
+  if (pagination?.page) params.append("page", pagination.page.toString());
+  if (pagination?.limit) params.append("limit", pagination.limit.toString());
+
   return useQuery({
     queryKey: [...taskKeys.assigned(userId), projectId, pagination],
-    queryFn: () =>
-      TaskService.getCardsAssignedToUser(userId, projectId, pagination),
+    queryFn: () => apiCall(`/api/users/${userId}/assigned-cards?${params}`),
     enabled,
   });
 }
@@ -98,9 +125,13 @@ export function useOverdueTasks(
   projectId?: string,
   enabled: boolean = true
 ) {
+  const params = new URLSearchParams();
+  if (userId) params.append("userId", userId);
+  if (projectId) params.append("projectId", projectId);
+
   return useQuery({
     queryKey: taskKeys.overdue(userId, projectId),
-    queryFn: () => TaskService.getOverdueCards(userId, projectId),
+    queryFn: () => apiCall(`/api/cards/overdue?${params}`),
     enabled,
     refetchInterval: 60000, // Refetch every minute
   });
@@ -109,29 +140,29 @@ export function useOverdueTasks(
 // Hook for searching tasks
 export function useSearchTasks(
   query: string,
-  userId: string,
   projectId?: string,
   pagination?: PaginationOptions,
   enabled: boolean = true
 ) {
+  const params = new URLSearchParams();
+  params.append("q", query);
+  if (projectId) params.append("projectId", projectId);
+  if (pagination?.page) params.append("page", pagination.page.toString());
+  if (pagination?.limit) params.append("limit", pagination.limit.toString());
+
   return useQuery({
     queryKey: [...taskKeys.search(query, projectId), pagination],
-    queryFn: () =>
-      TaskService.searchCards(query, userId, projectId, pagination),
+    queryFn: () => apiCall(`/api/cards/search?${params}`),
     enabled: enabled && query.length > 2, // Only search if query is more than 2 characters
     staleTime: 30000,
   });
 }
 
 // Hook for project statistics
-export function useProjectStats(
-  projectId: string,
-  userId: string,
-  enabled: boolean = true
-) {
+export function useProjectStats(projectId: string, enabled: boolean = true) {
   return useQuery({
     queryKey: taskKeys.stats(projectId),
-    queryFn: () => TaskService.getProjectCardsStats(projectId, userId),
+    queryFn: () => apiCall(`/api/projects/${projectId}/stats`),
     enabled,
     staleTime: 60000, // 1 minute
   });
@@ -144,30 +175,57 @@ export function useProjectAssignees(
 ) {
   return useQuery({
     queryKey: taskKeys.assignees(projectId),
-    queryFn: () => TaskService.getProjectAssignees(projectId),
+    queryFn: () => apiCall(`/api/projects/${projectId}/assignees`),
+    enabled,
+    staleTime: 300000, // 5 minutes
+  });
+}
+
+// Hook for getting project labels
+export function useProjectLabels(projectId: string, enabled: boolean = true) {
+  return useQuery({
+    queryKey: taskKeys.labels(projectId),
+    queryFn: () => apiCall(`/api/projects/${projectId}/labels`),
     enabled,
     staleTime: 300000, // 5 minutes
   });
 }
 
 // Mutations
-export function useCreateTask(userId: string) {
+export function useCreateTask() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (input: CreateCardInput) =>
-      TaskService.createCard(input, userId),
+    mutationFn: async (input: CreateCardInput & { projectId: string }) => {
+      // Convert Date to ISO string if present
+      const payload = {
+        ...input,
+        dueDate: input.dueDate ? input.dueDate.toISOString() : null,
+        startDate: input.startDate ? input.startDate.toISOString() : null,
+      };
+
+      return apiCall(`/api/projects/${input.projectId}/cards`, {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+    },
     onSuccess: (newCard) => {
       // Invalidate and refetch related queries
-      queryClient.invalidateQueries({
-        queryKey: taskKeys.columns(newCard.columnId),
-      });
-      queryClient.invalidateQueries({
-        queryKey: taskKeys.projects(newCard.column.projectId),
-      });
-      queryClient.invalidateQueries({
-        queryKey: taskKeys.stats(newCard.column.projectId),
-      });
+      if (newCard.columnId) {
+        queryClient.invalidateQueries({
+          queryKey: taskKeys.columns(newCard.columnId),
+        });
+      }
+
+      if (newCard.column?.projectId || newCard.projectId) {
+        const projectId = newCard.column?.projectId || newCard.projectId;
+        queryClient.invalidateQueries({
+          queryKey: taskKeys.projects(projectId),
+        });
+        queryClient.invalidateQueries({
+          queryKey: taskKeys.stats(projectId),
+        });
+      }
 
       toast.success("Task created successfully");
     },
@@ -177,12 +235,24 @@ export function useCreateTask(userId: string) {
   });
 }
 
-export function useUpdateTask(userId: string) {
+export function useUpdateTask() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (input: UpdateCardInput) =>
-      TaskService.updateCard(input, userId),
+    mutationFn: (input: UpdateCardInput & { cardId: string }) => {
+      const payload = {
+        ...input,
+        dueDate: input.dueDate ? input.dueDate.toISOString() : input.dueDate,
+        startDate: input.startDate
+          ? input.startDate.toISOString()
+          : input.startDate,
+      };
+
+      return apiCall(`/api/cards/${input.cardId}`, {
+        method: "PATCH",
+        body: JSON.stringify(payload),
+      });
+    },
     onSuccess: (updatedCard) => {
       // Update the specific card cache
       queryClient.setQueryData(taskKeys.card(updatedCard.id), updatedCard);
@@ -209,11 +279,15 @@ export function useUpdateTask(userId: string) {
   });
 }
 
-export function useMoveTask(userId: string) {
+export function useMoveTask() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (input: MoveCardInput) => TaskService.moveCard(input, userId),
+    mutationFn: (input: MoveCardInput & { cardId: string }) =>
+      apiCall(`/api/cards/${input.cardId}/move`, {
+        method: "PATCH",
+        body: JSON.stringify(input),
+      }),
     onSuccess: (movedCard, variables) => {
       // Update the specific card cache
       queryClient.setQueryData(taskKeys.card(movedCard.id), movedCard);
@@ -237,11 +311,14 @@ export function useMoveTask(userId: string) {
   });
 }
 
-export function useArchiveTask(userId: string) {
+export function useArchiveTask() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (cardId: string) => TaskService.archiveCard(cardId, userId),
+    mutationFn: (cardId: string) =>
+      apiCall(`/api/cards/${cardId}/archive`, {
+        method: "PATCH",
+      }),
     onSuccess: (_, cardId) => {
       // Remove from cache and invalidate related queries
       queryClient.removeQueries({ queryKey: taskKeys.card(cardId) });
@@ -255,11 +332,14 @@ export function useArchiveTask(userId: string) {
   });
 }
 
-export function useRestoreTask(userId: string) {
+export function useRestoreTask() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (cardId: string) => TaskService.restoreCard(cardId, userId),
+    mutationFn: (cardId: string) =>
+      apiCall(`/api/cards/${cardId}/restore`, {
+        method: "PATCH",
+      }),
     onSuccess: (restoredCard) => {
       // Update cache and invalidate related queries
       queryClient.setQueryData(taskKeys.card(restoredCard.id), restoredCard);
@@ -278,11 +358,14 @@ export function useRestoreTask(userId: string) {
   });
 }
 
-export function useDeleteTask(userId: string) {
+export function useDeleteTask() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (cardId: string) => TaskService.deleteCard(cardId, userId),
+    mutationFn: (cardId: string) =>
+      apiCall(`/api/cards/${cardId}`, {
+        method: "DELETE",
+      }),
     onSuccess: (_, cardId) => {
       // Remove from all caches
       queryClient.removeQueries({ queryKey: taskKeys.card(cardId) });
@@ -296,7 +379,7 @@ export function useDeleteTask(userId: string) {
   });
 }
 
-export function useBulkUpdateTasks(userId: string) {
+export function useBulkUpdateTasks() {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -306,7 +389,11 @@ export function useBulkUpdateTasks(userId: string) {
     }: {
       cardIds: string[];
       updates: Partial<UpdateCardInput>;
-    }) => TaskService.bulkUpdateCards(cardIds, updates, userId),
+    }) =>
+      apiCall(`/api/cards/bulk-update`, {
+        method: "PATCH",
+        body: JSON.stringify({ cardIds, updates }),
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: taskKeys.all });
       toast.success("Tasks updated successfully");
@@ -317,12 +404,15 @@ export function useBulkUpdateTasks(userId: string) {
   });
 }
 
-export function useBulkArchiveTasks(userId: string) {
+export function useBulkArchiveTasks() {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (cardIds: string[]) =>
-      TaskService.bulkArchiveCards(cardIds, userId),
+      apiCall(`/api/cards/bulk-archive`, {
+        method: "PATCH",
+        body: JSON.stringify({ cardIds }),
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: taskKeys.all });
       toast.success("Tasks archived successfully");
@@ -333,7 +423,7 @@ export function useBulkArchiveTasks(userId: string) {
   });
 }
 
-export function useDuplicateTask(userId: string) {
+export function useDuplicateTask() {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -343,7 +433,11 @@ export function useDuplicateTask(userId: string) {
     }: {
       cardId: string;
       overrides?: Partial<CreateCardInput>;
-    }) => TaskService.duplicateCard(cardId, userId, overrides),
+    }) =>
+      apiCall(`/api/cards/${cardId}/duplicate`, {
+        method: "POST",
+        body: JSON.stringify({ overrides }),
+      }),
     onSuccess: (duplicatedCard) => {
       queryClient.invalidateQueries({
         queryKey: taskKeys.columns(duplicatedCard.columnId),
@@ -356,6 +450,27 @@ export function useDuplicateTask(userId: string) {
     },
     onError: (error: Error) => {
       toast.error(error.message || "Failed to duplicate task");
+    },
+  });
+}
+
+export function useCreateLabel() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (input: { name: string; color: string; projectId: string }) =>
+      apiCall(`/api/projects/${input.projectId}/labels`, {
+        method: "POST",
+        body: JSON.stringify({ name: input.name, color: input.color }),
+      }),
+    onSuccess: (newLabel, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: taskKeys.labels(variables.projectId),
+      });
+      toast.success("Label created successfully");
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to create label");
     },
   });
 }

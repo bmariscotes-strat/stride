@@ -90,6 +90,9 @@ export class TaskCRUDService extends BaseTaskService {
   /**
    * Get card by ID with all relations
    */
+  /**
+   * Get card by ID with all relations
+   */
   static async getCardById(
     cardId: string
   ): Promise<CardWithRelations & { commentsCount: number }> {
@@ -101,7 +104,7 @@ export class TaskCRUDService extends BaseTaskService {
             project: true,
           },
         },
-        assignee: true, // Select all assignee fields instead of specific columns
+        assignee: true,
         labels: {
           with: {
             label: true,
@@ -109,14 +112,14 @@ export class TaskCRUDService extends BaseTaskService {
         },
         comments: {
           with: {
-            user: true, // Select all user fields for comments too
+            user: true,
           },
           orderBy: desc(cardComments.createdAt),
           limit: 5,
         },
         attachments: {
           with: {
-            uploader: true, // Select all uploader fields
+            uploader: true,
           },
         },
       },
@@ -132,8 +135,15 @@ export class TaskCRUDService extends BaseTaskService {
       .from(cardComments)
       .where(eq(cardComments.cardId, cardId));
 
+    // Transform labels to match CardWithRelations structure
+    const transformedLabels = card.labels.map((labelItem) => ({
+      ...labelItem,
+      color: labelItem.label.color, // Flatten the color property
+    }));
+
     return {
       ...card,
+      labels: transformedLabels,
       commentsCount: commentsCount?.count || 0,
     } as CardWithRelations & { commentsCount: number };
   }
