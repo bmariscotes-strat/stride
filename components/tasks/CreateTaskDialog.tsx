@@ -57,38 +57,60 @@ import type { Priority } from "@/types/enums/notif";
 
 // Client-side label service using API routes
 const labelService = {
-  async getProjectLabels(projectId: string) {
+  async getProjectLabels(slug: string) {
+    console.log("[labelService] Fetching labels for project slug:", slug);
+
     try {
-      const response = await fetch(`/api/projects/${projectId}/labels`);
-      if (!response.ok) return [];
-      return response.json();
+      const response = await fetch(`/api/projects/${slug}/labels`);
+
+      console.log("[labelService] Response status:", response.status);
+
+      if (!response.ok) {
+        console.warn("[labelService] Failed to fetch labels for slug:", slug);
+        return [];
+      }
+
+      const data = await response.json();
+      console.log("[labelService] Labels fetched:", data);
+      return data;
     } catch (error) {
-      console.error("Failed to fetch labels:", error);
+      console.error("[labelService] Error fetching labels:", error);
       return [];
     }
   },
-  async createLabel(projectId: string, name: string, color: string) {
+
+  async createLabel(slug: string, name: string, color: string) {
+    console.log("[labelService] Creating label:", { slug, name, color });
+
     try {
-      const response = await fetch(`/api/projects/${projectId}/labels`, {
+      const response = await fetch(`/api/projects/${slug}/labels`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, color }),
       });
 
+      console.log("[labelService] Response status:", response.status);
+
       if (!response.ok) {
         throw new Error("Failed to create label");
       }
 
-      return response.json();
+      const data = await response.json();
+      console.log("[labelService] Label created successfully:", data);
+      return data;
     } catch (error) {
-      console.error("Failed to create label:", error);
+      console.error("[labelService] Error creating label:", error);
+
       // Return a mock label for now to prevent breaking the UI
-      return {
+      const fallback = {
         id: Math.random().toString(),
         name,
         color,
-        projectId,
+        slug,
       };
+
+      console.log("[labelService] Returning fallback label:", fallback);
+      return fallback;
     }
   },
 };
