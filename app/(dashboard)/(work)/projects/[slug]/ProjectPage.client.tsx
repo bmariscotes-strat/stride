@@ -216,56 +216,6 @@ export default function ProjectPageClient({
               </div>
             </div>
 
-            {project.projectTeamMembers &&
-              project.projectTeamMembers.length > 0 && (
-                <div className="mb-6">
-                  <h3 className="font-medium text-gray-900 mb-3 flex items-center gap-2">
-                    <Users size={16} />
-                    Team Members ({project.projectTeamMembers.length})
-                  </h3>
-                  <div className="space-y-2 max-h-40 overflow-y-auto">
-                    {project.projectTeamMembers.map((member) => (
-                      <div
-                        key={member.id}
-                        className="flex items-center justify-between p-2 bg-gray-50 rounded-md"
-                      >
-                        <div className="flex items-center gap-2">
-                          {member.teamMember?.user?.avatarUrl ? (
-                            <img
-                              src={member.teamMember.user.avatarUrl}
-                              alt=""
-                              className="w-6 h-6 rounded-full"
-                            />
-                          ) : (
-                            <div className="w-6 h-6 rounded-full bg-gray-300 flex items-center justify-center text-xs text-gray-600">
-                              {member.teamMember?.user?.firstName?.charAt(0)}
-                              {member.teamMember?.user?.lastName?.charAt(0)}
-                            </div>
-                          )}
-                          <div>
-                            <div className="text-sm font-medium text-gray-900">
-                              {member.teamMember?.user?.firstName}{" "}
-                              {member.teamMember?.user?.lastName}
-                              {member.teamMember?.user?.id === userId &&
-                                " (You)"}
-                            </div>
-                            <div className="text-xs text-gray-500">
-                              {member.teamMember?.user?.email}
-                            </div>
-                          </div>
-                        </div>
-                        <div
-                          className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${getRoleBadgeClass(member.role)}`}
-                        >
-                          {getRoleIcon(member.role)}
-                          {member.role}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
             <div className="mb-6 space-y-2">
               {/* Create card button - only show if user can create cards */}
               {canCreateCards && (
@@ -312,7 +262,7 @@ export default function ProjectPageClient({
                   Project View
                 </h3>
                 <p className="text-sm text-gray-500 mb-4">
-                  Project content will be displayed here
+                  KANBAN DRAG AND DROP HERE
                 </p>
                 {/* Create first card button - only show if user can create cards */}
                 {canCreateCards && (
@@ -330,8 +280,6 @@ export default function ProjectPageClient({
         }
       />
 
-      {/* Create Task Dialog - Only render when needed */}
-      {/* FIXED: Added userId prop that was missing */}
       {canCreateCards && createTaskOpen && (
         <Suspense fallback={<div>Loading...</div>}>
           <CreateTaskDialog
