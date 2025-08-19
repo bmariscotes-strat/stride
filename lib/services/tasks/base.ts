@@ -19,6 +19,7 @@ export interface CreateCardInput {
   priority?: "high" | "medium" | "low" | null;
   startDate?: Date | null;
   dueDate?: Date | null;
+  ownerId?: string | null;
   position?: number;
   status?: string | null;
 }

@@ -79,6 +79,7 @@ export class TaskCRUDService extends BaseTaskService {
         dueDate: input.dueDate,
         position,
         status: input.status,
+        ownerId: userId,
         isArchived: false,
         schemaVersion: 1,
       })
