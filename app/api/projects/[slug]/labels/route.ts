@@ -15,13 +15,33 @@ const createLabelSchema = z.object({
 });
 
 // GET /api/projects/[slug]/labels
+// GET /api/projects/[slug]/labels
 export async function GET(
-  req: Request,
-  { params }: { params: Promise<{ slug: string }> }
+  req: NextRequest,
+  { params }: { params: { slug: string } }
 ) {
-  const { slug } = await params;
+  try {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
-  return Response.json({ slug });
+    const { slug } = params;
+
+    // Fetch labels for this project
+    const projectLabels = await LabelService.getProjectLabels(
+      slug,
+      currentUser.id
+    );
+
+    return NextResponse.json(projectLabels, { status: 200 });
+  } catch (error) {
+    console.error("Error fetching labels:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
+  }
 }
 
 // POST /api/projects/[slug]/labels
