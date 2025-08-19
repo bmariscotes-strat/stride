@@ -8,13 +8,13 @@ import {
   cardComments,
 } from "@/lib/db/schema";
 import { and, eq, desc, sql, count } from "drizzle-orm";
-import {
-  BaseTaskService,
-  type CreateCardInput,
-  type UpdateCardInput,
-  type MoveCardInput,
-} from "./base";
-import type { CardWithRelations } from "@/types";
+import { BaseTaskService } from "./base";
+import type {
+  CardWithRelations,
+  CreateCardInput,
+  UpdateCardInput,
+  MoveCardInput,
+} from "@/types";
 
 export class TaskCRUDService extends BaseTaskService {
   /**
@@ -78,7 +78,7 @@ export class TaskCRUDService extends BaseTaskService {
         startDate: input.startDate,
         dueDate: input.dueDate,
         position,
-        status: input.status,
+        statusColumnId: input.statusColumnId,
         ownerId: userId,
         isArchived: false,
         schemaVersion: 1,
@@ -213,7 +213,8 @@ export class TaskCRUDService extends BaseTaskService {
     if (input.startDate !== undefined) updateData.startDate = input.startDate;
     if (input.dueDate !== undefined) updateData.dueDate = input.dueDate;
     if (input.position !== undefined) updateData.position = input.position;
-    if (input.status !== undefined) updateData.status = input.status;
+    if (input.statusColumnId !== undefined)
+      updateData.statusColumnId = input.statusColumnId;
     if (input.columnId !== undefined) updateData.columnId = input.columnId;
 
     await db.update(cards).set(updateData).where(eq(cards.id, input.id));

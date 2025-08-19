@@ -10,11 +10,12 @@ export interface CreateCardInput {
   title: string;
   description?: string | null;
   assigneeId?: string | null;
-  priority?: Priority | null;
+  priority?: "high" | "medium" | "low" | null;
   startDate?: Date | null;
   dueDate?: Date | null;
-  position?: number; // Optional - will be calculated if not provided
-  status?: string | null;
+  ownerId?: string | null;
+  position?: number;
+  statusColumnId?: string | null;
 }
 
 export interface UpdateCardInput {
@@ -22,12 +23,12 @@ export interface UpdateCardInput {
   title?: string;
   description?: string | null;
   assigneeId?: string | null;
-  priority?: Priority | null;
+  priority?: "high" | "medium" | "low" | null;
   startDate?: Date | null;
   dueDate?: Date | null;
   position?: number;
-  status?: string | null;
-  columnId?: string; // For moving between columns
+  statusColumnId?: string | null;
+  columnId?: string;
 }
 
 export interface MoveCardInput {

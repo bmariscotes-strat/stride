@@ -9,33 +9,6 @@ import {
   teamMembers,
 } from "@/lib/db/schema";
 import { and, eq, desc, asc, sql, inArray } from "drizzle-orm";
-import type { Card, CardWithRelations } from "@/types";
-
-export interface CreateCardInput {
-  columnId: string;
-  title: string;
-  description?: string | null;
-  assigneeId?: string | null;
-  priority?: "high" | "medium" | "low" | null;
-  startDate?: Date | null;
-  dueDate?: Date | null;
-  ownerId?: string | null;
-  position?: number;
-  status?: string | null;
-}
-
-export interface UpdateCardInput {
-  id: string;
-  title?: string;
-  description?: string | null;
-  assigneeId?: string | null;
-  priority?: "high" | "medium" | "low" | null;
-  startDate?: Date | null;
-  dueDate?: Date | null;
-  position?: number;
-  status?: string | null;
-  columnId?: string;
-}
 
 export interface MoveCardInput {
   cardId: string;

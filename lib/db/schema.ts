@@ -280,7 +280,7 @@ export const cards = pgTable(
     startDate: timestamp("start_date"),
     dueDate: timestamp("due_date"),
     position: integer("position").notNull(),
-    status: varchar("status", { length: 50 }),
+    statusColumnId: uuid("status_column_id"),
     isArchived: boolean("is_archived").default(false).notNull(),
     schemaVersion: integer("schema_version").default(1).notNull(),
     ownerId: uuid("owner_id").notNull(), // Keep owner for administrative purposes
@@ -309,6 +309,11 @@ export const cards = pgTable(
       foreignColumns: [users.id],
       name: "fk_cards_owner_id",
     }).onDelete("restrict"),
+    statusColumnIdFk: foreignKey({
+      columns: [table.statusColumnId],
+      foreignColumns: [columns.id],
+      name: "fk_cards_status_column_id",
+    }).onDelete("set null"),
   })
 );
 
@@ -654,6 +659,10 @@ export const cardsRelations = relations(cards, ({ one, many }) => ({
   assignee: one(users, {
     fields: [cards.assigneeId],
     references: [users.id],
+  }),
+  statusColumn: one(columns, {
+    fields: [cards.statusColumnId],
+    references: [columns.id],
   }),
   labels: many(cardLabels),
   comments: many(cardComments),

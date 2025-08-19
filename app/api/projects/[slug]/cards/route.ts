@@ -127,7 +127,7 @@ export async function POST(
         assigneeId: validatedData.assigneeId || null,
         dueDate,
         startDate,
-        status: validatedData.status || null,
+        statusColumnId: validatedData.status || null,
         position: validatedData.position,
       },
       currentUser.id

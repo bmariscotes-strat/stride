@@ -1576,7 +1576,7 @@ export async function getProjectBySlugForUser(
         cardStartDate: cards.startDate,
         cardDueDate: cards.dueDate,
         cardPosition: cards.position,
-        cardStatus: cards.status,
+        cardStatus: cards.statusColumnId,
         cardIsArchived: cards.isArchived,
         cardSchemaVersion: cards.schemaVersion,
         cardCreatedAt: cards.createdAt,

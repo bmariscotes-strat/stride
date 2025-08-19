@@ -55,6 +55,7 @@ import {
   useProjectAssignees,
   useCreateLabel,
   useProjectLabels,
+  useProjectColumns,
 } from "@/hooks/useTask";
 import { useEditor, EditorContent } from "@tiptap/react";
 import type { CreateCardInput } from "@/types";
@@ -67,6 +68,7 @@ const createTaskSchema = z.object({
   assigneeId: z.string().optional(),
   dueDate: z.date().optional(),
   labelIds: z.array(z.string()).optional(),
+  statusColumnId: z.string().optional(),
 });
 
 type CreateTaskForm = z.infer<typeof createTaskSchema>;
@@ -163,12 +165,13 @@ export default function CreateTaskDialog({
   const [newLabelName, setNewLabelName] = useState("");
   const [creatingLabel, setCreatingLabel] = useState(false);
 
-  // Use the createTaskMutation hook
+  // Hooks
   const createTaskMutation = useCreateTask();
   const { data: assignees = [] } = useProjectAssignees(projectId);
   const { data: projectLabels = [], refetch: refetchLabels } =
     useProjectLabels(projectId);
   const createLabelMutation = useCreateLabel();
+  const { data: projectColumns = [] } = useProjectColumns(projectId);
 
   const form = useForm<CreateTaskForm>({
     resolver: zodResolver(createTaskSchema),
@@ -178,6 +181,7 @@ export default function CreateTaskDialog({
       priority: "medium",
       assigneeId: "",
       labelIds: [],
+      statusColumnId: columnId,
     },
   });
 
@@ -209,6 +213,7 @@ export default function CreateTaskDialog({
         priority: data.priority || null,
         assigneeId: data.assigneeId || null,
         dueDate: data.dueDate || null,
+        statusColumnId: data.statusColumnId || columnId,
       };
 
       console.log("Submitting task with data:", createInput);
@@ -342,6 +347,42 @@ export default function CreateTaskDialog({
                                 className={`w-2 h-2 rounded-full ${option.color.split(" ")[0]}`}
                               />
                               {option.label}
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="statusColumnId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Status</FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      defaultValue={field.value}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select status column" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {projectColumns.map((column: any) => (
+                          <SelectItem key={column.id} value={column.id}>
+                            <div className="flex items-center gap-2">
+                              {column.color && (
+                                <div
+                                  className="w-3 h-3 rounded-full"
+                                  style={{ backgroundColor: column.color }}
+                                />
+                              )}
+                              {column.name}
                             </div>
                           </SelectItem>
                         ))}

@@ -532,3 +532,15 @@ export function useCreateLabel() {
     },
   });
 }
+
+export function useProjectColumns(
+  projectSlug: string,
+  enabled: boolean = true
+) {
+  return useQuery({
+    queryKey: ["project-columns", projectSlug],
+    queryFn: () => apiCall(`/api/projects/${projectSlug}/columns`),
+    enabled,
+    staleTime: 300000, // 5 minutes
+  });
+}
