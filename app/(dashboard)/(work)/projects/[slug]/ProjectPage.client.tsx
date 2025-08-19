@@ -89,6 +89,14 @@ export default function ProjectPageClient({
 }: ProjectPageClientProps) {
   const [createTaskOpen, setCreateTaskOpen] = useState(false);
 
+  console.log("Project data:", {
+    projectId: project.id,
+    projectName: project.name,
+    columns: project.columns,
+    defaultColumnId,
+    canCreateCards,
+  });
+
   const getRoleIcon = (role: "admin" | "editor" | "viewer") => {
     switch (role) {
       case "admin":

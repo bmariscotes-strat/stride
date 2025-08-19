@@ -2,7 +2,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
-// Remove the TaskService import - we'll use API calls instead
 import type {
   CreateCardInput,
   UpdateCardInput,

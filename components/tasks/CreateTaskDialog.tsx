@@ -228,6 +228,7 @@ export default function CreateTaskDialog({
   onOpenChange,
   columnId,
   projectId,
+  userId, // Accept userId prop
 }: CreateTaskDialogProps) {
   const [assigneeOpen, setAssigneeOpen] = useState(false);
   const [labelOpen, setLabelOpen] = useState(false);
@@ -235,7 +236,7 @@ export default function CreateTaskDialog({
   const [creatingLabel, setCreatingLabel] = useState(false);
   const [labels, setLabels] = useState<any[]>([]);
 
-  // FIXED: Pass userId to useCreateTask
+  // Use the createTaskMutation hook
   const createTaskMutation = useCreateTask();
   const { data: assignees = [] } = useProjectAssignees(projectId);
 
@@ -267,9 +268,13 @@ export default function CreateTaskDialog({
 
   const onSubmit = async (data: CreateTaskForm) => {
     try {
-      // FIXED: Ensure columnId is provided or use a default
+      console.log("Form data:", data);
+      console.log("Column ID:", columnId);
+      console.log("Project ID:", projectId);
+
+      // Check if columnId is provided
       if (!columnId) {
-        console.log("Error!");
+        console.error("Column ID is missing");
         return;
       }
 
@@ -283,7 +288,12 @@ export default function CreateTaskDialog({
         dueDate: data.dueDate || null,
       };
 
+      console.log("Submitting task with data:", createInput);
+
+      // Use the mutation to create the task
       await createTaskMutation.mutateAsync(createInput);
+
+      console.log("Task created successfully");
       onOpenChange(false);
     } catch (error) {
       console.error("Failed to create task:", error);
@@ -327,6 +337,17 @@ export default function CreateTaskDialog({
       currentLabels.filter((id) => id !== labelId)
     );
   };
+
+  // Add debug logging for button state
+  const isSubmitting = createTaskMutation.isPending;
+  const isFormValid = form.formState.isValid;
+
+  console.log("Form state:", {
+    isSubmitting,
+    isFormValid,
+    errors: form.formState.errors,
+    values: form.getValues(),
+  });
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -636,8 +657,8 @@ export default function CreateTaskDialog({
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={createTaskMutation.isPending}>
-                {createTaskMutation.isPending ? "Creating..." : "Create Task"}
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? "Creating..." : "Create Task"}
               </Button>
             </div>
           </form>

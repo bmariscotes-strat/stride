@@ -1,4 +1,4 @@
-// lib/services/tasks/crud.ts
+// lib/services/tasks/crud.ts - Fixed static method calls
 import { db } from "@/lib/db/db";
 import {
   cards,
@@ -36,8 +36,8 @@ export class TaskCRUDService extends BaseTaskService {
       throw new Error("Column not found");
     }
 
-    // Check permissions
-    const canCreate = await this.canUserCreateCardsInProject(
+    // FIXED: Use static method call instead of this
+    const canCreate = await TaskCRUDService.canUserCreateCardsInProject(
       userId,
       column.project.id
     );
@@ -50,7 +50,7 @@ export class TaskCRUDService extends BaseTaskService {
 
     // Validate assignee if provided
     if (input.assigneeId) {
-      const canAssign = await this.canUserCreateCardsInProject(
+      const canAssign = await TaskCRUDService.canUserCreateCardsInProject(
         input.assigneeId,
         column.project.id
       );
@@ -61,9 +61,10 @@ export class TaskCRUDService extends BaseTaskService {
       }
     }
 
-    // Get next position if not provided
+    // FIXED: Use static method call
     const position =
-      input.position ?? (await this.getNextCardPosition(input.columnId));
+      input.position ??
+      (await TaskCRUDService.getNextCardPosition(input.columnId));
 
     // Create the card
     const [newCard] = await db
@@ -83,13 +84,10 @@ export class TaskCRUDService extends BaseTaskService {
       })
       .returning();
 
-    // Return the card with relations
-    return this.getCardById(newCard.id);
+    // FIXED: Use static method call
+    return TaskCRUDService.getCardById(newCard.id);
   }
 
-  /**
-   * Get card by ID with all relations
-   */
   /**
    * Get card by ID with all relations
    */
@@ -155,8 +153,8 @@ export class TaskCRUDService extends BaseTaskService {
     input: UpdateCardInput,
     userId: string
   ): Promise<CardWithRelations> {
-    // Check permissions
-    const canEdit = await this.canUserEditCard(userId, input.id);
+    // FIXED: Use static method call
+    const canEdit = await TaskCRUDService.canUserEditCard(userId, input.id);
     if (!canEdit) {
       throw new Error("Insufficient permissions to edit this card");
     }
@@ -172,10 +170,11 @@ export class TaskCRUDService extends BaseTaskService {
         throw new Error("Target column not found");
       }
 
-      const canCreateInProject = await this.canUserCreateCardsInProject(
-        userId,
-        column.project.id
-      );
+      const canCreateInProject =
+        await TaskCRUDService.canUserCreateCardsInProject(
+          userId,
+          column.project.id
+        );
 
       if (!canCreateInProject) {
         throw new Error("Insufficient permissions to move card to this column");
@@ -185,8 +184,8 @@ export class TaskCRUDService extends BaseTaskService {
     // Validate assignee if being updated
     if (input.assigneeId !== undefined) {
       if (input.assigneeId) {
-        const currentCard = await this.getCardById(input.id);
-        const canAssign = await this.canUserCreateCardsInProject(
+        const currentCard = await TaskCRUDService.getCardById(input.id);
+        const canAssign = await TaskCRUDService.canUserCreateCardsInProject(
           input.assigneeId,
           currentCard.column?.projectId
         );
@@ -218,7 +217,7 @@ export class TaskCRUDService extends BaseTaskService {
 
     await db.update(cards).set(updateData).where(eq(cards.id, input.id));
 
-    return this.getCardById(input.id);
+    return TaskCRUDService.getCardById(input.id);
   }
 
   /**
@@ -228,13 +227,13 @@ export class TaskCRUDService extends BaseTaskService {
     input: MoveCardInput,
     userId: string
   ): Promise<CardWithRelations> {
-    // Check permissions
-    const canEdit = await this.canUserEditCard(userId, input.cardId);
+    // FIXED: Use static method call
+    const canEdit = await TaskCRUDService.canUserEditCard(userId, input.cardId);
     if (!canEdit) {
       throw new Error("Insufficient permissions to move this card");
     }
 
-    const card = await this.getCardById(input.cardId);
+    const card = await TaskCRUDService.getCardById(input.cardId);
     const oldColumnId = card.columnId;
     const oldPosition = card.position;
 
@@ -244,10 +243,18 @@ export class TaskCRUDService extends BaseTaskService {
         // Moving within same column
         if (input.newPosition > oldPosition) {
           // Moving down: decrease positions of cards between old and new position
-          await this.updateCardPositions(oldColumnId, oldPosition + 1, -1);
+          await TaskCRUDService.updateCardPositions(
+            oldColumnId,
+            oldPosition + 1,
+            -1
+          );
         } else {
           // Moving up: increase positions of cards between new and old position
-          await this.updateCardPositions(oldColumnId, input.newPosition, 1);
+          await TaskCRUDService.updateCardPositions(
+            oldColumnId,
+            input.newPosition,
+            1
+          );
         }
 
         // Update the card's position
@@ -271,20 +278,29 @@ export class TaskCRUDService extends BaseTaskService {
       }
 
       // Check permissions for target column
-      const canCreateInProject = await this.canUserCreateCardsInProject(
-        userId,
-        newColumn.project.id
-      );
+      const canCreateInProject =
+        await TaskCRUDService.canUserCreateCardsInProject(
+          userId,
+          newColumn.project.id
+        );
 
       if (!canCreateInProject) {
         throw new Error("Insufficient permissions to move card to this column");
       }
 
       // Update positions in old column (shift cards up)
-      await this.updateCardPositions(oldColumnId, oldPosition + 1, -1);
+      await TaskCRUDService.updateCardPositions(
+        oldColumnId,
+        oldPosition + 1,
+        -1
+      );
 
       // Update positions in new column (make space)
-      await this.updateCardPositions(input.newColumnId, input.newPosition, 1);
+      await TaskCRUDService.updateCardPositions(
+        input.newColumnId,
+        input.newPosition,
+        1
+      );
 
       // Move the card to new column and position
       await db
@@ -297,14 +313,14 @@ export class TaskCRUDService extends BaseTaskService {
         .where(eq(cards.id, input.cardId));
     }
 
-    return this.getCardById(input.cardId);
+    return TaskCRUDService.getCardById(input.cardId);
   }
 
   /**
    * Archive a card (soft delete)
    */
   static async archiveCard(cardId: string, userId: string): Promise<void> {
-    const canEdit = await this.canUserEditCard(userId, cardId);
+    const canEdit = await TaskCRUDService.canUserEditCard(userId, cardId);
     if (!canEdit) {
       throw new Error("Insufficient permissions to archive this card");
     }
@@ -327,7 +343,11 @@ export class TaskCRUDService extends BaseTaskService {
       .where(eq(cards.id, cardId));
 
     // Update positions of remaining cards
-    await this.updateCardPositions(card.columnId, card.position + 1, -1);
+    await TaskCRUDService.updateCardPositions(
+      card.columnId,
+      card.position + 1,
+      -1
+    );
   }
 
   /**
@@ -352,7 +372,7 @@ export class TaskCRUDService extends BaseTaskService {
       throw new Error("Card not found");
     }
 
-    const canEdit = await this.canUserCreateCardsInProject(
+    const canEdit = await TaskCRUDService.canUserCreateCardsInProject(
       userId,
       card.column.project.id
     );
@@ -362,7 +382,9 @@ export class TaskCRUDService extends BaseTaskService {
     }
 
     // Get new position at end of column
-    const newPosition = await this.getNextCardPosition(card.columnId);
+    const newPosition = await TaskCRUDService.getNextCardPosition(
+      card.columnId
+    );
 
     // Restore the card
     await db
@@ -374,14 +396,14 @@ export class TaskCRUDService extends BaseTaskService {
       })
       .where(eq(cards.id, cardId));
 
-    return this.getCardById(cardId);
+    return TaskCRUDService.getCardById(cardId);
   }
 
   /**
    * Permanently delete a card
    */
   static async deleteCard(cardId: string, userId: string): Promise<void> {
-    const canEdit = await this.canUserEditCard(userId, cardId);
+    const canEdit = await TaskCRUDService.canUserEditCard(userId, cardId);
     if (!canEdit) {
       throw new Error("Insufficient permissions to delete this card");
     }
@@ -399,7 +421,11 @@ export class TaskCRUDService extends BaseTaskService {
 
     // Update positions of remaining cards if it wasn't archived
     if (!card.isArchived) {
-      await this.updateCardPositions(card.columnId, card.position + 1, -1);
+      await TaskCRUDService.updateCardPositions(
+        card.columnId,
+        card.position + 1,
+        -1
+      );
     }
   }
 }
