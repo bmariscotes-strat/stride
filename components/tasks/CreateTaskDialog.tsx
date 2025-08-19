@@ -50,70 +50,15 @@ import { Input } from "@/components/ui/shared/input";
 import { Calendar } from "@/components/ui/shared/calendar";
 import { Badge } from "@/components/ui/shared/badge";
 import { cn } from "@/lib/utils";
-import { useCreateTask, useProjectAssignees } from "@/hooks/useTask";
+import {
+  useCreateTask,
+  useProjectAssignees,
+  useCreateLabel,
+  useProjectLabels,
+} from "@/hooks/useTask";
 import { useEditor, EditorContent } from "@tiptap/react";
 import type { CreateCardInput } from "@/types";
-import type { Priority } from "@/types/enums/notif";
-
-// Client-side label service using API routes
-const labelService = {
-  async getProjectLabels(slug: string) {
-    console.log("[labelService] Fetching labels for project slug:", slug);
-
-    try {
-      const response = await fetch(`/api/projects/${slug}/labels`);
-
-      console.log("[labelService] Response status:", response.status);
-
-      if (!response.ok) {
-        console.warn("[labelService] Failed to fetch labels for slug:", slug);
-        return [];
-      }
-
-      const data = await response.json();
-      console.log("[labelService] Labels fetched:", data);
-      return data;
-    } catch (error) {
-      console.error("[labelService] Error fetching labels:", error);
-      return [];
-    }
-  },
-
-  async createLabel(slug: string, name: string, color: string) {
-    console.log("[labelService] Creating label:", { slug, name, color });
-
-    try {
-      const response = await fetch(`/api/projects/${slug}/labels`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, color }),
-      });
-
-      console.log("[labelService] Response status:", response.status);
-
-      if (!response.ok) {
-        throw new Error("Failed to create label");
-      }
-
-      const data = await response.json();
-      console.log("[labelService] Label created successfully:", data);
-      return data;
-    } catch (error) {
-      console.error("[labelService] Error creating label:", error);
-
-      // Return a mock label for now to prevent breaking the UI
-      const fallback = {
-        id: Math.random().toString(),
-        name,
-        color,
-        slug,
-      };
-
-      console.log("[labelService] Returning fallback label:", fallback);
-      return fallback;
-    }
-  },
-};
+import { PRIORITY_OPTIONS, LABEL_COLORS } from "@/lib/constants/tasks";
 
 const createTaskSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -131,7 +76,7 @@ interface CreateTaskDialogProps {
   onOpenChange: (open: boolean) => void;
   columnId?: string;
   projectId: string;
-  userId: string; // Added userId prop
+  userId: string;
 }
 
 const TiptapEditor: React.FC<{
@@ -206,23 +151,6 @@ const TiptapEditor: React.FC<{
   );
 };
 
-const PRIORITY_OPTIONS: { value: Priority; label: string; color: string }[] = [
-  { value: "high", label: "High", color: "bg-red-100 text-red-800" },
-  { value: "medium", label: "Medium", color: "bg-yellow-100 text-yellow-800" },
-  { value: "low", label: "Low", color: "bg-green-100 text-green-800" },
-];
-
-const LABEL_COLORS = [
-  "#ef4444",
-  "#f97316",
-  "#eab308",
-  "#22c55e",
-  "#06b6d4",
-  "#3b82f6",
-  "#8b5cf6",
-  "#ec4899",
-];
-
 export default function CreateTaskDialog({
   open,
   onOpenChange,
@@ -234,11 +162,13 @@ export default function CreateTaskDialog({
   const [labelOpen, setLabelOpen] = useState(false);
   const [newLabelName, setNewLabelName] = useState("");
   const [creatingLabel, setCreatingLabel] = useState(false);
-  const [labels, setLabels] = useState<any[]>([]);
 
   // Use the createTaskMutation hook
   const createTaskMutation = useCreateTask();
   const { data: assignees = [] } = useProjectAssignees(projectId);
+  const { data: projectLabels = [], refetch: refetchLabels } =
+    useProjectLabels(projectId);
+  const createLabelMutation = useCreateLabel();
 
   const form = useForm<CreateTaskForm>({
     resolver: zodResolver(createTaskSchema),
@@ -250,13 +180,6 @@ export default function CreateTaskDialog({
       labelIds: [],
     },
   });
-
-  // Load labels when dialog opens
-  useEffect(() => {
-    if (open) {
-      labelService.getProjectLabels(projectId).then(setLabels);
-    }
-  }, [open, projectId]);
 
   // Reset form when dialog closes
   useEffect(() => {
@@ -307,18 +230,21 @@ export default function CreateTaskDialog({
     try {
       const randomColor =
         LABEL_COLORS[Math.floor(Math.random() * LABEL_COLORS.length)];
-      const newLabel = await labelService.createLabel(
+
+      const newLabel = await createLabelMutation.mutateAsync({
         projectId,
-        newLabelName.trim(),
-        randomColor
-      );
-      setLabels((prev) => [...prev, newLabel]);
+        name: newLabelName.trim(),
+        color: randomColor,
+      });
 
       // Add to selected labels
       const currentLabels = form.getValues("labelIds") ?? [];
       form.setValue("labelIds", [...currentLabels, newLabel.id]);
 
       setNewLabelName("");
+
+      // Refresh the project labels list
+      await refetchLabels();
     } catch (error) {
       console.error("Failed to create label:", error);
     } finally {
@@ -326,7 +252,7 @@ export default function CreateTaskDialog({
     }
   };
 
-  const selectedLabels = labels.filter((label) =>
+  const selectedLabels = projectLabels.filter((label: any) =>
     (form.watch("labelIds") ?? []).includes(label.id)
   );
 
@@ -555,7 +481,7 @@ export default function CreateTaskDialog({
                     {/* Selected Labels */}
                     {selectedLabels.length > 0 && (
                       <div className="flex flex-wrap gap-2">
-                        {selectedLabels.map((label) => (
+                        {selectedLabels.map((label: any) => (
                           <Badge
                             key={label.id}
                             variant="secondary"
@@ -593,8 +519,8 @@ export default function CreateTaskDialog({
                             onValueChange={setNewLabelName}
                           />
                           {newLabelName &&
-                            !labels.some(
-                              (l) =>
+                            !projectLabels.some(
+                              (l: any) =>
                                 l.name.toLowerCase() ===
                                 newLabelName.toLowerCase()
                             ) && (
@@ -606,8 +532,9 @@ export default function CreateTaskDialog({
                                 Create "{newLabelName}"
                               </CommandItem>
                             )}
+
                           <CommandGroup>
-                            {labels.map((label) => (
+                            {projectLabels.map((label: any) => (
                               <CommandItem
                                 key={label.id}
                                 onSelect={() => {
