@@ -15,6 +15,7 @@ import {
   Shield,
   Eye,
 } from "lucide-react";
+import KanbanBoard from "@/components/views/KanbanBoard";
 
 // Lazy load the CreateTaskDialog to avoid importing database code on initial load
 const CreateTaskDialog = lazy(
@@ -257,23 +258,12 @@ export default function ProjectPageClient({
           <div className="p-6">
             <div className="flex items-center justify-center h-full">
               <div className="text-center">
-                <Kanban className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">
-                  Project View
-                </h3>
-                <p className="text-sm text-gray-500 mb-4">
-                  KANBAN DRAG AND DROP HERE
-                </p>
-                {/* Create first card button - only show if user can create cards */}
-                {canCreateCards && (
-                  <button
-                    type="button"
-                    onClick={() => setCreateTaskOpen(true)}
-                    className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-700 transition-colors"
-                  >
-                    Create First Card
-                  </button>
-                )}
+                <KanbanBoard
+                  projectId={project.id}
+                  projectSlug={project.slug}
+                  userId={userId}
+                  canEditCards={canCreateCards}
+                />
               </div>
             </div>
           </div>
