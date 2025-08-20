@@ -265,6 +265,12 @@ function CommentItem({
   onReply,
   level = 0,
 }: CommentItemProps) {
+  console.log("CommentItem ->", {
+    id: comment.id,
+    content: comment.content,
+    mentions: comment.mentions,
+    isReply: level > 0,
+  });
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 

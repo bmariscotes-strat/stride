@@ -2,7 +2,7 @@
 
 import { db } from "@/lib/db/db";
 import { cardComments, mentions } from "@/lib/db/schema";
-import { and, eq, desc } from "drizzle-orm";
+import { and, eq, desc, asc, InferSelectModel } from "drizzle-orm";
 import { getRequiredUserId } from "@/lib/utils/get-current-user";
 import { revalidateTag } from "next/cache";
 
@@ -16,6 +16,34 @@ interface UpdateCommentData {
   commentId: string;
   content: string;
 }
+
+type BaseComment = InferSelectModel<typeof cardComments> & {
+  user: {
+    id: string;
+    firstName: string | null;
+    lastName: string | null;
+    avatarUrl: string | null;
+    username: string | null;
+  };
+  mentions: {
+    id: number;
+    createdAt: Date;
+    commentId: number;
+    mentionedUserId: string;
+    mentionedBy: string;
+    mentionedUser: {
+      id: string;
+      firstName: string | null;
+      lastName: string | null;
+      username: string | null;
+      avatarUrl: string | null;
+    };
+  }[];
+};
+
+export type CommentWithReplies = BaseComment & {
+  replies: CommentWithReplies[];
+};
 
 export async function createComment({
   cardId,
@@ -132,15 +160,13 @@ export async function deleteComment(commentId: string) {
   }
 }
 
-export async function getCardComments(cardId: string) {
+export async function getCardComments(
+  cardId: string
+): Promise<CommentWithReplies[]> {
   try {
-    const comments = await db.query.cardComments.findMany({
-      where: (comments, { eq, isNull }) =>
-        and(
-          eq(comments.cardId, cardId),
-          isNull(comments.parentId) // Only get top-level comments
-        ),
-      orderBy: [desc(cardComments.createdAt)],
+    // 1. Fetch all comments flat
+    const comments: BaseComment[] = await db.query.cardComments.findMany({
+      where: (c, { eq }) => eq(c.cardId, cardId),
       with: {
         user: {
           columns: {
@@ -149,20 +175,6 @@ export async function getCardComments(cardId: string) {
             lastName: true,
             avatarUrl: true,
             username: true,
-          },
-        },
-        replies: {
-          orderBy: [cardComments.createdAt],
-          with: {
-            user: {
-              columns: {
-                id: true,
-                firstName: true,
-                lastName: true,
-                avatarUrl: true,
-                username: true,
-              },
-            },
           },
         },
         mentions: {
@@ -179,9 +191,20 @@ export async function getCardComments(cardId: string) {
           },
         },
       },
+      orderBy: (c, { desc }) => [desc(c.createdAt)],
     });
 
-    return comments;
+    // 2. Build threaded tree
+    function buildTree(parentId: number | null = null): CommentWithReplies[] {
+      return comments
+        .filter((c) => c.parentId === parentId)
+        .map((c) => ({
+          ...c,
+          replies: buildTree(c.id),
+        }));
+    }
+
+    return buildTree(null);
   } catch (error) {
     console.error("Failed to fetch comments:", error);
     throw new Error("Failed to fetch comments");
