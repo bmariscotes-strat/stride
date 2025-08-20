@@ -32,6 +32,9 @@ import { getRoleIcon, getRoleBadgeClass, getIcon } from "@/lib/ui/icons-colors";
 import type { CardPageData, CardPageClientProps } from "@/types";
 // Lazy load dialogs to avoid importing heavy dependencies on initial load
 const EditTaskDialog = lazy(() => import("@/components/tasks/EditTaskDialog"));
+const DeleteTaskDialog = lazy(
+  () => import("@/components/tasks/DeleteTaskDialog")
+);
 
 export default function CardPageClient({
   project,
@@ -49,6 +52,9 @@ export default function CardPageClient({
   const cardId = params?.cardId as string;
 
   const [editTaskOpen, setEditTaskOpen] = useState(false);
+  const [deleteTaskOpen, setDeleteTaskOpen] = useState(false);
+  const [deleteStep, setDeleteStep] = useState(1);
+  const [confirmationText, setConfirmationText] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
 
   // Fetch the card data
@@ -61,12 +67,18 @@ export default function CardPageClient({
     );
   };
 
+  const handleDeleteClick = () => {
+    setDeleteTaskOpen(true);
+    setDeleteStep(1);
+    setConfirmationText("");
+  };
+
+  const handleProceedToStep2 = () => {
+    setDeleteStep(2);
+  };
+
   const handleDelete = async () => {
-    if (
-      !confirm(
-        "Are you sure you want to delete this task? This action cannot be undone."
-      )
-    ) {
+    if (confirmationText !== card?.title) {
       return;
     }
 
@@ -75,12 +87,19 @@ export default function CardPageClient({
       await deleteTaskMutation.mutateAsync(cardId);
       toast.success("Task deleted successfully");
       router.push(`/projects/${project.slug}`);
+      setDeleteTaskOpen(false);
     } catch (error) {
       console.error("Failed to delete task:", error);
       toast.error("Failed to delete task");
     } finally {
       setIsDeleting(false);
     }
+  };
+
+  const handleCloseDeleteDialog = () => {
+    setDeleteTaskOpen(false);
+    setDeleteStep(1);
+    setConfirmationText("");
   };
 
   const canEdit = canEditProject || card?.assigneeId === userId;
@@ -277,12 +296,11 @@ export default function CardPageClient({
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={handleDelete}
-                    disabled={isDeleting}
+                    onClick={handleDeleteClick}
                     className="flex items-center gap-2 text-red-600 hover:text-red-700 hover:bg-red-50"
                   >
                     <Trash2 size={16} />
-                    {isDeleting ? "Deleting..." : "Delete"}
+                    Delete
                   </Button>
                 )}
               </div>
@@ -428,6 +446,22 @@ export default function CardPageClient({
             projectId={project.id}
             userId={userId}
             columns={project.columns || []}
+          />
+        </Suspense>
+      )}
+
+      {canDelete && deleteTaskOpen && (
+        <Suspense fallback={<div>Loading...</div>}>
+          <DeleteTaskDialog
+            isOpen={deleteTaskOpen}
+            onClose={handleCloseDeleteDialog}
+            taskTitle={card.title}
+            deleteStep={deleteStep}
+            confirmationText={confirmationText}
+            setConfirmationText={setConfirmationText}
+            onProceedToStep2={handleProceedToStep2}
+            onDelete={handleDelete}
+            isDeleting={isDeleting}
           />
         </Suspense>
       )}

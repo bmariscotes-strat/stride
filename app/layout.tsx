@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import { sen, inclusive_sans } from "@/lib/ui/fonts";
 import { ClerkProvider } from "@clerk/nextjs";
 import { UserProvider } from "@/contexts/UserContext";
+import { Toaster } from "sonner";
 import "@/styles/globals.css";
 import { Providers } from "@/components/theme/ThemeProvider";
 import { ReactQueryProvider } from "@/components/providers/ReactQueryProvider"; // You'll need to create this
@@ -34,7 +35,10 @@ export default function RootLayout({
         <body className={inclusive_sans.className}>
           <ReactQueryProvider>
             <UserProvider enableLogging={process.env.NODE_ENV != "development"}>
-              <Providers>{children}</Providers>
+              <Providers>
+                {children}
+                <Toaster position="top-right" richColors />
+              </Providers>
             </UserProvider>
           </ReactQueryProvider>
         </body>
