@@ -580,29 +580,34 @@ export default function EditTaskDialog({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Labels</FormLabel>
-                  <div className="space-y-2">
+                  <div className="flex flex-wrap gap-2">
                     {/* Selected Labels */}
-                    {selectedLabels.length > 0 && (
-                      <div className="flex flex-wrap gap-2">
-                        {selectedLabels.map((label: any) => (
-                          <Badge
-                            key={label.id}
-                            variant="secondary"
-                            style={{
-                              backgroundColor: label.color + "20",
-                              color: label.color,
-                            }}
-                            className="flex items-center gap-1"
-                          >
-                            {label.name}
-                            <X
-                              className="w-3 h-3 cursor-pointer"
-                              onClick={() => removeLabel(label.id)}
-                            />
-                          </Badge>
-                        ))}
-                      </div>
-                    )}
+                    {selectedLabels.map((label: any) => (
+                      <Badge
+                        key={label.id}
+                        variant="secondary"
+                        style={{
+                          backgroundColor: label.color + "20",
+                          color: label.color,
+                          borderColor: label.color + "40",
+                        }}
+                        className="flex items-center gap-1 border"
+                      >
+                        {label.name}
+                        <button
+                          type="button"
+                          className="ml-1 inline-flex items-center justify-center w-4 h-4 rounded-full hover:bg-black/10 focus:outline-none focus:ring-1 focus:ring-black/20"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            removeLabel(label.id);
+                          }}
+                          aria-label={`Remove ${label.name} label`}
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </Badge>
+                    ))}
 
                     <Popover open={labelOpen} onOpenChange={setLabelOpen}>
                       <PopoverTrigger asChild>
