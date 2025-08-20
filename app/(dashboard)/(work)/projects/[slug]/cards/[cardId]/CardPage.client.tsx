@@ -315,7 +315,7 @@ export default function CardPageClient({
                     Description
                   </h3>
                   <div
-                    className="prose prose-sm max-w-none text-gray-700"
+                    className="prose prose-sm max-w-none text-gray-700 [&_ul]:list-disc [&_ul]:pl-5 [&_li]:mb-1"
                     dangerouslySetInnerHTML={{ __html: card.description }}
                   />
                 </div>
