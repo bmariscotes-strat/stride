@@ -415,3 +415,57 @@ export interface ProjectAssignee {
   avatarUrl?: string;
   role?: "admin" | "editor" | "viewer";
 }
+
+export interface CardPageData {
+  id: string;
+  name: string;
+  slug: string;
+  description?: string;
+  ownerId: string;
+  createdAt: string;
+  owner?: {
+    firstName?: string;
+    lastName?: string;
+  };
+  teams?: Array<{
+    id: string;
+    name: string;
+    slug: string;
+    role?: "admin" | "editor" | "viewer";
+  }>;
+  projectTeamMembers?: Array<{
+    id: string;
+    role: "admin" | "editor" | "viewer";
+    teamMember?: {
+      user?: {
+        id: string;
+        firstName?: string;
+        lastName?: string;
+        email?: string;
+        avatarUrl?: string;
+      };
+    };
+  }>;
+  columns?: Array<{
+    id: string;
+    name: string;
+    position: number;
+  }>;
+}
+
+export interface CardPageClientProps {
+  project: CardPageData;
+  userId: string;
+  canCreateCards: boolean;
+  canEditProject: boolean;
+  canManageTeams: boolean;
+  showSettings: boolean;
+  isProjectOwner: boolean;
+  defaultColumnId?: string;
+  views: Array<{
+    id: string;
+    label: string;
+    icon: string;
+    isActive: boolean;
+  }>;
+}

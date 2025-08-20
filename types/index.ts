@@ -132,6 +132,8 @@ export type {
   DuplicateCardInput,
   CardWithServiceRelations,
   CardWithPartialRelations,
+  CardPageData,
+  CardPageClientProps,
 } from "./forms/tasks";
 
 // Notification

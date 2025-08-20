@@ -11,12 +11,7 @@ import {
   Settings,
   Calendar,
   Users,
-  Kanban,
-  List,
-  Table,
   Crown,
-  Shield,
-  Eye,
   Edit,
   Trash2,
   ArrowLeft,
@@ -33,63 +28,10 @@ import { cn } from "@/lib/utils";
 import { useTask, useDeleteTask } from "@/hooks/useTask";
 import { toast } from "sonner";
 import { PRIORITY_OPTIONS } from "@/lib/constants/tasks";
-
+import { getRoleIcon, getRoleBadgeClass, getIcon } from "@/lib/ui/icons-colors";
+import type { CardPageData, CardPageClientProps } from "@/types";
 // Lazy load dialogs to avoid importing heavy dependencies on initial load
 const EditTaskDialog = lazy(() => import("@/components/tasks/EditTaskDialog"));
-
-export interface CardPageData {
-  id: string;
-  name: string;
-  slug: string;
-  description?: string;
-  ownerId: string;
-  createdAt: string;
-  owner?: {
-    firstName?: string;
-    lastName?: string;
-  };
-  teams?: Array<{
-    id: string;
-    name: string;
-    slug: string;
-    role?: "admin" | "editor" | "viewer";
-  }>;
-  projectTeamMembers?: Array<{
-    id: string;
-    role: "admin" | "editor" | "viewer";
-    teamMember?: {
-      user?: {
-        id: string;
-        firstName?: string;
-        lastName?: string;
-        email?: string;
-        avatarUrl?: string;
-      };
-    };
-  }>;
-  columns?: Array<{
-    id: string;
-    name: string;
-    position: number;
-  }>;
-}
-
-export interface CardPageClientProps {
-  project: CardPageData;
-  userId: string;
-  canCreateCards: boolean;
-  canEditProject: boolean;
-  canManageTeams: boolean;
-  showSettings: boolean;
-  isProjectOwner: boolean;
-  defaultColumnId?: string;
-  views: Array<{
-    id: string;
-    label: string;
-    icon: string;
-    isActive: boolean;
-  }>;
-}
 
 export default function CardPageClient({
   project,
@@ -112,45 +54,6 @@ export default function CardPageClient({
   // Fetch the card data
   const { data: card, isLoading, error } = useTask(cardId);
   const deleteTaskMutation = useDeleteTask();
-
-  const getRoleIcon = (role: "admin" | "editor" | "viewer") => {
-    switch (role) {
-      case "admin":
-        return <Crown size={12} className="text-yellow-600" />;
-      case "editor":
-        return <Shield size={12} className="text-blue-600" />;
-      case "viewer":
-        return <Eye size={12} className="text-gray-500" />;
-      default:
-        return null;
-    }
-  };
-
-  const getRoleBadgeClass = (role: "admin" | "editor" | "viewer") => {
-    switch (role) {
-      case "admin":
-        return "bg-yellow-100 text-yellow-800";
-      case "editor":
-        return "bg-blue-100 text-blue-800";
-      case "viewer":
-        return "bg-gray-100 text-gray-800";
-      default:
-        return "bg-gray-100 text-gray-800";
-    }
-  };
-
-  const getIcon = (iconName: string) => {
-    switch (iconName) {
-      case "Kanban":
-        return Kanban;
-      case "List":
-        return List;
-      case "Table":
-        return Table;
-      default:
-        return Kanban;
-    }
-  };
 
   const getPriorityConfig = (priority: string) => {
     return (
