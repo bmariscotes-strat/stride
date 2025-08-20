@@ -1,365 +1,188 @@
-// lib/services/comments.ts
+"use server";
+
 import { db } from "@/lib/db/db";
-import { cardComments, users, cards } from "@/lib/db/schema";
-import { eq, desc, and, ilike } from "drizzle-orm";
-import { ProjectPermissionChecker } from "@/lib/permissions/checkers/project-permission-checker";
+import { cardComments, mentions } from "@/lib/db/schema";
+import { and, eq, desc } from "drizzle-orm";
+import { getRequiredUserId } from "@/lib/utils/get-current-user";
+import { revalidateTag } from "next/cache";
 
-export interface CreateCommentInput {
+interface CreateCommentData {
   cardId: string;
   content: string;
+  parentId?: string; // For replies - changed to string to match input
 }
 
-export interface UpdateCommentInput {
-  id: number;
+interface UpdateCommentData {
+  commentId: string;
   content: string;
 }
 
-export interface CommentWithUser {
-  id: number;
-  cardId: string;
-  userId: string;
-  content: string;
-  createdAt: Date;
-  updatedAt: Date;
-  user: {
-    id: string;
-    firstName: string;
-    lastName: string;
-    email: string;
-    avatarUrl: string | null;
-  };
-}
+export async function createComment({
+  cardId,
+  content,
+  parentId,
+}: CreateCommentData) {
+  const userId = await getRequiredUserId();
 
-export class CommentService {
-  /**
-   * Check if user can access card (and thus its comments)
-   */
-  private static async canAccessCard(
-    userId: string,
-    cardId: string
-  ): Promise<boolean> {
-    const card = await db.query.cards.findFirst({
-      where: eq(cards.id, cardId),
-      with: {
-        column: {
-          with: {
-            project: true,
-          },
-        },
-      },
-    });
-
-    if (!card) {
-      return false;
-    }
-
-    const permissionChecker = new ProjectPermissionChecker();
-    await permissionChecker.loadContext(userId, card.column.project.id);
-
-    return permissionChecker.canViewProject();
-  }
-
-  /**
-   * Check if user can edit card (and thus add comments)
-   */
-  private static async canEditCard(
-    userId: string,
-    cardId: string
-  ): Promise<boolean> {
-    const card = await db.query.cards.findFirst({
-      where: eq(cards.id, cardId),
-      with: {
-        column: {
-          with: {
-            project: true,
-          },
-        },
-      },
-    });
-
-    if (!card) {
-      return false;
-    }
-
-    const permissionChecker = new ProjectPermissionChecker();
-    await permissionChecker.loadContext(userId, card.column.project.id);
-
-    return permissionChecker.canCreateCards(); // Users who can create cards can also comment
-  }
-
-  /**
-   * Get all comments for a card
-   */
-  static async getCardComments(
-    cardId: string,
-    userId: string,
-    limit: number = 50,
-    offset: number = 0
-  ): Promise<CommentWithUser[]> {
-    // Check permissions
-    const canAccess = await this.canAccessCard(userId, cardId);
-    if (!canAccess) {
-      throw new Error("Insufficient permissions to view comments");
-    }
-
-    const comments = await db.query.cardComments.findMany({
-      where: eq(cardComments.cardId, cardId),
-      with: {
-        user: {
-          columns: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            email: true,
-            avatarUrl: true,
-          },
-        },
-      },
-      orderBy: desc(cardComments.createdAt),
-      limit,
-      offset,
-    });
-
-    return comments as CommentWithUser[];
-  }
-
-  /**
-   * Add a comment to a card
-   */
-  static async addComment(
-    input: CreateCommentInput,
-    userId: string
-  ): Promise<CommentWithUser> {
-    // Check permissions
-    const canEdit = await this.canEditCard(userId, input.cardId);
-    if (!canEdit) {
-      throw new Error("Insufficient permissions to add comments");
-    }
-
-    // Create the comment
-    const [newComment] = await db
+  try {
+    const [comment] = await db
       .insert(cardComments)
       .values({
-        cardId: input.cardId,
+        cardId,
         userId,
-        content: input.content,
+        content,
+        // Convert string parentId to number since the schema expects integer
+        parentId: parentId ? parseInt(parentId, 10) : null,
       })
       .returning();
 
-    // Get the comment with user data
-    const commentWithUser = await db.query.cardComments.findFirst({
-      where: eq(cardComments.id, newComment.id),
-      with: {
-        user: {
-          columns: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            email: true,
-            avatarUrl: true,
-          },
-        },
-      },
-    });
+    // Process mentions in the content
+    const mentionRegex = /@(\w+)/g;
+    const mentionsList = []; // Renamed from 'mentions' to avoid conflict with imported table
+    let match;
 
-    if (!commentWithUser) {
-      throw new Error("Failed to retrieve created comment");
-    }
-
-    return commentWithUser as CommentWithUser;
-  }
-
-  /**
-   * Update a comment
-   */
-  static async updateComment(
-    input: UpdateCommentInput,
-    userId: string
-  ): Promise<CommentWithUser> {
-    // Get the existing comment
-    const existingComment = await db.query.cardComments.findFirst({
-      where: eq(cardComments.id, input.id),
-      with: {
-        user: true,
-      },
-    });
-
-    if (!existingComment) {
-      throw new Error("Comment not found");
-    }
-
-    // Check if user owns the comment
-    if (existingComment.userId !== userId) {
-      throw new Error("You can only edit your own comments");
-    }
-
-    // Check if user still has access to the card
-    const canAccess = await this.canAccessCard(userId, existingComment.cardId);
-    if (!canAccess) {
-      throw new Error("Insufficient permissions to edit this comment");
-    }
-
-    // Update the comment
-    const [updatedComment] = await db
-      .update(cardComments)
-      .set({
-        content: input.content,
-        updatedAt: new Date(),
-      })
-      .where(eq(cardComments.id, input.id))
-      .returning();
-
-    // Get the updated comment with user data
-    const commentWithUser = await db.query.cardComments.findFirst({
-      where: eq(cardComments.id, updatedComment.id),
-      with: {
-        user: {
-          columns: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            email: true,
-            avatarUrl: true,
-          },
-        },
-      },
-    });
-
-    return commentWithUser as CommentWithUser;
-  }
-
-  /**
-   * Delete a comment
-   */
-  static async deleteComment(commentId: number, userId: string): Promise<void> {
-    // Get the existing comment
-    const existingComment = await db.query.cardComments.findFirst({
-      where: eq(cardComments.id, commentId),
-    });
-
-    if (!existingComment) {
-      throw new Error("Comment not found");
-    }
-
-    // Check if user owns the comment or has admin permissions
-    if (existingComment.userId !== userId) {
-      // Check if user has admin permissions on the project
-      const card = await db.query.cards.findFirst({
-        where: eq(cards.id, existingComment.cardId),
-        with: {
-          column: {
-            with: {
-              project: true,
-            },
-          },
-        },
+    while ((match = mentionRegex.exec(content)) !== null) {
+      const username = match[1];
+      // Find user by username and create mention
+      const [mentionedUser] = await db.query.users.findMany({
+        where: (users, { eq }) => eq(users.username, username),
+        limit: 1,
       });
 
-      if (card) {
-        const permissionChecker = new ProjectPermissionChecker();
-        await permissionChecker.loadContext(userId, card.column.project.id);
-
-        if (!permissionChecker.canEditProject()) {
-          throw new Error("You can only delete your own comments");
-        }
-      } else {
-        throw new Error("You can only delete your own comments");
+      if (mentionedUser) {
+        mentionsList.push({
+          commentId: comment.id,
+          mentionedUserId: mentionedUser.id,
+          mentionedBy: userId,
+        });
       }
     }
 
-    // Delete the comment
-    await db.delete(cardComments).where(eq(cardComments.id, commentId));
-  }
-
-  /**
-   * Get comment count for a card
-   */
-  static async getCommentCount(
-    cardId: string,
-    userId: string
-  ): Promise<number> {
-    // Check permissions
-    const canAccess = await this.canAccessCard(userId, cardId);
-    if (!canAccess) {
-      throw new Error("Insufficient permissions to view comment count");
+    if (mentionsList.length > 0) {
+      await db.insert(mentions).values(mentionsList);
     }
 
-    const comments = await db.query.cardComments.findMany({
-      where: eq(cardComments.cardId, cardId),
+    revalidateTag(`card-comments-${cardId}`);
+    return { success: true, comment };
+  } catch (error) {
+    console.error("Failed to create comment:", error);
+    throw new Error("Failed to create comment");
+  }
+}
+
+export async function updateComment({ commentId, content }: UpdateCommentData) {
+  const userId = await getRequiredUserId();
+
+  try {
+    // Convert commentId to integer since the schema expects integer
+    const commentIdInt = parseInt(commentId, 10);
+
+    // Check if user owns the comment
+    const [existingComment] = await db.query.cardComments.findMany({
+      where: (comments, { eq }) => eq(comments.id, commentIdInt),
+      limit: 1,
     });
 
-    return comments.length;
-  }
+    if (!existingComment || existingComment.userId !== userId) {
+      throw new Error("Not authorized to edit this comment");
+    }
 
-  /**
-   * Get recent comments for a user across all accessible projects
-   */
-  static async getUserRecentComments(
-    userId: string,
-    limit: number = 10
-  ): Promise<CommentWithUser[]> {
-    // This would need more complex logic to check permissions across multiple projects
-    // For now, just return comments by the user
+    const [updatedComment] = await db
+      .update(cardComments)
+      .set({
+        content,
+        updatedAt: new Date(),
+      })
+      .where(eq(cardComments.id, commentIdInt))
+      .returning();
+
+    revalidateTag(`card-comments-${existingComment.cardId}`);
+    return { success: true, comment: updatedComment };
+  } catch (error) {
+    console.error("Failed to update comment:", error);
+    throw new Error("Failed to update comment");
+  }
+}
+
+export async function deleteComment(commentId: string) {
+  const userId = await getRequiredUserId();
+
+  try {
+    // Convert commentId to integer since the schema expects integer
+    const commentIdInt = parseInt(commentId, 10);
+
+    // Check if user owns the comment
+    const [existingComment] = await db.query.cardComments.findMany({
+      where: (comments, { eq }) => eq(comments.id, commentIdInt),
+      limit: 1,
+    });
+
+    if (!existingComment || existingComment.userId !== userId) {
+      throw new Error("Not authorized to delete this comment");
+    }
+
+    // Delete the comment (this will cascade delete replies and mentions)
+    await db.delete(cardComments).where(eq(cardComments.id, commentIdInt));
+
+    revalidateTag(`card-comments-${existingComment.cardId}`);
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to delete comment:", error);
+    throw new Error("Failed to delete comment");
+  }
+}
+
+export async function getCardComments(cardId: string) {
+  try {
     const comments = await db.query.cardComments.findMany({
-      where: eq(cardComments.userId, userId),
+      where: (comments, { eq, isNull }) =>
+        and(
+          eq(comments.cardId, cardId),
+          isNull(comments.parentId) // Only get top-level comments
+        ),
+      orderBy: [desc(cardComments.createdAt)],
       with: {
         user: {
           columns: {
             id: true,
             firstName: true,
             lastName: true,
-            email: true,
             avatarUrl: true,
+            username: true,
+          },
+        },
+        replies: {
+          orderBy: [cardComments.createdAt],
+          with: {
+            user: {
+              columns: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                avatarUrl: true,
+                username: true,
+              },
+            },
+          },
+        },
+        mentions: {
+          with: {
+            mentionedUser: {
+              columns: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                username: true,
+              },
+            },
           },
         },
       },
-      orderBy: desc(cardComments.createdAt),
-      limit,
     });
 
-    return comments as CommentWithUser[];
-  }
-
-  /**
-   * Search comments within a card
-   */
-  static async searchCardComments(
-    cardId: string,
-    query: string,
-    userId: string,
-    limit: number = 20
-  ): Promise<CommentWithUser[]> {
-    // Check permissions
-    const canAccess = await this.canAccessCard(userId, cardId);
-    if (!canAccess) {
-      throw new Error("Insufficient permissions to search comments");
-    }
-
-    if (!query.trim()) {
-      return this.getCardComments(cardId, userId, limit);
-    }
-
-    // Use ilike for case-insensitive search
-    const comments = await db.query.cardComments.findMany({
-      where: and(
-        eq(cardComments.cardId, cardId),
-        ilike(cardComments.content, `%${query.trim()}%`)
-      ),
-      with: {
-        user: {
-          columns: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            email: true,
-            avatarUrl: true,
-          },
-        },
-      },
-      orderBy: desc(cardComments.createdAt),
-      limit,
-    });
-
-    return comments as CommentWithUser[];
+    return comments;
+  } catch (error) {
+    console.error("Failed to fetch comments:", error);
+    throw new Error("Failed to fetch comments");
   }
 }

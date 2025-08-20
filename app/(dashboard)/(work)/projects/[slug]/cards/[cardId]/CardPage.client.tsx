@@ -4,7 +4,6 @@ import React, { useState, lazy, Suspense } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import DualPanelLayout from "@/components/layout/shared/DualPanelLayout";
-import AppBreadcrumb from "@/components/shared/AppBreadcrumb";
 import { Badge } from "@/components/ui/shared/badge";
 import { Button } from "@/components/ui/shared/button";
 import {
@@ -19,7 +18,6 @@ import {
   Flag,
   User,
   Tag,
-  MessageCircle,
   PlayCircle,
   CheckCircle2,
 } from "lucide-react";
@@ -29,7 +27,9 @@ import { useTask, useDeleteTask } from "@/hooks/useTask";
 import { toast } from "sonner";
 import { PRIORITY_OPTIONS } from "@/lib/constants/tasks";
 import { getRoleIcon, getRoleBadgeClass, getIcon } from "@/lib/ui/icons-colors";
+import CommentSection from "@/components/comments/CommentSection";
 import type { CardPageData, CardPageClientProps } from "@/types";
+
 // Lazy load dialogs to avoid importing heavy dependencies on initial load
 const EditTaskDialog = lazy(() => import("@/components/tasks/EditTaskDialog"));
 const DeleteTaskDialog = lazy(
@@ -416,21 +416,9 @@ export default function CardPageClient({
                 </div>
               )}
 
-              {/* Comments Section - Placeholder */}
-              <div>
-                <h3 className="font-medium text-gray-900 mb-2 flex items-center gap-2">
-                  <MessageCircle size={16} />
-                  Comments
-                </h3>
-                <div className="bg-gray-50 rounded-lg p-6 text-center">
-                  <MessageCircle
-                    size={24}
-                    className="mx-auto text-gray-400 mb-2"
-                  />
-                  <p className="text-sm text-gray-500">
-                    Comments feature coming soon
-                  </p>
-                </div>
+              {/* Comments Section - Replaced the placeholder */}
+              <div className="border-t border-gray-200 pt-6">
+                <CommentSection cardId={cardId} userId={userId} />
               </div>
             </div>
           </div>
