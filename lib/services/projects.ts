@@ -1502,6 +1502,7 @@ export async function getProjectBySlugForUser(
         updatedAt: projects.updatedAt,
         owner: {
           id: users.id,
+          username: users.username,
           firstName: users.firstName,
           lastName: users.lastName,
           email: users.email,

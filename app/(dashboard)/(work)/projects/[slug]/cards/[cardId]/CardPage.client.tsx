@@ -417,9 +417,16 @@ export default function CardPageClient({
               )}
 
               {/* Comments Section - Replaced the placeholder */}
-              <div className="border-t border-gray-200 pt-6">
-                <CommentSection cardId={cardId} userId={userId} />
-              </div>
+              <CommentSection
+                cardId={cardId}
+                userId={userId}
+                availableUsers={project.projectTeamMembers?.map((member) => ({
+                  id: member.id,
+                  username: member.teamMember?.user?.username || "",
+                  firstName: member.teamMember?.user?.firstName || "",
+                  lastName: member.teamMember?.user?.lastName || "",
+                }))}
+              />
             </div>
           </div>
         }

@@ -44,6 +44,70 @@ import {
 interface CommentSectionProps {
   cardId: string;
   userId: string;
+  availableUsers?: Array<{
+    id: string;
+    username: string;
+    firstName: string;
+    lastName: string;
+  }>;
+}
+
+// Helper function to render content with mentions
+function renderContentWithMentions(content: string, mentions?: any[]) {
+  if (!mentions || mentions.length === 0) {
+    return <span className="whitespace-pre-wrap">{content}</span>;
+  }
+
+  // Create a regex to match @username patterns
+  const mentionRegex = /@(\w+)/g;
+  const parts = [];
+  let lastIndex = 0;
+  let match;
+
+  while ((match = mentionRegex.exec(content)) !== null) {
+    const username = match[1];
+    const matchStart = match.index;
+    const matchEnd = match.index + match[0].length;
+
+    // Add text before mention
+    if (matchStart > lastIndex) {
+      parts.push(
+        <span key={`text-${lastIndex}`}>
+          {content.slice(lastIndex, matchStart)}
+        </span>
+      );
+    }
+
+    // Find if this username corresponds to an actual mention
+    const mentionData = mentions.find(
+      (m) => m.mentionedUser.username === username
+    );
+
+    if (mentionData) {
+      // Render as interactive mention
+      parts.push(
+        <span
+          key={`mention-${matchStart}`}
+          className="bg-blue-100 text-blue-800 px-1 py-0.5 rounded text-sm font-medium cursor-pointer hover:bg-blue-200 transition-colors"
+          title={`${mentionData.mentionedUser.firstName} ${mentionData.mentionedUser.lastName}`}
+        >
+          @{username}
+        </span>
+      );
+    } else {
+      // Render as plain text if not a valid mention
+      parts.push(<span key={`text-mention-${matchStart}`}>@{username}</span>);
+    }
+
+    lastIndex = matchEnd;
+  }
+
+  // Add remaining text
+  if (lastIndex < content.length) {
+    parts.push(<span key={`text-final`}>{content.slice(lastIndex)}</span>);
+  }
+
+  return <span className="whitespace-pre-wrap">{parts}</span>;
 }
 
 interface CommentItemProps {
@@ -228,7 +292,9 @@ function CommentItem({
             </div>
 
             <div className="prose prose-sm max-w-none text-gray-700 mb-2">
-              <p className="whitespace-pre-wrap">{comment.content}</p>
+              <p>
+                {renderContentWithMentions(comment.content, comment.mentions)}
+              </p>
             </div>
 
             <div className="flex items-center gap-3">
@@ -312,14 +378,66 @@ function CommentForm({
   cardId,
   parentId,
   onCancel,
+  availableUsers,
 }: {
   cardId: string;
-  parentId?: string; // Changed from number to string
+  parentId?: string;
   onCancel?: () => void;
+  availableUsers?: Array<{
+    id: string;
+    username: string;
+    firstName: string;
+    lastName: string;
+  }>;
 }) {
   const [content, setContent] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showMentions, setShowMentions] = useState(false);
+  const [mentionQuery, setMentionQuery] = useState("");
+  const [mentionPosition, setMentionPosition] = useState(0);
   const createCommentMutation = useCreateComment();
+
+  const filteredUsers =
+    availableUsers?.filter(
+      (user) =>
+        user.username.toLowerCase().includes(mentionQuery.toLowerCase()) ||
+        user.firstName.toLowerCase().includes(mentionQuery.toLowerCase()) ||
+        user.lastName.toLowerCase().includes(mentionQuery.toLowerCase())
+    ) || [];
+
+  const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const newContent = e.target.value;
+    setContent(newContent);
+
+    // Check for @ mentions
+    const cursorPosition = e.target.selectionStart;
+    const textBeforeCursor = newContent.slice(0, cursorPosition);
+    const mentionMatch = textBeforeCursor.match(/@(\w*)$/);
+
+    if (mentionMatch && availableUsers) {
+      setShowMentions(true);
+      setMentionQuery(mentionMatch[1]);
+      setMentionPosition(mentionMatch.index || 0);
+    } else {
+      setShowMentions(false);
+      setMentionQuery("");
+    }
+  };
+
+  const insertMention = (user: {
+    username: string;
+    firstName: string;
+    lastName: string;
+  }) => {
+    const beforeMention = content.slice(0, mentionPosition);
+    const afterMention = content.slice(
+      mentionPosition + mentionQuery.length + 1
+    ); // +1 for @
+    const newContent = `${beforeMention}@${user.username} ${afterMention}`;
+    setContent(newContent);
+    setShowMentions(false);
+    setMentionQuery("");
+  };
 
   const handleSubmit = async () => {
     if (!content.trim()) return;
@@ -340,7 +458,19 @@ function CommentForm({
     }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (showMentions && filteredUsers.length > 0) {
+      if (e.key === "Enter" || e.key === "Tab") {
+        e.preventDefault();
+        insertMention(filteredUsers[0]);
+        return;
+      }
+      if (e.key === "Escape") {
+        setShowMentions(false);
+        return;
+      }
+    }
+
     if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
       e.preventDefault();
       handleSubmit();
@@ -348,18 +478,46 @@ function CommentForm({
   };
 
   return (
-    <div className="space-y-3">
-      <Textarea
-        value={content}
-        onChange={(e) => setContent(e.target.value)}
-        onKeyDown={handleKeyDown}
-        placeholder={parentId ? "Write a reply..." : "Write a comment..."}
-        rows={3}
-        className="resize-none"
-      />
+    <div className="space-y-3 relative">
+      <div className="relative">
+        <Textarea
+          value={content}
+          onChange={handleContentChange}
+          onKeyDown={handleKeyDown}
+          placeholder={
+            parentId
+              ? "Write a reply... (use @username to mention someone)"
+              : "Write a comment... (use @username to mention someone)"
+          }
+          rows={3}
+          className="resize-none"
+        />
+
+        {/* Mention dropdown */}
+        {showMentions && filteredUsers.length > 0 && (
+          <div className="absolute z-10 mt-1 w-64 bg-white border border-gray-200 rounded-md shadow-lg max-h-40 overflow-y-auto">
+            {filteredUsers.slice(0, 5).map((user) => (
+              <button
+                key={user.id}
+                onClick={() => insertMention(user)}
+                className="w-full px-3 py-2 text-left hover:bg-gray-50 flex items-center gap-2 border-b border-gray-100 last:border-b-0"
+              >
+                <div className="flex-1">
+                  <div className="font-medium text-sm">@{user.username}</div>
+                  <div className="text-xs text-gray-500">
+                    {user.firstName} {user.lastName}
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
       <div className="flex justify-between items-center">
         <p className="text-xs text-gray-500">
           Press Cmd/Ctrl + Enter to {parentId ? "reply" : "comment"}
+          {availableUsers && " • Type @ to mention someone"}
         </p>
         <div className="flex gap-2">
           {onCancel && (
@@ -385,6 +543,7 @@ function CommentForm({
 export default function CommentSection({
   cardId,
   userId,
+  availableUsers,
 }: CommentSectionProps) {
   const [showNewComment, setShowNewComment] = useState(false);
   const [replyingTo, setReplyingTo] = useState<string | null>(null); // Changed from number to string
@@ -435,6 +594,7 @@ export default function CommentSection({
           <Button
             onClick={() => setShowNewComment(true)}
             size="sm"
+            variant="outline"
             className="flex items-center gap-2"
           >
             <Plus size={14} />
@@ -447,6 +607,7 @@ export default function CommentSection({
         <div className="mb-6">
           <CommentForm
             cardId={cardId}
+            availableUsers={availableUsers}
             onCancel={() => setShowNewComment(false)}
           />
         </div>
@@ -468,6 +629,7 @@ export default function CommentSection({
                   <CommentForm
                     cardId={cardId}
                     parentId={comment.id.toString()} // Convert to string
+                    availableUsers={availableUsers}
                     onCancel={handleCancelReply}
                   />
                 </div>
@@ -480,6 +642,14 @@ export default function CommentSection({
           <div className="bg-gray-50 rounded-lg p-6 text-center">
             <MessageCircle size={24} className="mx-auto text-gray-400 mb-2" />
             <p className="text-sm text-gray-500 mb-3">No comments yet</p>
+            <Button
+              onClick={() => setShowNewComment(true)}
+              size="sm"
+              className="flex items-center gap-2"
+            >
+              <Plus size={14} />
+              Add the first comment
+            </Button>
           </div>
         )
       )}
