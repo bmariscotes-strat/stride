@@ -176,6 +176,22 @@ export async function PATCH(
       .where(eq(cards.id, cardId))
       .returning();
 
+    // Handle label updates if provided
+    if (body.labelIds !== undefined) {
+      // First, remove all existing label associations
+      await db.delete(cardLabels).where(eq(cardLabels.cardId, cardId));
+
+      // Then add new label associations
+      if (body.labelIds.length > 0) {
+        const labelAssociations = body.labelIds.map((labelId: string) => ({
+          cardId: cardId,
+          labelId: labelId,
+        }));
+
+        await db.insert(cardLabels).values(labelAssociations);
+      }
+    }
+
     // Fetch the updated card with all relations using the same approach as GET
     const cardWithRelations = await db.query.cards.findFirst({
       where: eq(cards.id, cardId),
