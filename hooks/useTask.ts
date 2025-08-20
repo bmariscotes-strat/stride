@@ -225,63 +225,42 @@ export function useCreateTask() {
   });
 }
 
-export function useUpdateTask() {
+export const useUpdateTask = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (input: UpdateCardInput & { cardId: string }) => {
-      const payload = {
-        ...input,
-        dueDate: input.dueDate
-          ? input.dueDate.toISOString()
-          : input.dueDate === null
-            ? null
-            : undefined,
-        startDate: input.startDate
-          ? input.startDate.toISOString()
-          : input.startDate === null
-            ? null
-            : undefined,
-      };
-
-      return apiCall(`/api/cards/${input.cardId}`, {
+    mutationFn: async (updateData: UpdateCardInput) => {
+      const response = await fetch(`/api/cards/${updateData.cardId}`, {
         method: "PATCH",
-        body: JSON.stringify(payload),
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          title: updateData.title,
+          description: updateData.description,
+          priority: updateData.priority,
+          assigneeId: updateData.assigneeId,
+          columnId: updateData.columnId,
+          dueDate: updateData.dueDate?.toISOString(),
+          startDate: updateData.startDate?.toISOString(),
+          labelIds: updateData.labelIds, // Include labelIds in the request
+        }),
       });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to update task");
+      }
+
+      return response.json();
     },
-    onSuccess: (updatedCard, variables) => {
-      // Update the specific card cache
-      queryClient.setQueryData(taskKeys.card(variables.cardId), updatedCard);
-
-      // Invalidate related queries
-      if (updatedCard.columnId) {
-        queryClient.invalidateQueries({
-          queryKey: taskKeys.columns(updatedCard.columnId),
-        });
-      }
-
-      if (updatedCard.column?.projectId) {
-        queryClient.invalidateQueries({
-          queryKey: taskKeys.projects(updatedCard.column.projectId),
-        });
-        queryClient.invalidateQueries({
-          queryKey: taskKeys.stats(updatedCard.column.projectId),
-        });
-      }
-
-      if (updatedCard.assigneeId) {
-        queryClient.invalidateQueries({
-          queryKey: taskKeys.assigned(updatedCard.assigneeId),
-        });
-      }
-
-      toast.success("Task updated successfully");
-    },
-    onError: (error: Error) => {
-      toast.error(error.message || "Failed to update task");
+    onSuccess: () => {
+      // Invalidate and refetch queries as needed
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
     },
   });
-}
+};
 
 export function useMoveTask() {
   const queryClient = useQueryClient();

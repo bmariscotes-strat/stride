@@ -1,10 +1,10 @@
-// app\api\projects\[slug]\cards\route.ts
+// app/api/projects/[slug]/cards/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/services/users";
 import { TaskCRUDService } from "@/lib/services/tasks/crud";
 import { ProjectPermissionChecker } from "@/lib/permissions/checkers/project-permission-checker";
 import { db } from "@/lib/db/db";
-import { columns } from "@/lib/db/schema";
+import { columns, cardLabels, cards } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 
@@ -18,11 +18,12 @@ const createCardSchema = z.object({
   startDate: z.string().nullable().optional(),
   status: z.string().nullable().optional(),
   position: z.number().optional(),
+  labelIds: z.array(z.string()).optional(), // Add labelIds support
 });
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ slug: string }> } // FIXED: Use 'slug' to match the folder name [slug]
+  { params }: { params: Promise<{ slug: string }> }
 ) {
   try {
     const currentUser = await getCurrentUser();
@@ -30,20 +31,15 @@ export async function POST(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // FIXED: Await params first, then destructure using correct parameter name
     const resolvedParams = await params;
-    const { slug: projectId } = resolvedParams; // FIXED: Extract slug as projectId
+    const { slug: projectId } = resolvedParams;
 
     const body = await request.json();
-
     console.log("API received body:", body);
-    console.log("Project ID from URL:", projectId);
-    console.log("Project ID type:", typeof projectId);
 
     // Validate input
     const validatedData = createCardSchema.parse(body);
     console.log("Validated data:", validatedData);
-    console.log("Column ID from body:", validatedData.columnId);
 
     // Verify that the column exists and belongs to the project
     const column = await db.query.columns.findFirst({
@@ -58,46 +54,17 @@ export async function POST(
       return NextResponse.json({ error: "Column not found" }, { status: 404 });
     }
 
-    console.log("Column found:", {
-      id: column.id,
-      name: column.name,
-      projectId: column.projectId,
-      projectIdType: typeof column.projectId,
-    });
-
-    console.log("Comparison:", {
-      urlProjectId: projectId,
-      columnProjectId: column.projectId,
-      areEqual: column.projectId === projectId,
-      urlProjectIdTrimmed: projectId.trim(),
-      columnProjectIdTrimmed: column.projectId?.toString().trim(),
-    });
-
-    // FIXED: More robust comparison with type coercion and trimming
+    // Verify project ownership
     const normalizedUrlProjectId = projectId.toString().trim();
     const normalizedColumnProjectId = column.projectId?.toString().trim();
 
     if (normalizedColumnProjectId !== normalizedUrlProjectId) {
-      console.error("Project ID mismatch:", {
-        expected: normalizedUrlProjectId,
-        actual: normalizedColumnProjectId,
-        originalUrl: projectId,
-        originalColumn: column.projectId,
-      });
-
+      console.error("Project ID mismatch");
       return NextResponse.json(
-        {
-          error: "Column does not belong to this project",
-          debug: {
-            urlProjectId: normalizedUrlProjectId,
-            columnProjectId: normalizedColumnProjectId,
-          },
-        },
+        { error: "Column does not belong to this project" },
         { status: 400 }
       );
     }
-
-    console.log("Column belongs to project - validation passed");
 
     // Check permissions
     const permissionChecker = new ProjectPermissionChecker();
@@ -111,14 +78,13 @@ export async function POST(
     const dueDate = validatedData.dueDate
       ? new Date(validatedData.dueDate)
       : null;
-
     const startDate = validatedData.startDate
       ? new Date(validatedData.startDate)
       : null;
 
     console.log("Creating card with TaskCRUDService...");
 
-    // Create the card using the static method
+    // Create the card
     const newCard = await TaskCRUDService.createCard(
       {
         columnId: validatedData.columnId,
@@ -136,7 +102,42 @@ export async function POST(
 
     console.log("Card created successfully:", newCard);
 
-    return NextResponse.json(newCard, { status: 201 });
+    // Handle label associations if provided
+    if (validatedData.labelIds && validatedData.labelIds.length > 0) {
+      console.log("Adding labels to card:", validatedData.labelIds);
+
+      // Insert label associations
+      const labelInserts = validatedData.labelIds.map((labelId) => ({
+        cardId: newCard.id,
+        labelId: labelId,
+      }));
+
+      await db.insert(cardLabels).values(labelInserts);
+      console.log("Labels added to card successfully");
+    }
+
+    // Fetch the created card with all relations for response
+    const cardWithRelations = await db.query.cards.findFirst({
+      where: eq(cards.id, newCard.id),
+      with: {
+        assignee: {
+          columns: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            avatarUrl: true,
+          },
+        },
+        labels: {
+          with: {
+            label: true,
+          },
+        },
+      },
+    });
+
+    return NextResponse.json(cardWithRelations, { status: 201 });
   } catch (error) {
     console.error("Error creating card:", error);
 

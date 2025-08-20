@@ -234,6 +234,7 @@ export default function EditTaskDialog({
         dueDate: data.dueDate || null,
         startDate: data.startDate || null,
         columnId: data.columnId,
+        labelIds: data.labelIds || [],
         // Note: labelIds update would need additional API support
       });
 
@@ -523,38 +524,48 @@ export default function EditTaskDialog({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Labels</FormLabel>
-                  <div className="space-y-2">
-                    {/* Selected Labels */}
+                  <div className="space-y-3">
+                    {/* Current Selected Labels */}
                     {selectedLabels.length > 0 && (
-                      <div className="flex flex-wrap gap-2">
-                        {selectedLabels.map((label: any) => (
-                          <Badge
-                            key={label.id}
-                            variant="secondary"
-                            style={{
-                              backgroundColor: label.color + "20",
-                              color: label.color,
-                            }}
-                            className="flex items-center gap-1"
-                          >
-                            {label.name}
-                            <X
-                              className="w-3 h-3 cursor-pointer"
-                              onClick={() => removeLabel(label.id)}
-                            />
-                          </Badge>
-                        ))}
+                      <div className="space-y-2">
+                        <p className="text-xs text-gray-600 font-medium">
+                          Selected Labels:
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {selectedLabels.map((label: any) => (
+                            <Badge
+                              key={label.id}
+                              variant="secondary"
+                              style={{
+                                backgroundColor: label.color + "20",
+                                color: label.color,
+                                borderColor: label.color + "40",
+                              }}
+                              className="flex items-center gap-1 border"
+                            >
+                              {label.name}
+                              <X
+                                className="w-3 h-3 cursor-pointer hover:bg-black/10 rounded-full p-0.5"
+                                onClick={() => removeLabel(label.id)}
+                              />
+                            </Badge>
+                          ))}
+                        </div>
                       </div>
                     )}
 
+                    {/* Add Labels Button */}
                     <Popover open={labelOpen} onOpenChange={setLabelOpen}>
                       <PopoverTrigger asChild>
                         <Button
                           variant="outline"
                           className="w-full justify-start"
+                          type="button"
                         >
                           <Plus className="mr-2 h-4 w-4" />
-                          Add labels...
+                          {selectedLabels.length > 0
+                            ? "Add more labels..."
+                            : "Add labels..."}
                         </Button>
                       </PopoverTrigger>
                       <PopoverContent className="w-full p-0" align="start">
@@ -580,37 +591,40 @@ export default function EditTaskDialog({
                             )}
 
                           <CommandGroup>
-                            {projectLabels.map((label: any) => (
-                              <CommandItem
-                                key={label.id}
-                                onSelect={() => {
-                                  const currentLabels = field.value ?? [];
-                                  if (currentLabels.includes(label.id)) {
-                                    field.onChange(
-                                      currentLabels.filter(
-                                        (id) => id !== label.id
-                                      )
-                                    );
-                                  } else {
+                            {projectLabels
+                              .filter(
+                                (label: any) =>
+                                  !(field.value ?? []).includes(label.id)
+                              )
+                              .map((label: any) => (
+                                <CommandItem
+                                  key={label.id}
+                                  onSelect={() => {
+                                    const currentLabels = field.value ?? [];
                                     field.onChange([
                                       ...currentLabels,
                                       label.id,
                                     ]);
-                                  }
-                                }}
-                              >
-                                <div className="flex items-center gap-2">
-                                  <div
-                                    className="w-3 h-3 rounded-full"
-                                    style={{ backgroundColor: label.color }}
-                                  />
-                                  {label.name}
-                                  {(field.value ?? []).includes(label.id) && (
-                                    <div className="ml-auto">✓</div>
-                                  )}
+                                  }}
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <div
+                                      className="w-3 h-3 rounded-full"
+                                      style={{ backgroundColor: label.color }}
+                                    />
+                                    {label.name}
+                                  </div>
+                                </CommandItem>
+                              ))}
+                            {projectLabels.filter(
+                              (label: any) =>
+                                !(field.value ?? []).includes(label.id)
+                            ).length === 0 &&
+                              !newLabelName && (
+                                <div className="px-3 py-2 text-sm text-gray-500">
+                                  All available labels are selected
                                 </div>
-                              </CommandItem>
-                            ))}
+                              )}
                           </CommandGroup>
                         </Command>
                       </PopoverContent>

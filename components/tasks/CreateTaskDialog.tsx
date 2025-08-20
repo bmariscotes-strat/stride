@@ -209,6 +209,7 @@ export default function CreateTaskDialog({
         priority: data.priority || null,
         assigneeId: data.assigneeId || null,
         dueDate: data.dueDate || null,
+        labelIds: data.labelIds || [], // Add this line
       };
 
       console.log("Submitting task with data:", createInput);
