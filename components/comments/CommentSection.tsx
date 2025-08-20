@@ -310,9 +310,7 @@ function CommentItem({
             </div>
 
             <div className="prose prose-sm max-w-none text-gray-700 mb-2">
-              <p>
-                {renderContentWithMentions(comment.content, comment.mentions)}
-              </p>
+              {renderContentWithMentions(comment.content, comment.mentions)}
             </div>
 
             <div className="flex items-center gap-3">
@@ -612,7 +610,6 @@ export default function CommentSection({
           <Button
             onClick={() => setShowNewComment(true)}
             size="sm"
-            variant="outline"
             className="flex items-center gap-2"
           >
             <Plus size={14} />
@@ -660,14 +657,6 @@ export default function CommentSection({
           <div className="bg-gray-50 rounded-lg p-6 text-center">
             <MessageCircle size={24} className="mx-auto text-gray-400 mb-2" />
             <p className="text-sm text-gray-500 mb-3">No comments yet</p>
-            <Button
-              onClick={() => setShowNewComment(true)}
-              size="sm"
-              className="flex items-center gap-2"
-            >
-              <Plus size={14} />
-              Add the first comment
-            </Button>
           </div>
         )
       )}
