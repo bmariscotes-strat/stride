@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, lazy, Suspense } from "react";
+import React, { useState, lazy, Suspense, useCallback, useEffect } from "react";
 import Link from "next/link";
 import DualPanelLayout from "@/components/layout/shared/DualPanelLayout";
 import AppBreadcrumb from "@/components/shared/AppBreadcrumb";
@@ -18,7 +18,7 @@ import {
 import KanbanBoard from "@/components/views/KanbanBoard";
 import type { ProjectPageClientProps } from "@/types";
 
-// Lazy load the CreateTaskDialog to avoid importing database code on initial load
+// Lazy load the CreateTaskDialog
 const CreateTaskDialog = lazy(
   () => import("@/components/tasks/CreateTaskDialog")
 );
@@ -35,6 +35,7 @@ export default function ProjectPageClient({
   views,
 }: ProjectPageClientProps) {
   const [createTaskOpen, setCreateTaskOpen] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   console.log("Project data:", {
     projectId: project.id,
@@ -43,6 +44,28 @@ export default function ProjectPageClient({
     defaultColumnId,
     canCreateCards,
   });
+
+  // Callback to trigger board refresh
+  const triggerRefresh = useCallback(() => {
+    setRefreshTrigger((prev) => prev + 1);
+  }, []);
+
+  // Handle successful card creation
+  const handleCardCreated = useCallback(() => {
+    setCreateTaskOpen(false);
+    triggerRefresh();
+  }, [triggerRefresh]);
+
+  // Handle task dialog close
+  const handleTaskDialogClose = useCallback(
+    (open: boolean) => {
+      setCreateTaskOpen(open);
+      if (!open) {
+        setTimeout(triggerRefresh, 100);
+      }
+    },
+    [triggerRefresh]
+  );
 
   const getRoleIcon = (role: "admin" | "editor" | "viewer") => {
     switch (role) {
@@ -201,14 +224,19 @@ export default function ProjectPageClient({
           </>
         }
         right={
-          <div className="p-6">
+          <div className="p-6 relative">
             <div className="flex items-center justify-center h-full">
-              <div className="text-center">
+              <div className="text-center w-full">
                 <KanbanBoard
                   projectId={project.id}
                   projectSlug={project.slug}
                   userId={userId}
                   canEditCards={canCreateCards}
+                  refreshTrigger={refreshTrigger}
+                  onDataChange={() => {
+                    // Optional: Handle data change notifications
+                    console.log("Kanban board data updated");
+                  }}
                 />
               </div>
             </div>
@@ -220,10 +248,11 @@ export default function ProjectPageClient({
         <Suspense fallback={<div>Loading...</div>}>
           <CreateTaskDialog
             open={createTaskOpen}
-            onOpenChange={setCreateTaskOpen}
+            onOpenChange={handleTaskDialogClose}
             projectId={project.id}
             columnId={defaultColumnId}
-            userId={userId} // Added missing userId prop
+            userId={userId}
+            onSuccess={handleCardCreated}
           />
         </Suspense>
       )}

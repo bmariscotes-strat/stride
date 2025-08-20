@@ -1,3 +1,4 @@
+// app\api\columns\[columnId]\cards\route.ts
 import { db } from "@/lib/db/db";
 import { cards } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";

@@ -77,6 +77,7 @@ interface CreateTaskDialogProps {
   columnId?: string;
   projectId: string;
   userId: string;
+  onSuccess?: () => void;
 }
 
 const TiptapEditor: React.FC<{
@@ -157,6 +158,7 @@ export default function CreateTaskDialog({
   columnId,
   projectId,
   userId, // Accept userId prop
+  onSuccess,
 }: CreateTaskDialogProps) {
   const [assigneeOpen, setAssigneeOpen] = useState(false);
   const [labelOpen, setLabelOpen] = useState(false);
@@ -192,10 +194,6 @@ export default function CreateTaskDialog({
   const onSubmit = async (data: CreateTaskForm) => {
     try {
       console.log("Form data:", data);
-      console.log("Column ID:", columnId);
-      console.log("Project ID:", projectId);
-
-      // Check if columnId is provided
       if (!columnId) {
         console.error("Column ID is missing");
         return;
@@ -209,15 +207,17 @@ export default function CreateTaskDialog({
         priority: data.priority || null,
         assigneeId: data.assigneeId || null,
         dueDate: data.dueDate || null,
-        labelIds: data.labelIds || [], // Add this line
+        labelIds: data.labelIds || [],
       };
 
-      console.log("Submitting task with data:", createInput);
-
-      // Use the mutation to create the task
       await createTaskMutation.mutateAsync(createInput);
 
       console.log("Task created successfully");
+
+      // ✅ Trigger parent callback
+      onSuccess?.();
+
+      // Close dialog
       onOpenChange(false);
     } catch (error) {
       console.error("Failed to create task:", error);

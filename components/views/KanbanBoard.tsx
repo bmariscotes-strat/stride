@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   DndContext,
@@ -17,9 +17,8 @@ import {
 } from "@dnd-kit/sortable";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { User, Calendar } from "lucide-react";
+import { User, Calendar, RefreshCw } from "lucide-react";
 
-// Types based on your schema
 interface Card {
   id: string;
   columnId: string;
@@ -51,9 +50,136 @@ interface KanbanBoardProps {
   projectSlug: string;
   userId: string;
   canEditCards?: boolean;
+  // New props for refetching control
+  onDataChange?: () => void; // Callback to notify parent of data changes
+  refreshTrigger?: number; // External trigger to force refresh
 }
 
-// Draggable Card Component
+// Custom hook for managing refetch logic
+function useKanbanRefetch(projectSlug: string, onDataChange?: () => void) {
+  const [columns, setColumns] = useState<Column[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isRefetching, setIsRefetching] = useState(false);
+  const lastFetchTime = useRef<number>(0);
+  const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Minimum time between fetches to prevent excessive API calls
+  const MIN_FETCH_INTERVAL = 1000; // 1 second
+
+  const fetchKanbanData = useCallback(
+    async (showLoader = true) => {
+      try {
+        const now = Date.now();
+        // Prevent excessive API calls
+        if (now - lastFetchTime.current < MIN_FETCH_INTERVAL) {
+          return;
+        }
+
+        if (showLoader) {
+          setLoading(true);
+        } else {
+          setIsRefetching(true);
+        }
+        setError(null);
+        lastFetchTime.current = now;
+
+        // Fetch columns for the project
+        const columnsResponse = await fetch(
+          `/api/projects/${projectSlug}/columns`,
+          {
+            // Add cache control to ensure fresh data
+            headers: {
+              "Cache-Control": "no-cache",
+            },
+          }
+        );
+
+        if (!columnsResponse.ok) {
+          throw new Error("Failed to fetch columns");
+        }
+        const columnsData = await columnsResponse.json();
+
+        // Fetch cards for each column in parallel
+        const columnsWithCards = await Promise.all(
+          columnsData.map(async (column: any) => {
+            const cardsResponse = await fetch(
+              `/api/columns/${column.id}/cards`,
+              {
+                headers: {
+                  "Cache-Control": "no-cache",
+                },
+              }
+            );
+            const cardsData = cardsResponse.ok
+              ? await cardsResponse.json()
+              : [];
+
+            return {
+              ...column,
+              cards: cardsData.sort(
+                (a: Card, b: Card) => a.position - b.position
+              ),
+            };
+          })
+        );
+
+        // Sort columns by position
+        const sortedColumns = columnsWithCards.sort(
+          (a, b) => a.position - b.position
+        );
+
+        setColumns(sortedColumns);
+        onDataChange?.(); // Notify parent of data change
+      } catch (err) {
+        console.error("Error fetching kanban data:", err);
+        setError(err instanceof Error ? err.message : "An error occurred");
+      } finally {
+        setLoading(false);
+        setIsRefetching(false);
+      }
+    },
+    [projectSlug, onDataChange]
+  );
+
+  // Debounced refresh function
+  const debouncedRefresh = useCallback(() => {
+    if (refreshTimeoutRef.current) {
+      clearTimeout(refreshTimeoutRef.current);
+    }
+
+    refreshTimeoutRef.current = setTimeout(() => {
+      fetchKanbanData(false); // Don't show full loader for background refresh
+    }, 500); // 500ms debounce
+  }, [fetchKanbanData]);
+
+  // Manual refresh function
+  const manualRefresh = useCallback(() => {
+    fetchKanbanData(false);
+  }, [fetchKanbanData]);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (refreshTimeoutRef.current) {
+        clearTimeout(refreshTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  return {
+    columns,
+    setColumns,
+    loading,
+    error,
+    isRefetching,
+    fetchKanbanData,
+    debouncedRefresh,
+    manualRefresh,
+  };
+}
+
+// Draggable Card Component (unchanged)
 function DraggableCard({
   card,
   projectSlug,
@@ -75,7 +201,6 @@ function DraggableCard({
     id: card.id,
   });
 
-  // Update local dragging state
   React.useEffect(() => {
     setIsDragging(dndIsDragging);
   }, [dndIsDragging]);
@@ -107,33 +232,24 @@ function DraggableCard({
     }
   };
 
-  // Handle card click - navigate to card detail page
   const handleCardClick = (e: React.MouseEvent) => {
-    // Don't navigate if we're in the middle of dragging
     if (isDragging) {
       return;
     }
-
-    // Prevent navigation during drag operations
     e.preventDefault();
     e.stopPropagation();
-
-    // Navigate to the card detail page
     router.push(`/projects/${projectSlug}/cards/${card.id}`);
   };
 
-  // Separate drag handlers to prevent conflicts with click
   const dragHandlers = {
     ...attributes,
     ...listeners,
     onMouseDown: (e: React.MouseEvent) => {
-      // Call the original drag handler
       if (listeners?.onMouseDown) {
         listeners.onMouseDown(e as any);
       }
     },
     onTouchStart: (e: React.TouchEvent) => {
-      // Call the original drag handler
       if (listeners?.onTouchStart) {
         listeners.onTouchStart(e as any);
       }
@@ -193,7 +309,7 @@ function DraggableCard({
   );
 }
 
-// Droppable Column Component
+// Droppable Column Component (unchanged)
 function DroppableColumn({
   column,
   children,
@@ -249,79 +365,50 @@ export default function KanbanBoard({
   projectSlug,
   userId,
   canEditCards = true,
+  onDataChange,
+  refreshTrigger,
 }: KanbanBoardProps) {
-  const [columns, setColumns] = useState<Column[]>([]);
-  const [activeCard, setActiveCard] = useState<Card | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const {
+    columns,
+    setColumns,
+    loading,
+    error,
+    isRefetching,
+    fetchKanbanData,
+    debouncedRefresh,
+    manualRefresh,
+  } = useKanbanRefetch(projectSlug, onDataChange);
 
-  // Configure sensors for drag and drop with adjusted activation constraints
+  const [activeCard, setActiveCard] = useState<Card | null>(null);
+
+  // Configure sensors for drag and drop
   const sensors = useSensors(
     useSensor(MouseSensor, {
       activationConstraint: {
-        distance: 8, // Require 8px movement before drag starts
+        distance: 8,
       },
     }),
     useSensor(TouchSensor, {
       activationConstraint: {
-        delay: 200, // 200ms delay before drag starts on touch
+        delay: 200,
         tolerance: 5,
       },
     })
   );
 
-  // Fetch project columns and cards
+  // Initial fetch
   useEffect(() => {
-    const fetchKanbanData = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-
-        // Fetch columns for the project
-        const columnsResponse = await fetch(
-          `/api/projects/${projectSlug}/columns`
-        );
-        if (!columnsResponse.ok) {
-          throw new Error("Failed to fetch columns");
-        }
-        const columnsData = await columnsResponse.json();
-
-        // Fetch cards for each column
-        const columnsWithCards = await Promise.all(
-          columnsData.map(async (column: any) => {
-            const cardsResponse = await fetch(
-              `/api/columns/${column.id}/cards`
-            );
-            const cardsData = cardsResponse.ok
-              ? await cardsResponse.json()
-              : [];
-
-            return {
-              ...column,
-              cards: cardsData.sort(
-                (a: Card, b: Card) => a.position - b.position
-              ),
-            };
-          })
-        );
-
-        // Sort columns by position
-        const sortedColumns = columnsWithCards.sort(
-          (a, b) => a.position - b.position
-        );
-        setColumns(sortedColumns);
-      } catch (err) {
-        console.error("Error fetching kanban data:", err);
-        setError(err instanceof Error ? err.message : "An error occurred");
-      } finally {
-        setLoading(false);
-      }
-    };
-
     if (projectSlug) {
       fetchKanbanData();
     }
-  }, [projectSlug]);
+  }, [projectSlug, fetchKanbanData]);
+
+  // Handle external refresh triggers
+  useEffect(() => {
+    if (refreshTrigger && refreshTrigger > 0) {
+      debouncedRefresh();
+    }
+  }, [refreshTrigger, debouncedRefresh]);
 
   const handleDragStart = (event: DragStartEvent) => {
     const { active } = event;
@@ -353,7 +440,7 @@ export default function KanbanBoard({
 
     if (!overColumn) return;
 
-    // If moving to the same column, handle reordering
+    // Same column reordering logic
     if (activeCard.columnId === overColumn.id) {
       const columnCards = overColumn.cards;
       const oldIndex = columnCards.findIndex(
@@ -366,7 +453,7 @@ export default function KanbanBoard({
 
       if (oldIndex === newIndex) return;
 
-      // Update local state optimistically
+      // Optimistic update
       const newCards = [...columnCards];
       const [movedCard] = newCards.splice(oldIndex, 1);
       newCards.splice(newIndex, 0, movedCard);
@@ -384,9 +471,9 @@ export default function KanbanBoard({
       );
       setColumns(updatedColumns);
 
-      // Update database
+      // Update database and refresh on success/error
       try {
-        await fetch(`/api/cards/${activeCard.id}/move`, {
+        const response = await fetch(`/api/cards/${activeCard.id}/move`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -394,10 +481,18 @@ export default function KanbanBoard({
             newPosition: newIndex,
           }),
         });
+
+        if (!response.ok) {
+          throw new Error("Failed to move card");
+        }
+
+        // Refresh after successful move to ensure data consistency
+        debouncedRefresh();
       } catch (error) {
         console.error("Failed to update card position:", error);
-        // Revert optimistic update on error
+        // Revert optimistic update and refresh
         setColumns(columns);
+        debouncedRefresh();
       }
     } else {
       // Moving to different column
@@ -411,7 +506,7 @@ export default function KanbanBoard({
           ? overColumn.cards.length
           : overColumn.cards.findIndex((card) => card.id === over.id);
 
-      // Update local state optimistically
+      // Optimistic update
       const sourceCards = sourceColumn.cards.filter(
         (card) => card.id !== activeCard.id
       );
@@ -446,9 +541,9 @@ export default function KanbanBoard({
       });
       setColumns(updatedColumns);
 
-      // Update database
+      // Update database and refresh
       try {
-        await fetch(`/api/cards/${activeCard.id}/move`, {
+        const response = await fetch(`/api/cards/${activeCard.id}/move`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -456,10 +551,18 @@ export default function KanbanBoard({
             newPosition: newIndex,
           }),
         });
+
+        if (!response.ok) {
+          throw new Error("Failed to move card");
+        }
+
+        // Refresh after successful move
+        debouncedRefresh();
       } catch (error) {
         console.error("Failed to move card:", error);
-        // Revert optimistic update on error
+        // Revert optimistic update and refresh
         setColumns(columns);
+        debouncedRefresh();
       }
     }
   };
@@ -480,7 +583,14 @@ export default function KanbanBoard({
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
           <p className="text-red-600 mb-2">Error loading Kanban board</p>
-          <p className="text-sm text-gray-600">{error}</p>
+          <p className="text-sm text-gray-600 mb-4">{error}</p>
+          <button
+            onClick={manualRefresh}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700 transition-colors"
+          >
+            <RefreshCw size={16} />
+            Retry
+          </button>
         </div>
       </div>
     );
@@ -488,6 +598,28 @@ export default function KanbanBoard({
 
   return (
     <div className="h-full overflow-x-auto">
+      {/* Refresh indicator */}
+      {isRefetching && (
+        <div className="absolute top-4 right-4 z-50">
+          <div className="inline-flex items-center gap-2 bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm">
+            <RefreshCw size={14} className="animate-spin" />
+            Syncing...
+          </div>
+        </div>
+      )}
+
+      {/* Manual refresh button */}
+      <div className="absolute top-4 right-4 z-40">
+        <button
+          onClick={manualRefresh}
+          disabled={isRefetching}
+          className="p-2 bg-white shadow-md rounded-full hover:bg-gray-50 transition-colors disabled:opacity-50"
+          title="Refresh board"
+        >
+          <RefreshCw size={16} className={isRefetching ? "animate-spin" : ""} />
+        </button>
+      </div>
+
       <DndContext
         sensors={sensors}
         collisionDetection={closestCorners}
