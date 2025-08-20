@@ -61,14 +61,13 @@ export async function createComment({
         cardId,
         userId,
         content,
-        // Convert string parentId to number since the schema expects integer
         parentId: parentId ? parseInt(parentId, 10) : null,
       })
       .returning();
 
     // Process mentions in the content
     const mentionRegex = /@(\w+)/g;
-    const mentionsList = []; // Renamed from 'mentions' to avoid conflict with imported table
+    const mentionsList = [];
     let match;
 
     while ((match = mentionRegex.exec(content)) !== null) {
@@ -104,7 +103,6 @@ export async function updateComment({ commentId, content }: UpdateCommentData) {
   const userId = await getRequiredUserId();
 
   try {
-    // Convert commentId to integer since the schema expects integer
     const commentIdInt = parseInt(commentId, 10);
 
     // Check if user owns the comment

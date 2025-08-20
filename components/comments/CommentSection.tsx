@@ -116,16 +116,14 @@ const MentionHover: React.FC<MentionHoverProps> = ({ user, username }) => {
       </span>
 
       {hovered && (
-        <div className="absolute z-10 left-1/2 transform -translate-x-1/2 mt-2 w-64 p-3 bg-white border border-gray-200 rounded-lg shadow-lg text-sm text-gray-700">
+        <div
+          className="absolute left-1/2 -translate-x-1/2 mt-2
+             max-w-sm w-max  p-3 bg-white border border-gray-200
+             rounded-lg shadow-lg text-sm text-gray-700 whitespace-normal"
+        >
           <div className="flex items-center gap-2">
-            {user.avatarUrl && (
-              <img
-                src={user.avatarUrl}
-                alt={`${user.firstName} ${user.lastName}`}
-                className="w-8 h-8 rounded-full"
-              />
-            )}
-            <div>
+            <img src={user.avatarUrl} alt="" className="w-8 h-8 rounded-full" />
+            <div className="min-w-0">
               <p className="font-medium">
                 {user.firstName} {user.lastName}
               </p>
