@@ -2,23 +2,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/services/users";
 import { db } from "@/lib/db/db";
-import { cards, columns, users, labels, cardLabels } from "@/lib/db/schema";
+import { cards, columns, cardLabels } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { ProjectPermissionChecker } from "@/lib/permissions/checkers/project-permission-checker";
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { cardId: string } }
-) {
+export async function GET(request: NextRequest, context: any) {
   try {
     const currentUser = await getCurrentUser();
     if (!currentUser) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { cardId } = params;
+    const { cardId } = context.params;
 
-    // First, get the basic card data with available relations
+    // Fetch card with relations
     const card = await db.query.cards.findFirst({
       where: eq(cards.id, cardId),
       with: {
@@ -31,11 +28,7 @@ export async function GET(
             avatarUrl: true,
           },
         },
-        labels: {
-          with: {
-            label: true,
-          },
-        },
+        labels: { with: { label: true } },
       },
     });
 
@@ -43,19 +36,16 @@ export async function GET(
       return NextResponse.json({ error: "Card not found" }, { status: 404 });
     }
 
-    // Manually fetch the column and project data
     const column = await db.query.columns.findFirst({
       where: eq(columns.id, card.columnId),
-      with: {
-        project: true,
-      },
+      with: { project: true },
     });
 
     if (!column) {
       return NextResponse.json({ error: "Column not found" }, { status: 404 });
     }
 
-    // Check permissions - user should be able to view the project to see the card
+    // Permissions
     const permissionChecker = new ProjectPermissionChecker();
     await permissionChecker.loadContext(currentUser.id, column.project.id);
 
@@ -63,7 +53,7 @@ export async function GET(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    // Format the response
+    // Format response
     const formattedCard = {
       id: card.id,
       title: card.title,
@@ -106,41 +96,31 @@ export async function GET(
   }
 }
 
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: { cardId: string } }
-) {
+export async function PATCH(request: NextRequest, context: any) {
   try {
     const currentUser = await getCurrentUser();
     if (!currentUser) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { cardId } = params;
+    const { cardId } = context.params;
     const body = await request.json();
 
-    // First, get the existing card to check permissions
     const existingCard = await db.query.cards.findFirst({
       where: eq(cards.id, cardId),
     });
-
     if (!existingCard) {
       return NextResponse.json({ error: "Card not found" }, { status: 404 });
     }
 
-    // Manually fetch the column and project data for permission checking
     const column = await db.query.columns.findFirst({
       where: eq(columns.id, existingCard.columnId),
-      with: {
-        project: true,
-      },
+      with: { project: true },
     });
-
     if (!column) {
       return NextResponse.json({ error: "Column not found" }, { status: 404 });
     }
 
-    // Check permissions
     const permissionChecker = new ProjectPermissionChecker();
     await permissionChecker.loadContext(currentUser.id, column.project.id);
 
@@ -151,48 +131,36 @@ export async function PATCH(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    // Prepare update data
     const updateData: any = {};
-
     if (body.title !== undefined) updateData.title = body.title;
     if (body.description !== undefined)
       updateData.description = body.description;
     if (body.priority !== undefined) updateData.priority = body.priority;
     if (body.assigneeId !== undefined) updateData.assigneeId = body.assigneeId;
     if (body.columnId !== undefined) updateData.columnId = body.columnId;
-
-    // Handle date fields
-    if (body.dueDate !== undefined) {
+    if (body.dueDate !== undefined)
       updateData.dueDate = body.dueDate ? new Date(body.dueDate) : null;
-    }
-    if (body.startDate !== undefined) {
+    if (body.startDate !== undefined)
       updateData.startDate = body.startDate ? new Date(body.startDate) : null;
-    }
 
-    // Update the card
     const [updatedCard] = await db
       .update(cards)
       .set(updateData)
       .where(eq(cards.id, cardId))
       .returning();
 
-    // Handle label updates if provided
     if (body.labelIds !== undefined) {
-      // First, remove all existing label associations
       await db.delete(cardLabels).where(eq(cardLabels.cardId, cardId));
-
-      // Then add new label associations
       if (body.labelIds.length > 0) {
         const labelAssociations = body.labelIds.map((labelId: string) => ({
-          cardId: cardId,
-          labelId: labelId,
+          cardId,
+          labelId,
         }));
-
         await db.insert(cardLabels).values(labelAssociations);
       }
     }
 
-    // Fetch the updated card with all relations using the same approach as GET
+    // Fetch updated card with relations
     const cardWithRelations = await db.query.cards.findFirst({
       where: eq(cards.id, cardId),
       with: {
@@ -205,14 +173,9 @@ export async function PATCH(
             avatarUrl: true,
           },
         },
-        labels: {
-          with: {
-            label: true,
-          },
-        },
+        labels: { with: { label: true } },
       },
     });
-
     if (!cardWithRelations) {
       return NextResponse.json(
         { error: "Card not found after update" },
@@ -220,19 +183,14 @@ export async function PATCH(
       );
     }
 
-    // Manually fetch the updated column data
     const updatedColumn = await db.query.columns.findFirst({
       where: eq(columns.id, cardWithRelations.columnId),
-      with: {
-        project: true,
-      },
+      with: { project: true },
     });
-
     if (!updatedColumn) {
       return NextResponse.json({ error: "Column not found" }, { status: 404 });
     }
 
-    // Format the response
     const formattedCard = {
       id: cardWithRelations.id,
       title: cardWithRelations.title,
@@ -275,40 +233,30 @@ export async function PATCH(
   }
 }
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: { cardId: string } }
-) {
+export async function DELETE(request: NextRequest, context: any) {
   try {
     const currentUser = await getCurrentUser();
     if (!currentUser) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { cardId } = params;
+    const { cardId } = context.params;
 
-    // First, get the existing card to check permissions
     const existingCard = await db.query.cards.findFirst({
       where: eq(cards.id, cardId),
     });
-
     if (!existingCard) {
       return NextResponse.json({ error: "Card not found" }, { status: 404 });
     }
 
-    // Manually fetch the column and project data for permission checking
     const column = await db.query.columns.findFirst({
       where: eq(columns.id, existingCard.columnId),
-      with: {
-        project: true,
-      },
+      with: { project: true },
     });
-
     if (!column) {
       return NextResponse.json({ error: "Column not found" }, { status: 404 });
     }
 
-    // Check permissions - only project editors or owners can delete cards
     const permissionChecker = new ProjectPermissionChecker();
     await permissionChecker.loadContext(currentUser.id, column.project.id);
 
@@ -316,7 +264,6 @@ export async function DELETE(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    // Delete the card (cascade will handle related records)
     await db.delete(cards).where(eq(cards.id, cardId));
 
     return NextResponse.json({ success: true });

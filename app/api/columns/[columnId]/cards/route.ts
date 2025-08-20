@@ -3,12 +3,9 @@ import { cards, cardLabels, labels, users } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { columnId: string } }
-) {
+export async function GET(request: NextRequest, context: any) {
   try {
-    const columnId = params.columnId;
+    const columnId = context.params.columnId;
     const { searchParams } = new URL(request.url);
     const includeArchived = searchParams.get("includeArchived") === "true";
 
@@ -38,7 +35,7 @@ export async function GET(
           acc[cardId] = {
             ...row.card,
             labels: [],
-            assignee: row.assignee || null, // 👈 keep assignee data
+            assignee: row.assignee || null,
           };
         }
 

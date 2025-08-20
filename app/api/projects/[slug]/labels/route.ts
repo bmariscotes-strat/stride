@@ -1,4 +1,3 @@
-// app/api/projects/[slug]/labels/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/services/users";
 import { LabelService } from "@/lib/services/tasks/labels";
@@ -15,18 +14,14 @@ const createLabelSchema = z.object({
 });
 
 // GET /api/projects/[slug]/labels
-// GET /api/projects/[slug]/labels
-export async function GET(
-  req: NextRequest,
-  { params }: { params: { slug: string } }
-) {
+export async function GET(req: NextRequest, context: any) {
   try {
     const currentUser = await getCurrentUser();
     if (!currentUser) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { slug } = params;
+    const { slug } = context.params;
 
     // Fetch labels for this project
     const projectLabels = await LabelService.getProjectLabels(
@@ -45,17 +40,14 @@ export async function GET(
 }
 
 // POST /api/projects/[slug]/labels
-export async function POST(
-  request: NextRequest,
-  { params }: { params: { slug: string } }
-) {
+export async function POST(request: NextRequest, context: any) {
   try {
     const currentUser = await getCurrentUser();
     if (!currentUser) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { slug } = params;
+    const { slug } = context.params;
     const body = await request.json();
 
     // Validate input
@@ -66,7 +58,7 @@ export async function POST(
       {
         name: validatedData.name,
         color: validatedData.color,
-        projectId: slug, // still stored as "projectId" in DB, but coming from slug
+        projectId: slug,
       },
       currentUser.id
     );

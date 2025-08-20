@@ -1,16 +1,12 @@
-// app\api\cards\[cardId]\move\route.ts
 import { TaskCRUDService } from "@/lib/services/tasks/crud";
 import { NextRequest, NextResponse } from "next/server";
 import { getRequiredUserId } from "@/lib/utils/get-current-user";
 
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: { cardId: string } }
-) {
+export async function PATCH(request: NextRequest, context: any) {
   try {
     const userId = await getRequiredUserId();
 
-    const cardId = params.cardId;
+    const { cardId } = context.params;
     const body = await request.json();
     const { newColumnId, newPosition } = body;
 

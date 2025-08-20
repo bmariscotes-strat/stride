@@ -1,17 +1,14 @@
-// app\api\projects\[slug]\columns\route.ts
+// app/api/projects/[slug]/columns/route.ts
 import { db } from "@/lib/db/db";
 import { columns } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { slug: string } }
-) {
+export async function GET(request: NextRequest, context: any) {
   try {
-    const projectSlug = params.slug;
+    const projectSlug = context.params.slug;
 
-    // First find the project by slug
+    // Find the project by slug
     const project = await db.query.projects.findFirst({
       where: (projects, { eq }) => eq(projects.slug, projectSlug),
     });

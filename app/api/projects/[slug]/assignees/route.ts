@@ -6,7 +6,7 @@ import { ProjectPermissionChecker } from "@/lib/permissions/checkers/project-per
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { slug: string } }
+  { params }: { params: Promise<{ slug: string }> }
 ) {
   try {
     const currentUser = await getCurrentUser();
@@ -14,7 +14,7 @@ export async function GET(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { slug } = params;
+    const { slug } = await params;
 
     // Check permissions - user should be able to view the project to see assignees
     const permissionChecker = new ProjectPermissionChecker();
