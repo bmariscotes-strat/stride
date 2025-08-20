@@ -105,10 +105,6 @@ function renderContentWithMentions(content: string, mentions?: any[]) {
 const MentionHover: React.FC<MentionHoverProps> = ({ user, username }) => {
   const [hovered, setHovered] = useState(false);
 
-  console.log("Rendering mention hover for:", username);
-  console.log("User object:", user);
-  console.log("Avatar URL:", user.avatarUrl);
-
   return (
     <span
       className="relative inline-block"
@@ -133,7 +129,6 @@ const MentionHover: React.FC<MentionHoverProps> = ({ user, username }) => {
               <p className="font-medium">
                 {user.firstName} {user.lastName}
               </p>
-              <p className="text-gray-500 text-xs">{user.username}</p>
               <p className="text-gray-500 text-xs">{user.email}</p>
             </div>
           </div>

@@ -423,6 +423,7 @@ export default function CardPageClient({
                 availableUsers={project.projectTeamMembers?.map((member) => ({
                   id: member.id,
                   username: member.teamMember?.user?.username || "",
+                  email: member.teamMember?.user?.email || "",
                   firstName: member.teamMember?.user?.firstName || "",
                   lastName: member.teamMember?.user?.lastName || "",
                   avatarUrl: member.teamMember?.user?.avatarUrl || "",

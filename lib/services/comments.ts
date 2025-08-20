@@ -24,6 +24,7 @@ type BaseComment = InferSelectModel<typeof cardComments> & {
     lastName: string | null;
     avatarUrl: string | null;
     username: string | null;
+    email: string | null;
   };
   mentions: {
     id: number;
@@ -37,6 +38,7 @@ type BaseComment = InferSelectModel<typeof cardComments> & {
       lastName: string | null;
       username: string | null;
       avatarUrl: string | null;
+      email: string | null;
     };
   }[];
 };
@@ -175,6 +177,7 @@ export async function getCardComments(
             lastName: true,
             avatarUrl: true,
             username: true,
+            email: true,
           },
         },
         mentions: {
@@ -186,6 +189,7 @@ export async function getCardComments(
                 lastName: true,
                 username: true,
                 avatarUrl: true,
+                email: true,
               },
             },
           },
@@ -196,12 +200,19 @@ export async function getCardComments(
 
     // 2. Build threaded tree
     function buildTree(parentId: number | null = null): CommentWithReplies[] {
-      return comments
+      const children = comments
         .filter((c) => c.parentId === parentId)
         .map((c) => ({
           ...c,
           replies: buildTree(c.id),
         }));
+
+      // Sort replies oldest → newest
+      if (parentId !== null) {
+        children.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+      }
+
+      return children;
     }
 
     return buildTree(null);
