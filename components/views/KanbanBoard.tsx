@@ -252,9 +252,11 @@ function DraggableCard({
         isDragging ? "cursor-grabbing" : "cursor-pointer hover:scale-[1.02]"
       }`}
     >
-      {/* Title + Labels aligned left */}
+      {/* Title + Labels */}
       <div className="mb-3">
-        <h4 className="font-medium text-gray-900 line-clamp-2">{card.title}</h4>
+        <h4 className="font-medium text-gray-900 line-clamp-2 text-left">
+          {card.title}
+        </h4>
 
         {/* Labels row */}
         {(card.labels ?? []).length > 0 && (
@@ -596,8 +598,20 @@ export default function KanbanBoard({
     );
   }
 
+  if (
+    !loading &&
+    columns.length > 0 &&
+    columns.every((col) => col.cards.length === 0)
+  ) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 text-gray-500">
+        <p className="mb-2">No tasks yet</p>
+      </div>
+    );
+  }
+
   return (
-    <div className="h-full overflow-x-auto">
+    <div className="h-full overflow-x-auto custom-scrollbar">
       {/* Refresh indicator */}
       {isRefetching && (
         <div className="absolute top-4 right-4 z-50">

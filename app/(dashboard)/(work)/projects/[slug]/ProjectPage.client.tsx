@@ -4,7 +4,7 @@ import React, { useState, lazy, Suspense, useCallback, useEffect } from "react";
 import Link from "next/link";
 import DualPanelLayout from "@/components/layout/shared/DualPanelLayout";
 import AppBreadcrumb from "@/components/shared/AppBreadcrumb";
-import { Settings, Calendar, Users, Crown } from "lucide-react";
+import { Settings, Calendar, Users, Crown, Kanban } from "lucide-react";
 import KanbanBoard from "@/components/views/KanbanBoard";
 import type { ProjectPageClientProps } from "@/types";
 import { getRoleIcon, getRoleBadgeClass, getIcon } from "@/lib/ui/icons-colors";
@@ -179,6 +179,18 @@ export default function ProjectPageClient({
           <div className="p-6 relative">
             <div className="flex items-center justify-center h-full">
               <div className="text-center w-full">
+                <div className="flex flex-col items-start pb-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Kanban className="h-6 w-6 text-gray-400" />
+                    <h3 className="text-lg font-medium text-gray-900">
+                      Kanban Board
+                    </h3>
+                  </div>
+                  <p className="text-gray-700 text-sm">
+                    Drag and drop your tasks.
+                  </p>
+                </div>
+
                 <KanbanBoard
                   projectId={project.id}
                   projectSlug={project.slug}
@@ -186,7 +198,6 @@ export default function ProjectPageClient({
                   canEditCards={canCreateCards}
                   refreshTrigger={refreshTrigger}
                   onDataChange={() => {
-                    // Optional: Handle data change notifications
                     console.log("Kanban board data updated");
                   }}
                 />

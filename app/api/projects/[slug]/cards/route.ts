@@ -18,7 +18,7 @@ const createCardSchema = z.object({
   startDate: z.string().nullable().optional(),
   status: z.string().nullable().optional(),
   position: z.number().optional(),
-  labelIds: z.array(z.string()).optional(), // Add labelIds support
+  labelIds: z.array(z.string()).optional(),
 });
 
 export async function POST(
