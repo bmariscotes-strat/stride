@@ -13,8 +13,9 @@ export interface CreateCardInput {
   priority?: Priority | null;
   startDate?: Date | null;
   dueDate?: Date | null;
-  position?: number; // Optional - will be calculated if not provided
+  position?: number;
   status?: string | null;
+  labelIds?: string[];
 }
 
 export interface UpdateCardInput {
@@ -27,7 +28,8 @@ export interface UpdateCardInput {
   dueDate?: Date | null;
   position?: number;
   status?: string | null;
-  columnId?: string; // For moving between columns
+  columnId?: string;
+  labelIds?: string[];
 }
 
 export interface MoveCardInput {
@@ -320,3 +322,96 @@ export type CardWithPartialRelations = {
   }>;
   commentsCount: number;
 };
+
+export interface Card {
+  id: string;
+  title: string;
+  description?: string | null;
+  priority?: "low" | "medium" | "high" | null;
+  dueDate?: Date | null;
+  startDate?: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+  columnId: string;
+  assigneeId?: string | null;
+  archived: boolean;
+  position: number;
+
+  // Relations
+  column?: {
+    id: string;
+    name: string;
+    projectId: string;
+    project?: {
+      id: string;
+      name: string;
+      slug: string;
+    };
+  };
+  assignee?: {
+    id: string;
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+    avatarUrl?: string;
+  };
+  labels?: Array<{
+    id: string;
+    name: string;
+    color: string;
+  }>;
+  cardLabels?: Array<{
+    labelId: string;
+    label: {
+      id: string;
+      name: string;
+      color: string;
+    };
+  }>;
+}
+
+export interface CardWithStats extends Card {
+  commentsCount?: number;
+  attachmentsCount?: number;
+  subtasksCount?: number;
+  completedSubtasksCount?: number;
+}
+
+export interface ProjectStats {
+  totalCards: number;
+  completedCards: number;
+  inProgressCards: number;
+  todoCards: number;
+  overDueCards: number;
+  cardsByPriority: {
+    low: number;
+    medium: number;
+    high: number;
+  };
+  cardsByColumn: Array<{
+    columnId: string;
+    columnName: string;
+    count: number;
+  }>;
+}
+
+export interface Label {
+  id: string;
+  name: string;
+  color: string;
+  projectId: string;
+  createdAt: Date;
+}
+
+export interface LabelWithUsage extends Label {
+  usageCount: number;
+}
+
+export interface ProjectAssignee {
+  id: string;
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  avatarUrl?: string;
+  role?: "admin" | "editor" | "viewer";
+}

@@ -114,6 +114,8 @@ export type {
   AssignProjectRoleParams,
   ProjectsListOptions,
   UserBasic,
+  ProjectPageData,
+  ProjectPageClientProps,
 } from "./forms/project";
 
 export type {

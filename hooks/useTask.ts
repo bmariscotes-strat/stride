@@ -1,4 +1,4 @@
-// hooks/useTask.ts
+// hooks/useTask.ts - Updated with enhanced functionality
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
@@ -55,6 +55,7 @@ export function useTask(cardId: string, enabled: boolean = true) {
     queryKey: taskKeys.card(cardId),
     queryFn: () => apiCall(`/api/cards/${cardId}`),
     enabled,
+    staleTime: 30000, // 30 seconds
   });
 }
 
@@ -228,13 +229,19 @@ export function useUpdateTask() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (input: UpdateCardInput & { cardId: string }) => {
+    mutationFn: async (input: UpdateCardInput & { cardId: string }) => {
       const payload = {
         ...input,
-        dueDate: input.dueDate ? input.dueDate.toISOString() : input.dueDate,
+        dueDate: input.dueDate
+          ? input.dueDate.toISOString()
+          : input.dueDate === null
+            ? null
+            : undefined,
         startDate: input.startDate
           ? input.startDate.toISOString()
-          : input.startDate,
+          : input.startDate === null
+            ? null
+            : undefined,
       };
 
       return apiCall(`/api/cards/${input.cardId}`, {
@@ -242,17 +249,25 @@ export function useUpdateTask() {
         body: JSON.stringify(payload),
       });
     },
-    onSuccess: (updatedCard) => {
+    onSuccess: (updatedCard, variables) => {
       // Update the specific card cache
-      queryClient.setQueryData(taskKeys.card(updatedCard.id), updatedCard);
+      queryClient.setQueryData(taskKeys.card(variables.cardId), updatedCard);
 
       // Invalidate related queries
-      queryClient.invalidateQueries({
-        queryKey: taskKeys.columns(updatedCard.columnId),
-      });
-      queryClient.invalidateQueries({
-        queryKey: taskKeys.projects(updatedCard.column.projectId),
-      });
+      if (updatedCard.columnId) {
+        queryClient.invalidateQueries({
+          queryKey: taskKeys.columns(updatedCard.columnId),
+        });
+      }
+
+      if (updatedCard.column?.projectId) {
+        queryClient.invalidateQueries({
+          queryKey: taskKeys.projects(updatedCard.column.projectId),
+        });
+        queryClient.invalidateQueries({
+          queryKey: taskKeys.stats(updatedCard.column.projectId),
+        });
+      }
 
       if (updatedCard.assigneeId) {
         queryClient.invalidateQueries({

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import {
   DndContext,
   DragEndEvent,
@@ -53,17 +54,31 @@ interface KanbanBoardProps {
 }
 
 // Draggable Card Component
-function DraggableCard({ card }: { card: Card }) {
+function DraggableCard({
+  card,
+  projectSlug,
+}: {
+  card: Card;
+  projectSlug: string;
+}) {
+  const router = useRouter();
+  const [isDragging, setIsDragging] = useState(false);
+
   const {
     attributes,
     listeners,
     setNodeRef,
     transform,
     transition,
-    isDragging,
+    isDragging: dndIsDragging,
   } = useSortable({
     id: card.id,
   });
+
+  // Update local dragging state
+  React.useEffect(() => {
+    setIsDragging(dndIsDragging);
+  }, [dndIsDragging]);
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -92,13 +107,48 @@ function DraggableCard({ card }: { card: Card }) {
     }
   };
 
+  // Handle card click - navigate to card detail page
+  const handleCardClick = (e: React.MouseEvent) => {
+    // Don't navigate if we're in the middle of dragging
+    if (isDragging) {
+      return;
+    }
+
+    // Prevent navigation during drag operations
+    e.preventDefault();
+    e.stopPropagation();
+
+    // Navigate to the card detail page
+    router.push(`/projects/${projectSlug}/cards/${card.id}`);
+  };
+
+  // Separate drag handlers to prevent conflicts with click
+  const dragHandlers = {
+    ...attributes,
+    ...listeners,
+    onMouseDown: (e: React.MouseEvent) => {
+      // Call the original drag handler
+      if (listeners?.onMouseDown) {
+        listeners.onMouseDown(e as any);
+      }
+    },
+    onTouchStart: (e: React.TouchEvent) => {
+      // Call the original drag handler
+      if (listeners?.onTouchStart) {
+        listeners.onTouchStart(e as any);
+      }
+    },
+  };
+
   return (
     <div
       ref={setNodeRef}
       style={style}
-      {...attributes}
-      {...listeners}
-      className={`p-3 mb-3 rounded-lg border-l-4 shadow-sm cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow ${getPriorityColor(card.priority)}`}
+      {...dragHandlers}
+      onClick={handleCardClick}
+      className={`p-3 mb-3 rounded-lg border-l-4 shadow-sm cursor-pointer hover:shadow-md transition-all duration-200 ${getPriorityColor(card.priority)} ${
+        isDragging ? "cursor-grabbing" : "cursor-pointer hover:scale-[1.02]"
+      }`}
     >
       <h4 className="font-medium text-gray-900 mb-2 line-clamp-2">
         {card.title}
@@ -205,16 +255,16 @@ export default function KanbanBoard({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Configure sensors for drag and drop
+  // Configure sensors for drag and drop with adjusted activation constraints
   const sensors = useSensors(
     useSensor(MouseSensor, {
       activationConstraint: {
-        distance: 8,
+        distance: 8, // Require 8px movement before drag starts
       },
     }),
     useSensor(TouchSensor, {
       activationConstraint: {
-        delay: 200,
+        delay: 200, // 200ms delay before drag starts on touch
         tolerance: 5,
       },
     })
@@ -448,14 +498,20 @@ export default function KanbanBoard({
           {columns.map((column) => (
             <DroppableColumn key={column.id} column={column}>
               {column.cards.map((card) => (
-                <DraggableCard key={card.id} card={card} />
+                <DraggableCard
+                  key={card.id}
+                  card={card}
+                  projectSlug={projectSlug}
+                />
               ))}
             </DroppableColumn>
           ))}
         </div>
 
         <DragOverlay>
-          {activeCard && <DraggableCard card={activeCard} />}
+          {activeCard && (
+            <DraggableCard card={activeCard} projectSlug={projectSlug} />
+          )}
         </DragOverlay>
       </DndContext>
     </div>

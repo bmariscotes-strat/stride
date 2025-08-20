@@ -1,3 +1,4 @@
+// app\api\projects\[slug]\columns\route.ts
 import { db } from "@/lib/db/db";
 import { columns } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";

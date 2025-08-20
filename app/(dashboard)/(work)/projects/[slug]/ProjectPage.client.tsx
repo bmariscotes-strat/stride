@@ -16,66 +16,12 @@ import {
   Eye,
 } from "lucide-react";
 import KanbanBoard from "@/components/views/KanbanBoard";
+import type { ProjectPageClientProps } from "@/types";
 
 // Lazy load the CreateTaskDialog to avoid importing database code on initial load
 const CreateTaskDialog = lazy(
   () => import("@/components/tasks/CreateTaskDialog")
 );
-
-// Define interfaces locally to avoid import issues
-interface ProjectPageData {
-  id: string;
-  name: string;
-  slug: string;
-  description?: string;
-  ownerId: string;
-  createdAt: string;
-  owner?: {
-    firstName?: string;
-    lastName?: string;
-  };
-  teams?: Array<{
-    id: string;
-    name: string;
-    slug: string;
-    role?: "admin" | "editor" | "viewer";
-  }>;
-  projectTeamMembers?: Array<{
-    id: string;
-    role: "admin" | "editor" | "viewer";
-    teamMember?: {
-      user?: {
-        id: string;
-        firstName?: string;
-        lastName?: string;
-        email?: string;
-        avatarUrl?: string;
-      };
-    };
-  }>;
-  columns?: Array<{
-    id: string;
-    name: string;
-    position: number;
-  }>;
-}
-
-interface ProjectPageClientProps {
-  project: ProjectPageData;
-  userId: string;
-  canCreateCards: boolean;
-  canEditProject: boolean;
-  canManageTeams: boolean;
-  showSettings: boolean;
-  isProjectOwner: boolean;
-  defaultColumnId?: string;
-  views: Array<{
-    id: string;
-    label: string;
-    icon: string;
-    isActive: boolean;
-  }>;
-}
 
 export default function ProjectPageClient({
   project,
