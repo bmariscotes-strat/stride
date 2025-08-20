@@ -9,33 +9,7 @@ import {
   getCardComments,
 } from "@/lib/services/comments";
 import { toast } from "sonner";
-
-export interface Comment {
-  id: number;
-  cardId: string;
-  userId: string;
-  content: string;
-  parentId?: number;
-  createdAt: string;
-  updatedAt: string;
-  user: {
-    id: string;
-    firstName: string;
-    lastName: string;
-    avatarUrl?: string;
-    username: string;
-  };
-  replies?: Comment[];
-  mentions?: Array<{
-    id: number;
-    mentionedUser: {
-      id: string;
-      firstName: string;
-      lastName: string;
-      username: string;
-    };
-  }>;
-}
+import { Comment } from "@/types/forms/comment";
 
 export interface CreateCommentData {
   cardId: string;

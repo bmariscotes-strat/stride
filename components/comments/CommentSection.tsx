@@ -38,24 +38,17 @@ import {
   useCreateComment,
   useUpdateComment,
   useDeleteComment,
-  type Comment,
 } from "@/hooks/useComments";
-
-interface CommentSectionProps {
-  cardId: string;
-  userId: string;
-  availableUsers?: Array<{
-    id: string;
-    username: string;
-    firstName: string;
-    lastName: string;
-    avatarUrl: string;
-  }>;
-}
+import {
+  CommentSectionProps,
+  MentionHoverProps,
+  CommentItemProps,
+  EditCommentDialogProps,
+  DeleteCommentDialogProps,
+} from "@/types/forms/comment";
 
 function renderContentWithMentions(content: string, mentions?: any[]) {
   if (!mentions || mentions.length === 0) {
-    // Use div instead of p to avoid nested <p> issues
     return <div className="whitespace-pre-wrap">{content}</div>;
   }
 
@@ -109,18 +102,6 @@ function renderContentWithMentions(content: string, mentions?: any[]) {
   return <div className="whitespace-pre-wrap">{parts}</div>;
 }
 
-// --- Hover component for mentions ---
-interface MentionHoverProps {
-  user: {
-    avatarUrl?: string;
-    firstName: string;
-    lastName: string;
-    email: string;
-    username: string;
-  };
-  username: string;
-}
-
 const MentionHover: React.FC<MentionHoverProps> = ({ user, username }) => {
   const [hovered, setHovered] = useState(false);
 
@@ -162,25 +143,6 @@ const MentionHover: React.FC<MentionHoverProps> = ({ user, username }) => {
   );
 };
 
-interface CommentItemProps {
-  comment: Comment;
-  userId: string;
-  onReply: (commentId: string) => void; // Changed from number to string
-  level?: number;
-}
-
-interface EditCommentDialogProps {
-  isOpen: boolean;
-  onClose: () => void;
-  comment: Comment;
-}
-
-interface DeleteCommentDialogProps {
-  isOpen: boolean;
-  onClose: () => void;
-  comment: Comment;
-}
-
 function EditCommentDialog({
   isOpen,
   onClose,
@@ -201,7 +163,6 @@ function EditCommentDialog({
       });
       onClose();
     } catch (error) {
-      // Error is handled by the hook
     } finally {
       setIsSubmitting(false);
     }
@@ -252,10 +213,9 @@ function DeleteCommentDialog({
   const handleDelete = async () => {
     setIsDeleting(true);
     try {
-      await deleteCommentMutation.mutateAsync(comment.id.toString()); // Convert to string
+      await deleteCommentMutation.mutateAsync(comment.id.toString());
       onClose();
     } catch (error) {
-      // Error is handled by the hook
     } finally {
       setIsDeleting(false);
     }
@@ -506,7 +466,6 @@ function CommentForm({
       setContent("");
       if (onCancel) onCancel();
     } catch (error) {
-      // Error is handled by the hook
     } finally {
       setIsSubmitting(false);
     }
