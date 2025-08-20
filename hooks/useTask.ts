@@ -306,8 +306,6 @@ export function useMoveTask() {
       queryClient.invalidateQueries({
         queryKey: taskKeys.projects(movedCard.column.projectId),
       });
-
-      // Don't show toast for moves as they happen frequently during drag & drop
     },
     onError: (error: Error) => {
       toast.error(error.message || "Failed to move task");

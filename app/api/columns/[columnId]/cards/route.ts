@@ -1,6 +1,5 @@
-// app\api\columns\[columnId]\cards\route.ts
 import { db } from "@/lib/db/db";
-import { cards } from "@/lib/db/schema";
+import { cards, cardLabels, labels, users } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -13,25 +12,46 @@ export async function GET(
     const { searchParams } = new URL(request.url);
     const includeArchived = searchParams.get("includeArchived") === "true";
 
-    // Get cards for this column
-    const columnCards = await db.query.cards.findMany({
-      where: includeArchived
-        ? eq(cards.columnId, columnId)
-        : and(eq(cards.columnId, columnId), eq(cards.isArchived, false)),
-      orderBy: (cards, { asc }) => [asc(cards.position)],
-      with: {
-        assignee: {
-          columns: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            avatarUrl: true,
-          },
-        },
-      },
-    });
+    const columnCards = await db
+      .select({
+        card: cards,
+        label: labels,
+        assignee: users,
+      })
+      .from(cards)
+      .leftJoin(cardLabels, eq(cards.id, cardLabels.cardId))
+      .leftJoin(labels, eq(cardLabels.labelId, labels.id))
+      .leftJoin(users, eq(cards.assigneeId, users.id))
+      .where(
+        includeArchived
+          ? eq(cards.columnId, columnId)
+          : and(eq(cards.columnId, columnId), eq(cards.isArchived, false))
+      )
+      .orderBy(cards.position);
 
-    return NextResponse.json(columnCards);
+    // Transform: group labels under each card
+    const grouped = columnCards.reduce(
+      (acc, row) => {
+        const cardId = row.card.id;
+
+        if (!acc[cardId]) {
+          acc[cardId] = {
+            ...row.card,
+            labels: [],
+            assignee: row.assignee || null, // 👈 keep assignee data
+          };
+        }
+
+        if (row.label) {
+          acc[cardId].labels.push(row.label);
+        }
+
+        return acc;
+      },
+      {} as Record<string, any>
+    );
+
+    return NextResponse.json(Object.values(grouped));
   } catch (error) {
     console.error("Error fetching column cards:", error);
     return NextResponse.json(

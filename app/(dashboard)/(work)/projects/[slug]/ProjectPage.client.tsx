@@ -4,19 +4,10 @@ import React, { useState, lazy, Suspense, useCallback, useEffect } from "react";
 import Link from "next/link";
 import DualPanelLayout from "@/components/layout/shared/DualPanelLayout";
 import AppBreadcrumb from "@/components/shared/AppBreadcrumb";
-import {
-  Settings,
-  Calendar,
-  Users,
-  Kanban,
-  List,
-  Table,
-  Crown,
-  Shield,
-  Eye,
-} from "lucide-react";
+import { Settings, Calendar, Users, Crown } from "lucide-react";
 import KanbanBoard from "@/components/views/KanbanBoard";
 import type { ProjectPageClientProps } from "@/types";
+import { getRoleIcon, getRoleBadgeClass, getIcon } from "@/lib/ui/icons-colors";
 
 // Lazy load the CreateTaskDialog
 const CreateTaskDialog = lazy(
@@ -66,45 +57,6 @@ export default function ProjectPageClient({
     },
     [triggerRefresh]
   );
-
-  const getRoleIcon = (role: "admin" | "editor" | "viewer") => {
-    switch (role) {
-      case "admin":
-        return <Crown size={12} className="text-yellow-600" />;
-      case "editor":
-        return <Shield size={12} className="text-blue-600" />;
-      case "viewer":
-        return <Eye size={12} className="text-gray-500" />;
-      default:
-        return null;
-    }
-  };
-
-  const getRoleBadgeClass = (role: "admin" | "editor" | "viewer") => {
-    switch (role) {
-      case "admin":
-        return "bg-yellow-100 text-yellow-800";
-      case "editor":
-        return "bg-blue-100 text-blue-800";
-      case "viewer":
-        return "bg-gray-100 text-gray-800";
-      default:
-        return "bg-gray-100 text-gray-800";
-    }
-  };
-
-  const getIcon = (iconName: string) => {
-    switch (iconName) {
-      case "Kanban":
-        return Kanban;
-      case "List":
-        return List;
-      case "Table":
-        return Table;
-      default:
-        return Kanban;
-    }
-  };
 
   return (
     <>

@@ -18,23 +18,8 @@ import {
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { User, Calendar, RefreshCw } from "lucide-react";
-
-interface Card {
-  id: string;
-  columnId: string;
-  title: string;
-  description: string | null;
-  assigneeId: string | null;
-  priority: "high" | "medium" | "low" | null;
-  dueDate: Date | null;
-  position: number;
-  assignee?: {
-    id: string;
-    firstName: string;
-    lastName: string;
-    avatarUrl: string | null;
-  } | null;
-}
+import { Card } from "@/types/forms/tasks";
+import { MIN_FETCH_INTERVAL } from "@/lib/constants/limits";
 
 interface Column {
   id: string;
@@ -50,9 +35,8 @@ interface KanbanBoardProps {
   projectSlug: string;
   userId: string;
   canEditCards?: boolean;
-  // New props for refetching control
-  onDataChange?: () => void; // Callback to notify parent of data changes
-  refreshTrigger?: number; // External trigger to force refresh
+  onDataChange?: () => void;
+  refreshTrigger?: number;
 }
 
 // Custom hook for managing refetch logic
@@ -63,9 +47,6 @@ function useKanbanRefetch(projectSlug: string, onDataChange?: () => void) {
   const [isRefetching, setIsRefetching] = useState(false);
   const lastFetchTime = useRef<number>(0);
   const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  // Minimum time between fetches to prevent excessive API calls
-  const MIN_FETCH_INTERVAL = 1000; // 1 second
 
   const fetchKanbanData = useCallback(
     async (showLoader = true) => {
@@ -88,7 +69,6 @@ function useKanbanRefetch(projectSlug: string, onDataChange?: () => void) {
         const columnsResponse = await fetch(
           `/api/projects/${projectSlug}/columns`,
           {
-            // Add cache control to ensure fresh data
             headers: {
               "Cache-Control": "no-cache",
             },
@@ -256,6 +236,12 @@ function DraggableCard({
     },
   };
 
+  console.log("[Card Debug]", {
+    id: card.id,
+    title: card.title,
+    labels: card.labels,
+  });
+
   return (
     <div
       ref={setNodeRef}
@@ -266,16 +252,30 @@ function DraggableCard({
         isDragging ? "cursor-grabbing" : "cursor-pointer hover:scale-[1.02]"
       }`}
     >
-      <h4 className="font-medium text-gray-900 mb-2 line-clamp-2">
-        {card.title}
-      </h4>
+      {/* Title + Labels aligned left */}
+      <div className="mb-3">
+        <h4 className="font-medium text-gray-900 line-clamp-2">{card.title}</h4>
 
-      {card.description && (
-        <p className="text-sm text-gray-600 mb-3 line-clamp-2">
-          {card.description}
-        </p>
-      )}
+        {/* Labels row */}
+        {(card.labels ?? []).length > 0 && (
+          <div className="flex flex-wrap gap-1 mt-1">
+            {(card.labels ?? []).map((label) => (
+              <span
+                key={label.id}
+                className="px-2 py-0.5 text-xs rounded-full font-medium"
+                style={{
+                  backgroundColor: label.color + "20",
+                  color: label.color,
+                }}
+              >
+                {label.name}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
 
+      {/* Footer: Assignee + Due Date */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-2">
           {card.assignee && (
