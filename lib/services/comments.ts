@@ -173,6 +173,7 @@ export async function getCardComments(cardId: string) {
                 firstName: true,
                 lastName: true,
                 username: true,
+                avatarUrl: true,
               },
             },
           },

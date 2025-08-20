@@ -425,6 +425,7 @@ export default function CardPageClient({
                   username: member.teamMember?.user?.username || "",
                   firstName: member.teamMember?.user?.firstName || "",
                   lastName: member.teamMember?.user?.lastName || "",
+                  avatarUrl: member.teamMember?.user?.avatarUrl || "",
                 }))}
               />
             </div>

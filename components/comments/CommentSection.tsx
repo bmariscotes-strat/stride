@@ -49,16 +49,16 @@ interface CommentSectionProps {
     username: string;
     firstName: string;
     lastName: string;
+    avatarUrl: string;
   }>;
 }
 
-// Helper function to render content with mentions
 function renderContentWithMentions(content: string, mentions?: any[]) {
   if (!mentions || mentions.length === 0) {
-    return <span className="whitespace-pre-wrap">{content}</span>;
+    // Use div instead of p to avoid nested <p> issues
+    return <div className="whitespace-pre-wrap">{content}</div>;
   }
 
-  // Create a regex to match @username patterns
   const mentionRegex = /@(\w+)/g;
   const parts = [];
   let lastIndex = 0;
@@ -78,24 +78,22 @@ function renderContentWithMentions(content: string, mentions?: any[]) {
       );
     }
 
-    // Find if this username corresponds to an actual mention
+    // Find mention data
     const mentionData = mentions.find(
       (m) => m.mentionedUser.username === username
     );
 
     if (mentionData) {
-      // Render as interactive mention
+      const user = mentionData.mentionedUser;
       parts.push(
-        <span
+        <MentionHover
           key={`mention-${matchStart}`}
-          className="bg-blue-100 text-blue-800 px-1 py-0.5 rounded text-sm font-medium cursor-pointer hover:bg-blue-200 transition-colors"
-          title={`${mentionData.mentionedUser.firstName} ${mentionData.mentionedUser.lastName}`}
-        >
-          @{username}
-        </span>
+          user={user}
+          username={username}
+        />
       );
     } else {
-      // Render as plain text if not a valid mention
+      // Render as plain text if no match
       parts.push(<span key={`text-mention-${matchStart}`}>@{username}</span>);
     }
 
@@ -107,8 +105,62 @@ function renderContentWithMentions(content: string, mentions?: any[]) {
     parts.push(<span key={`text-final`}>{content.slice(lastIndex)}</span>);
   }
 
-  return <span className="whitespace-pre-wrap">{parts}</span>;
+  // Wrap everything in a div to avoid <p> nesting issues
+  return <div className="whitespace-pre-wrap">{parts}</div>;
 }
+
+// --- Hover component for mentions ---
+interface MentionHoverProps {
+  user: {
+    avatarUrl?: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    username: string;
+  };
+  username: string;
+}
+
+const MentionHover: React.FC<MentionHoverProps> = ({ user, username }) => {
+  const [hovered, setHovered] = useState(false);
+
+  console.log("Rendering mention hover for:", username);
+  console.log("User object:", user);
+  console.log("Avatar URL:", user.avatarUrl);
+
+  return (
+    <span
+      className="relative inline-block"
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      <span className="bg-blue-100 text-blue-800 px-1 py-0.5 rounded text-sm font-medium cursor-pointer hover:bg-blue-200 transition-colors">
+        @{username}
+      </span>
+
+      {hovered && (
+        <div className="absolute z-10 left-1/2 transform -translate-x-1/2 mt-2 w-64 p-3 bg-white border border-gray-200 rounded-lg shadow-lg text-sm text-gray-700">
+          <div className="flex items-center gap-2">
+            {user.avatarUrl && (
+              <img
+                src={user.avatarUrl}
+                alt={`${user.firstName} ${user.lastName}`}
+                className="w-8 h-8 rounded-full"
+              />
+            )}
+            <div>
+              <p className="font-medium">
+                {user.firstName} {user.lastName}
+              </p>
+              <p className="text-gray-500 text-xs">{user.username}</p>
+              <p className="text-gray-500 text-xs">{user.email}</p>
+            </div>
+          </div>
+        </div>
+      )}
+    </span>
+  );
+};
 
 interface CommentItemProps {
   comment: Comment;
@@ -388,6 +440,7 @@ function CommentForm({
     username: string;
     firstName: string;
     lastName: string;
+    avatarUrl: string;
   }>;
 }) {
   const [content, setContent] = useState("");
@@ -428,6 +481,7 @@ function CommentForm({
     username: string;
     firstName: string;
     lastName: string;
+    avatarUrl: string;
   }) => {
     const beforeMention = content.slice(0, mentionPosition);
     const afterMention = content.slice(
@@ -546,12 +600,11 @@ export default function CommentSection({
   availableUsers,
 }: CommentSectionProps) {
   const [showNewComment, setShowNewComment] = useState(false);
-  const [replyingTo, setReplyingTo] = useState<string | null>(null); // Changed from number to string
+  const [replyingTo, setReplyingTo] = useState<string | null>(null);
 
   const { data: comments, isLoading, error } = useComments(cardId);
 
   const handleReply = (commentId: string) => {
-    // Changed from number to string
     setReplyingTo(commentId);
     setShowNewComment(false);
   };
