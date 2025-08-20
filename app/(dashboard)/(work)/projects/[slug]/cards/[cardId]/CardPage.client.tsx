@@ -58,7 +58,7 @@ export default function CardPageClient({
   const getPriorityConfig = (priority: string) => {
     return (
       PRIORITY_OPTIONS.find((p) => p.value === priority) || PRIORITY_OPTIONS[1]
-    ); // Default to medium
+    );
   };
 
   const handleDelete = async () => {
@@ -113,8 +113,6 @@ export default function CardPageClient({
       <DualPanelLayout
         left={
           <>
-            <AppBreadcrumb />
-
             <div className="flex items-start justify-between mb-4">
               <div className="flex-1">
                 <h2 className="font-bold text-xl text-gray-900 mb-2">
