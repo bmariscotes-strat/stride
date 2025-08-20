@@ -95,7 +95,7 @@ const TiptapEditor: React.FC<{
       Italic,
       BulletList.configure({
         HTMLAttributes: {
-          class: "list-disc list-inside",
+          class: "tiptap-bullet-list",
         },
       }),
       ListItem,
@@ -112,9 +112,9 @@ const TiptapEditor: React.FC<{
   }
 
   return (
-    <div className="border rounded-md">
+    <div className="tiptap-editor-container">
       {/* Toolbar */}
-      <div className="flex items-center gap-1 p-2 border-b bg-muted/30">
+      <div className="tiptap-toolbar">
         <Button
           type="button"
           variant="ghost"
@@ -140,13 +140,28 @@ const TiptapEditor: React.FC<{
           onClick={() => editor.chain().focus().toggleBulletList().run()}
           className={editor.isActive("bulletList") ? "bg-muted" : ""}
         >
-          •
+          {/* Better bullet list icon */}
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+            className="w-4 h-4"
+          >
+            <circle cx="6" cy="12" r="2" fill="currentColor" />
+            <path d="M12 11h8v2h-8z" fill="currentColor" />
+            <circle cx="6" cy="6" r="2" fill="currentColor" />
+            <path d="M12 5h8v2h-8z" fill="currentColor" />
+            <circle cx="6" cy="18" r="2" fill="currentColor" />
+            <path d="M12 17h8v2h-8z" fill="currentColor" />
+          </svg>
         </Button>
       </div>
 
       {/* Editor Content */}
-      <div className="p-3 min-h-[120px] max-h-[200px] overflow-y-auto">
-        <EditorContent editor={editor} />
+      <div className="tiptap-content-wrapper">
+        <EditorContent editor={editor} className="tiptap-editor-content" />
       </div>
     </div>
   );
@@ -157,7 +172,7 @@ export default function CreateTaskDialog({
   onOpenChange,
   columnId,
   projectId,
-  userId, // Accept userId prop
+  userId,
   onSuccess,
 }: CreateTaskDialogProps) {
   const [assigneeOpen, setAssigneeOpen] = useState(false);
@@ -278,7 +293,7 @@ export default function CreateTaskDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Create New Task</DialogTitle>
         </DialogHeader>
@@ -293,7 +308,11 @@ export default function CreateTaskDialog({
                 <FormItem>
                   <FormLabel>Title *</FormLabel>
                   <FormControl>
-                    <Input placeholder="Enter task title..." {...field} />
+                    <Input
+                      placeholder="Enter task title..."
+                      {...field}
+                      className="border-gray-300 px-3 py-2 border"
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -335,7 +354,7 @@ export default function CreateTaskDialog({
                           <SelectValue placeholder="Select priority" />
                         </SelectTrigger>
                       </FormControl>
-                      <SelectContent>
+                      <SelectContent className="border-gray-400">
                         {PRIORITY_OPTIONS.map((option) => (
                           <SelectItem key={option.value} value={option.value}>
                             <div className="flex items-center gap-2">
@@ -366,7 +385,7 @@ export default function CreateTaskDialog({
                           <Button
                             variant="outline"
                             role="combobox"
-                            className="w-full justify-between"
+                            className="w-full justify-between border-gray-300 px-3 py-2 border"
                           >
                             {field.value
                               ? assignees.find(
@@ -441,11 +460,11 @@ export default function CreateTaskDialog({
                         <Button
                           variant="outline"
                           className={cn(
-                            "w-full justify-start text-left font-normal",
+                            "w-full justify-start text-left font-normal border-gray-300 px-3 py-2 border",
                             !field.value && "text-muted-foreground"
                           )}
                         >
-                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          <CalendarIcon className="mr-2 h-4 w-4 " />
                           {field.value ? (
                             format(field.value, "PPP")
                           ) : (
@@ -454,7 +473,10 @@ export default function CreateTaskDialog({
                         </Button>
                       </FormControl>
                     </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
+                    <PopoverContent
+                      className="w-auto p-0 border-gray-400 px-3 py-2 border"
+                      align="start"
+                    >
                       <Calendar
                         mode="single"
                         selected={field.value}
@@ -506,13 +528,16 @@ export default function CreateTaskDialog({
                       <PopoverTrigger asChild>
                         <Button
                           variant="outline"
-                          className="w-full justify-start"
+                          className="w-full justify-start border-gray-300 px-3 py-2 border"
                         >
                           <Plus className="mr-2 h-4 w-4" />
                           Add labels...
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent className="w-full p-0" align="start">
+                      <PopoverContent
+                        className="w-full p-0 border-gray-400 px-3 py-2 border"
+                        align="start"
+                      >
                         <Command>
                           <CommandInput
                             placeholder="Search or create labels..."

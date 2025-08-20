@@ -99,7 +99,7 @@ const TiptapEditor: React.FC<{
       Italic,
       BulletList.configure({
         HTMLAttributes: {
-          class: "list-disc list-inside",
+          class: "tiptap-bullet-list",
         },
       }),
       ListItem,
@@ -122,9 +122,9 @@ const TiptapEditor: React.FC<{
   }
 
   return (
-    <div className="border rounded-md">
+    <div className="tiptap-editor-container">
       {/* Toolbar */}
-      <div className="flex items-center gap-1 p-2 border-b bg-muted/30">
+      <div className="tiptap-toolbar">
         <Button
           type="button"
           variant="ghost"
@@ -150,13 +150,28 @@ const TiptapEditor: React.FC<{
           onClick={() => editor.chain().focus().toggleBulletList().run()}
           className={editor.isActive("bulletList") ? "bg-muted" : ""}
         >
-          •
+          {/* Better bullet list icon */}
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+            className="w-4 h-4"
+          >
+            <circle cx="6" cy="12" r="2" fill="currentColor" />
+            <path d="M12 11h8v2h-8z" fill="currentColor" />
+            <circle cx="6" cy="6" r="2" fill="currentColor" />
+            <path d="M12 5h8v2h-8z" fill="currentColor" />
+            <circle cx="6" cy="18" r="2" fill="currentColor" />
+            <path d="M12 17h8v2h-8z" fill="currentColor" />
+          </svg>
         </Button>
       </div>
 
       {/* Editor Content */}
-      <div className="p-3 min-h-[120px] max-h-[200px] overflow-y-auto">
-        <EditorContent editor={editor} />
+      <div className="tiptap-content-wrapper">
+        <EditorContent editor={editor} className="tiptap-editor-content" />
       </div>
     </div>
   );
@@ -290,7 +305,7 @@ export default function EditTaskDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto custom-scrollbar">
         <DialogHeader>
           <DialogTitle>Edit Task</DialogTitle>
         </DialogHeader>
@@ -305,7 +320,11 @@ export default function EditTaskDialog({
                 <FormItem>
                   <FormLabel>Title *</FormLabel>
                   <FormControl>
-                    <Input placeholder="Enter task title..." {...field} />
+                    <Input
+                      placeholder="Enter task title..."
+                      {...field}
+                      className="border-gray-300 px-3 py-2 border"
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -340,14 +359,45 @@ export default function EditTaskDialog({
                     <FormLabel>Status *</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
-                        <SelectTrigger>
+                        <SelectTrigger className="border-gray-300 px-3 py-2 border">
                           <SelectValue placeholder="Select status" />
                         </SelectTrigger>
                       </FormControl>
-                      <SelectContent>
+                      <SelectContent className="border-gray-400">
                         {columns.map((column) => (
                           <SelectItem key={column.id} value={column.id}>
                             {column.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Priority */}
+              <FormField
+                control={form.control}
+                name="priority"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Priority</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger className="border-gray-300 px-3 py-2 border">
+                          <SelectValue placeholder="Select priority" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent className="border-gray-400">
+                        {PRIORITY_OPTIONS.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            <div className="flex items-center gap-2">
+                              <div
+                                className={`w-2 h-2 rounded-full ${option.color.split(" ")[0]}`}
+                              />
+                              {option.label}
+                            </div>
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -372,7 +422,7 @@ export default function EditTaskDialog({
                           <Button
                             variant="outline"
                             role="combobox"
-                            className="w-full justify-between"
+                            className="w-full justify-between border-gray-300 px-3 py-2 border"
                           >
                             {field.value
                               ? assignees.find(
@@ -446,7 +496,7 @@ export default function EditTaskDialog({
                           <Button
                             variant="outline"
                             className={cn(
-                              "w-full justify-start text-left font-normal",
+                              "w-full justify-start text-left font-normal border-gray-300 px-3 py-2 border",
                               !field.value && "text-muted-foreground"
                             )}
                           >
@@ -459,7 +509,10 @@ export default function EditTaskDialog({
                           </Button>
                         </FormControl>
                       </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
+                      <PopoverContent
+                        className="w-auto p-0 border-gray-400 px-3 py-2 border"
+                        align="start"
+                      >
                         <Calendar
                           mode="single"
                           selected={field.value}
@@ -487,7 +540,7 @@ export default function EditTaskDialog({
                         <Button
                           variant="outline"
                           className={cn(
-                            "w-full justify-start text-left font-normal",
+                            "w-full justify-start text-left font-normal border-gray-300 px-3 py-2 border",
                             !field.value && "text-muted-foreground"
                           )}
                         >
@@ -500,7 +553,10 @@ export default function EditTaskDialog({
                         </Button>
                       </FormControl>
                     </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
+                    <PopoverContent
+                      className="w-auto p-0 border-gray-400 px-3 py-2 border"
+                      align="start"
+                    >
                       <Calendar
                         mode="single"
                         selected={field.value}
@@ -524,49 +580,45 @@ export default function EditTaskDialog({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Labels</FormLabel>
-                  <div className="space-y-3">
-                    {/* Current Selected Labels */}
-                    {selectedLabels.map((label: any) => (
-                      <Badge
-                        key={label.id}
-                        variant="secondary"
-                        style={{
-                          backgroundColor: label.color + "20",
-                          color: label.color,
-                          borderColor: label.color + "40",
-                        }}
-                        className="flex items-center gap-1 border"
-                      >
-                        {label.name}
-                        <button
-                          type="button"
-                          className="ml-1 inline-flex items-center justify-center w-4 h-4 rounded-full hover:bg-black/10 focus:outline-none focus:ring-1 focus:ring-black/20"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            removeLabel(label.id);
-                          }}
-                          aria-label={`Remove ${label.name} label`}
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
-                      </Badge>
-                    ))}
-                    {/* Add Labels Button */}
+                  <div className="space-y-2">
+                    {/* Selected Labels */}
+                    {selectedLabels.length > 0 && (
+                      <div className="flex flex-wrap gap-2">
+                        {selectedLabels.map((label: any) => (
+                          <Badge
+                            key={label.id}
+                            variant="secondary"
+                            style={{
+                              backgroundColor: label.color + "20",
+                              color: label.color,
+                            }}
+                            className="flex items-center gap-1"
+                          >
+                            {label.name}
+                            <X
+                              className="w-3 h-3 cursor-pointer"
+                              onClick={() => removeLabel(label.id)}
+                            />
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+
                     <Popover open={labelOpen} onOpenChange={setLabelOpen}>
                       <PopoverTrigger asChild>
                         <Button
                           variant="outline"
-                          className="w-full justify-start"
+                          className="w-full justify-start border-gray-300 px-3 py-2 border"
                           type="button"
                         >
                           <Plus className="mr-2 h-4 w-4" />
-                          {selectedLabels.length > 0
-                            ? "Add more labels..."
-                            : "Add labels..."}
+                          Add labels...
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent className="w-full p-0" align="start">
+                      <PopoverContent
+                        className="w-full p-0 border-gray-400 px-3 py-2 border"
+                        align="start"
+                      >
                         <Command>
                           <CommandInput
                             placeholder="Search or create labels..."
@@ -639,6 +691,7 @@ export default function EditTaskDialog({
                 type="button"
                 variant="outline"
                 onClick={() => onOpenChange(false)}
+                className="border-gray-400"
               >
                 Cancel
               </Button>
