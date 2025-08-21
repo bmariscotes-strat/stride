@@ -17,7 +17,7 @@ import "react-big-calendar/lib/css/react-big-calendar.css";
 import "react-big-calendar/lib/addons/dragAndDrop/styles.css";
 
 const localizer = momentLocalizer(moment);
-const DragAndDropCalendar = withDragAndDrop(Calendar);
+const DragAndDropCalendar = withDragAndDrop<CalendarEvent, object>(Calendar);
 
 interface CalendarViewProps {
   projectId: string;
@@ -401,27 +401,26 @@ export default function CalendarView({
   }, [events, bulkActions.selectedCards, manualRefresh]);
 
   const handleSelectEvent = useCallback(
-    (event: CalendarEvent, e: React.MouseEvent<Element>) => {
-      if (e.ctrlKey || e.metaKey) {
-        // Multi-select
+    (event: CalendarEvent, e?: unknown) => {
+      const native = (e as React.SyntheticEvent)?.nativeEvent as
+        | MouseEvent
+        | undefined;
+      const isCtrlOrMeta = native?.ctrlKey || native?.metaKey;
+
+      if (isCtrlOrMeta) {
         setBulkActions((prev) => {
           const newSelected = new Set(prev.selectedCards);
-          if (newSelected.has(event.id)) {
-            newSelected.delete(event.id);
-          } else {
-            newSelected.add(event.id);
-          }
+          if (newSelected.has(event.id)) newSelected.delete(event.id);
+          else newSelected.add(event.id);
           return {
             selectedCards: newSelected,
             isVisible: newSelected.size > 0,
           };
         });
       } else if (bulkActions.selectedCards.size > 0) {
-        // Clear selection and navigate
         setBulkActions({ selectedCards: new Set(), isVisible: false });
         router.push(`/projects/${projectSlug}/cards/${event.id}`);
       } else {
-        // Normal navigation
         router.push(`/projects/${projectSlug}/cards/${event.id}`);
       }
     },
@@ -429,36 +428,26 @@ export default function CalendarView({
   );
 
   const handleEventResize = useCallback(
-    async ({
-      event,
-      start,
-      end,
-    }: {
+    async (args: {
       event: CalendarEvent;
-      start: Date;
-      end: Date;
+      start: string | Date;
+      end: string | Date;
     }) => {
       if (!canEditCards) return;
 
+      const { event, start } = args;
       const cardId = event.id;
-      const newDueDate = start;
+      const newDueDate = new Date(start); // convert in case it's a string
 
       try {
         const response = await fetch(`/api/cards/${cardId}`, {
           method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            dueDate: newDueDate.toISOString(),
-          }),
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ dueDate: newDueDate.toISOString() }),
         });
 
-        if (!response.ok) {
-          throw new Error("Failed to update due date");
-        }
+        if (!response.ok) throw new Error("Failed to update due date");
 
-        // Refresh the calendar data
         debouncedRefresh();
       } catch (error) {
         console.error("Failed to update card due date:", error);
@@ -468,36 +457,26 @@ export default function CalendarView({
   );
 
   const handleEventDrop = useCallback(
-    async ({
-      event,
-      start,
-      end,
-    }: {
+    async (args: {
       event: CalendarEvent;
-      start: Date;
-      end: Date;
+      start: string | Date;
+      end: string | Date;
     }) => {
       if (!canEditCards) return;
 
+      const { event, start } = args;
       const cardId = event.id;
-      const newDueDate = start;
+      const newDueDate = new Date(start);
 
       try {
         const response = await fetch(`/api/cards/${cardId}`, {
           method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            dueDate: newDueDate.toISOString(),
-          }),
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ dueDate: newDueDate.toISOString() }),
         });
 
-        if (!response.ok) {
-          throw new Error("Failed to update due date");
-        }
+        if (!response.ok) throw new Error("Failed to update due date");
 
-        // Refresh the calendar data
         debouncedRefresh();
       } catch (error) {
         console.error("Failed to update card due date:", error);
