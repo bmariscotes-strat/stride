@@ -582,30 +582,13 @@ export default function CalendarView({
     (event: CalendarEvent) => {
       const isSelected = bulkActions.selectedCards.has(event.id);
 
-      let backgroundColor = "#3174ad";
-      let borderColor = "#3174ad";
-
-      switch (event.card.priority) {
-        case "high":
-          backgroundColor = "#dc2626";
-          borderColor = "#dc2626";
-          break;
-        case "medium":
-          backgroundColor = "#d97706";
-          borderColor = "#d97706";
-          break;
-        case "low":
-          backgroundColor = "#16a34a";
-          borderColor = "#16a34a";
-          break;
-      }
+      let backgroundColor = "#fff";
 
       return {
         style: {
           backgroundColor: isSelected ? "#1e40af" : backgroundColor,
-          borderColor: isSelected ? "#1e40af" : borderColor,
           opacity: isSelected ? 0.8 : 1,
-          border: isSelected ? "2px solid #1e40af" : `1px solid ${borderColor}`,
+          border: isSelected ? "2px solid #1e40af" : `none`,
         },
       };
     },
