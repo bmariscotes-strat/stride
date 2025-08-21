@@ -54,7 +54,7 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
 
   const views = [
     { id: "kanban", label: "Kanban", icon: "Kanban", isActive: true },
-    { id: "list", label: "List", icon: "List", isActive: false },
+    { id: "calendar", label: "Calendar", icon: "Calendar", isActive: false },
     { id: "table", label: "Table", icon: "Table", isActive: false },
   ];
 

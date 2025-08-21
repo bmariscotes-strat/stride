@@ -6,6 +6,7 @@ import DualPanelLayout from "@/components/layout/shared/DualPanelLayout";
 import AppBreadcrumb from "@/components/shared/AppBreadcrumb";
 import { Settings, Calendar, Users, Crown, Kanban } from "lucide-react";
 import KanbanBoard from "@/components/views/KanbanBoard";
+import CalendarView from "@/components/views/CalendarView";
 import type { ProjectPageClientProps } from "@/types";
 import { getRoleIcon, getRoleBadgeClass, getIcon } from "@/lib/ui/icons-colors";
 
@@ -13,6 +14,9 @@ import { getRoleIcon, getRoleBadgeClass, getIcon } from "@/lib/ui/icons-colors";
 const CreateTaskDialog = lazy(
   () => import("@/components/tasks/CreateTaskDialog")
 );
+
+// View type definition
+type ViewType = "kanban" | "calendar" | "table";
 
 export default function ProjectPageClient({
   project,
@@ -27,6 +31,7 @@ export default function ProjectPageClient({
 }: ProjectPageClientProps) {
   const [createTaskOpen, setCreateTaskOpen] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [activeView, setActiveView] = useState<ViewType>("kanban");
 
   console.log("Project data:", {
     projectId: project.id,
@@ -57,6 +62,85 @@ export default function ProjectPageClient({
     },
     [triggerRefresh]
   );
+
+  // Handle view change
+  const handleViewChange = useCallback((viewId: ViewType) => {
+    setActiveView(viewId);
+  }, []);
+
+  // Updated views with active state management
+  const updatedViews = views.map((view) => ({
+    ...view,
+    isActive: view.id === activeView,
+  }));
+
+  // Render the appropriate view component
+  const renderActiveView = () => {
+    switch (activeView) {
+      case "kanban":
+        return (
+          <div className="p-6 relative">
+            <div className="flex items-center justify-center h-full">
+              <div className="text-center w-full">
+                <div className="flex flex-col items-start pb-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Kanban className="h-6 w-6 text-gray-400" />
+                    <h3 className="text-lg font-medium text-gray-900">
+                      Kanban Board
+                    </h3>
+                  </div>
+                  <p className="text-gray-700 text-sm">
+                    Drag and drop your tasks.
+                  </p>
+                </div>
+
+                <KanbanBoard
+                  projectId={project.id}
+                  projectSlug={project.slug}
+                  userId={userId}
+                  canEditCards={canCreateCards}
+                  refreshTrigger={refreshTrigger}
+                  onDataChange={() => {
+                    console.log("Kanban board data updated");
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+        );
+
+      case "calendar":
+        return (
+          <div className="p-6 relative">
+            <CalendarView
+              projectId={project.id}
+              projectSlug={project.slug}
+              userId={userId}
+              canEditCards={canCreateCards}
+              refreshTrigger={refreshTrigger}
+              onDataChange={() => {
+                console.log("Calendar view data updated");
+              }}
+            />
+          </div>
+        );
+
+      case "table":
+        return (
+          <div className="p-6 relative">
+            <div className="flex items-center justify-center h-64">
+              <div className="text-center text-gray-500">
+                <div className="text-lg font-medium mb-2">Table View</div>
+                <p className="text-sm">Coming soon...</p>
+              </div>
+            </div>
+          </div>
+        );
+
+      default:
+        return null;
+    }
+  };
 
   return (
     <>
@@ -154,12 +238,13 @@ export default function ProjectPageClient({
             <div className="border-t border-gray-200 pt-4">
               <h3 className="font-medium text-gray-900 mb-3">Views</h3>
               <div className="space-y-1">
-                {views.map(({ id, label, icon, isActive }) => {
+                {updatedViews.map(({ id, label, icon, isActive }) => {
                   const Icon = getIcon(icon);
                   return (
                     <button
                       key={id}
                       type="button"
+                      onClick={() => handleViewChange(id as ViewType)}
                       className={`w-full text-left px-3 py-2 rounded-md text-sm flex items-center gap-2 transition-colors ${
                         isActive
                           ? "bg-blue-100 text-blue-700 font-medium"
@@ -175,36 +260,7 @@ export default function ProjectPageClient({
             </div>
           </>
         }
-        right={
-          <div className="p-6 relative">
-            <div className="flex items-center justify-center h-full">
-              <div className="text-center w-full">
-                <div className="flex flex-col items-start pb-3">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Kanban className="h-6 w-6 text-gray-400" />
-                    <h3 className="text-lg font-medium text-gray-900">
-                      Kanban Board
-                    </h3>
-                  </div>
-                  <p className="text-gray-700 text-sm">
-                    Drag and drop your tasks.
-                  </p>
-                </div>
-
-                <KanbanBoard
-                  projectId={project.id}
-                  projectSlug={project.slug}
-                  userId={userId}
-                  canEditCards={canCreateCards}
-                  refreshTrigger={refreshTrigger}
-                  onDataChange={() => {
-                    console.log("Kanban board data updated");
-                  }}
-                />
-              </div>
-            </div>
-          </div>
-        }
+        right={renderActiveView()}
       />
 
       {canCreateCards && createTaskOpen && (
