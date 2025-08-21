@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, lazy, Suspense } from "react";
+import React, { useState, lazy, Suspense, useMemo } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import DualPanelLayout from "@/components/layout/shared/DualPanelLayout";
@@ -60,6 +60,28 @@ export default function CardPageClient({
   // Fetch the card data
   const { data: card, isLoading, error } = useTask(cardId);
   const deleteTaskMutation = useDeleteTask();
+
+  const uniqueAvailableUsers = useMemo(() => {
+    if (!project.projectTeamMembers) return [];
+
+    const userMap = new Map();
+
+    project.projectTeamMembers.forEach((member) => {
+      const user = member.teamMember?.user;
+      if (user && user.username && !userMap.has(user.id)) {
+        userMap.set(user.id, {
+          id: user.id,
+          username: user.username,
+          email: user.email || "",
+          firstName: user.firstName || "",
+          lastName: user.lastName || "",
+          avatarUrl: user.avatarUrl || "",
+        });
+      }
+    });
+
+    return Array.from(userMap.values());
+  }, [project.projectTeamMembers]);
 
   const getPriorityConfig = (priority: string) => {
     return (
@@ -420,14 +442,7 @@ export default function CardPageClient({
               <CommentSection
                 cardId={cardId}
                 userId={userId}
-                availableUsers={project.projectTeamMembers?.map((member) => ({
-                  id: member.id,
-                  username: member.teamMember?.user?.username || "",
-                  email: member.teamMember?.user?.email || "",
-                  firstName: member.teamMember?.user?.firstName || "",
-                  lastName: member.teamMember?.user?.lastName || "",
-                  avatarUrl: member.teamMember?.user?.avatarUrl || "",
-                }))}
+                availableUsers={uniqueAvailableUsers}
               />
             </div>
           </div>
