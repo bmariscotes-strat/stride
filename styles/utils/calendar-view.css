@@ -269,14 +269,8 @@
   transform: rotate(-5deg);
 }
 
-.rbc-addons-dnd .rbc-addons-dnd-over {
-  background-color: #eff6ff !important;
-  border: 2px dashed #3b82f6;
-}
-
 /* Focus states for accessibility */
 .rbc-calendar:focus-within {
-  outline: 2px solid #3b82f6;
   outline-offset: 2px;
   border-radius: 0.5rem;
 }
