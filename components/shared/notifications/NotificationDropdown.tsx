@@ -195,21 +195,6 @@ export default function NotificationDropdown({
           </>
         )}
       </div>
-
-      {/* Footer */}
-      {notifications.length > 0 && (
-        <div className="p-3 border-t border-gray-200 bg-gray-50">
-          <button
-            className="w-full text-sm text-blue-600 hover:text-blue-800 font-medium transition-colors"
-            onClick={() => {
-              onClose();
-              onViewAll?.();
-            }}
-          >
-            View all notifications
-          </button>
-        </div>
-      )}
     </div>
   );
 }
