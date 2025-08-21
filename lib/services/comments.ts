@@ -1,10 +1,12 @@
 "use server";
 
 import { db } from "@/lib/db/db";
-import { cardComments, mentions } from "@/lib/db/schema";
-import { and, eq, desc, asc, InferSelectModel } from "drizzle-orm";
+import { cardComments, mentions, users, cards, columns } from "@/lib/db/schema";
+import { and, eq, desc, asc, InferSelectModel, sql } from "drizzle-orm";
 import { getRequiredUserId } from "@/lib/utils/get-current-user";
 import { revalidateTag } from "next/cache";
+import { ActivityService } from "@/lib/services/activity";
+import { NotificationService } from "@/lib/services/notification";
 
 interface CreateCommentData {
   cardId: string;
@@ -55,6 +57,23 @@ export async function createComment({
   const userId = await getRequiredUserId();
 
   try {
+    // Get card and project info for activity logging and notifications
+    const card = await db.query.cards.findFirst({
+      where: (cards, { eq }) => eq(cards.id, cardId),
+      with: {
+        column: {
+          with: {
+            project: true,
+          },
+        },
+        assignee: true,
+      },
+    });
+
+    if (!card) {
+      throw new Error("Card not found");
+    }
+
     const [comment] = await db
       .insert(cardComments)
       .values({
@@ -68,6 +87,7 @@ export async function createComment({
     // Process mentions in the content
     const mentionRegex = /@(\w+)/g;
     const mentionsList = [];
+    const mentionedUserIds: string[] = [];
     let match;
 
     while ((match = mentionRegex.exec(content)) !== null) {
@@ -84,11 +104,32 @@ export async function createComment({
           mentionedUserId: mentionedUser.id,
           mentionedBy: userId,
         });
+        mentionedUserIds.push(mentionedUser.id);
       }
     }
 
     if (mentionsList.length > 0) {
       await db.insert(mentions).values(mentionsList);
+    }
+
+    // Log activity and send notifications
+    try {
+      const projectId = card.column.project.id;
+
+      // Send comment notifications
+      await NotificationService.notifyCommentCreated(
+        userId,
+        projectId,
+        cardId,
+        content,
+        mentionedUserIds.length > 0 ? mentionedUserIds : undefined
+      );
+    } catch (error) {
+      console.error(
+        "Failed to log comment activity/send notifications:",
+        error
+      );
+      // Don't fail the main operation
     }
 
     revalidateTag(`card-comments-${cardId}`);
@@ -108,12 +149,25 @@ export async function updateComment({ commentId, content }: UpdateCommentData) {
     // Check if user owns the comment
     const [existingComment] = await db.query.cardComments.findMany({
       where: (comments, { eq }) => eq(comments.id, commentIdInt),
+      with: {
+        card: {
+          with: {
+            column: {
+              with: {
+                project: true,
+              },
+            },
+          },
+        },
+      },
       limit: 1,
     });
 
     if (!existingComment || existingComment.userId !== userId) {
       throw new Error("Not authorized to edit this comment");
     }
+
+    const oldContent = existingComment.content;
 
     const [updatedComment] = await db
       .update(cardComments)
@@ -123,6 +177,22 @@ export async function updateComment({ commentId, content }: UpdateCommentData) {
       })
       .where(eq(cardComments.id, commentIdInt))
       .returning();
+
+    // Log activity for comment update
+    try {
+      const projectId = existingComment.card.column.project.id;
+
+      await ActivityService.logCommentUpdated(
+        userId,
+        projectId,
+        existingComment.cardId,
+        oldContent,
+        content
+      );
+    } catch (error) {
+      console.error("Failed to log comment update activity:", error);
+      // Don't fail the main operation
+    }
 
     revalidateTag(`card-comments-${existingComment.cardId}`);
     return { success: true, comment: updatedComment };
@@ -142,6 +212,17 @@ export async function deleteComment(commentId: string) {
     // Check if user owns the comment
     const [existingComment] = await db.query.cardComments.findMany({
       where: (comments, { eq }) => eq(comments.id, commentIdInt),
+      with: {
+        card: {
+          with: {
+            column: {
+              with: {
+                project: true,
+              },
+            },
+          },
+        },
+      },
       limit: 1,
     });
 
@@ -149,10 +230,28 @@ export async function deleteComment(commentId: string) {
       throw new Error("Not authorized to delete this comment");
     }
 
+    const commentContent = existingComment.content;
+    const cardId = existingComment.cardId;
+
+    // Log activity before deletion
+    try {
+      const projectId = existingComment.card.column.project.id;
+
+      await ActivityService.logCommentDeleted(
+        userId,
+        projectId,
+        cardId,
+        commentContent
+      );
+    } catch (error) {
+      console.error("Failed to log comment deletion activity:", error);
+      // Don't fail the main operation
+    }
+
     // Delete the comment (this will cascade delete replies and mentions)
     await db.delete(cardComments).where(eq(cardComments.id, commentIdInt));
 
-    revalidateTag(`card-comments-${existingComment.cardId}`);
+    revalidateTag(`card-comments-${cardId}`);
     return { success: true };
   } catch (error) {
     console.error("Failed to delete comment:", error);
@@ -217,5 +316,225 @@ export async function getCardComments(
   } catch (error) {
     console.error("Failed to fetch comments:", error);
     throw new Error("Failed to fetch comments");
+  }
+}
+
+/**
+ * Helper function to extract mentioned usernames from comment content
+ */
+function extractMentionedUsernames(content: string): string[] {
+  const mentionRegex = /@(\w+)/g;
+  const mentions: string[] = [];
+  let match;
+
+  while ((match = mentionRegex.exec(content)) !== null) {
+    mentions.push(match[1]);
+  }
+
+  return mentions;
+}
+
+/**
+ * Helper function to get mentioned users by usernames
+ */
+async function getMentionedUsersByUsernames(usernames: string[]): Promise<
+  Array<{
+    id: string;
+    username: string;
+    firstName: string | null;
+    lastName: string | null;
+  }>
+> {
+  if (usernames.length === 0) return [];
+
+  return await db.query.users.findMany({
+    where: (users, { inArray }) => inArray(users.username, usernames),
+    columns: {
+      id: true,
+      username: true,
+      firstName: true,
+      lastName: true,
+    },
+  });
+}
+
+/**
+ * Get comment statistics for a card (useful for analytics)
+ */
+export async function getCardCommentStats(cardId: string) {
+  try {
+    const [totalComments] = await db
+      .select({
+        total: sql<number>`count(*)`,
+        withMentions: sql<number>`count(case when exists(select 1 from ${mentions} where ${mentions.commentId} = ${cardComments.id}) then 1 end)`,
+        uniqueCommenters: sql<number>`count(distinct ${cardComments.userId})`,
+      })
+      .from(cardComments)
+      .where(eq(cardComments.cardId, cardId));
+
+    return {
+      totalComments: totalComments?.total || 0,
+      commentsWithMentions: totalComments?.withMentions || 0,
+      uniqueCommenters: totalComments?.uniqueCommenters || 0,
+    };
+  } catch (error) {
+    console.error("Failed to fetch comment stats:", error);
+    throw new Error("Failed to fetch comment stats");
+  }
+}
+
+/**
+ * Get recent comments across multiple cards (useful for activity feeds)
+ */
+export async function getRecentCommentsForProject(
+  projectId: string,
+  limit: number = 20
+): Promise<Array<BaseComment & { card: { id: string; title: string } }>> {
+  try {
+    return await db.query.cardComments.findMany({
+      where: (comments, { eq, and, inArray }) => {
+        // First get all cards for this project
+        const projectCards = db
+          .select({ id: cards.id })
+          .from(cards)
+          .innerJoin(columns, eq(cards.columnId, columns.id))
+          .where(eq(columns.projectId, projectId));
+
+        return inArray(comments.cardId, projectCards);
+      },
+      with: {
+        user: {
+          columns: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            avatarUrl: true,
+            username: true,
+            email: true,
+          },
+        },
+        card: {
+          columns: {
+            id: true,
+            title: true,
+          },
+        },
+        mentions: {
+          with: {
+            mentionedUser: {
+              columns: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                username: true,
+                avatarUrl: true,
+                email: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: (comments, { desc }) => [desc(comments.createdAt)],
+      limit,
+    });
+  } catch (error) {
+    console.error("Failed to fetch recent project comments:", error);
+    throw new Error("Failed to fetch recent project comments");
+  }
+}
+
+/**
+ * Get comments where a user was mentioned
+ */
+export async function getUserMentionedComments(
+  userId: string,
+  limit: number = 50
+): Promise<BaseComment[]> {
+  try {
+    const mentionedComments = await db.query.mentions.findMany({
+      where: (mentions, { eq }) => eq(mentions.mentionedUserId, userId),
+      with: {
+        comment: {
+          with: {
+            user: {
+              columns: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                avatarUrl: true,
+                username: true,
+                email: true,
+              },
+            },
+            card: {
+              columns: {
+                id: true,
+                title: true,
+              },
+              with: {
+                column: {
+                  with: {
+                    project: {
+                      columns: {
+                        id: true,
+                        name: true,
+                      },
+                    },
+                  },
+                },
+              },
+            },
+            mentions: {
+              with: {
+                mentionedUser: {
+                  columns: {
+                    id: true,
+                    firstName: true,
+                    lastName: true,
+                    username: true,
+                    avatarUrl: true,
+                    email: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      orderBy: (mentions, { desc }) => [desc(mentions.createdAt)],
+      limit,
+    });
+
+    return mentionedComments.map((m) => m.comment);
+  } catch (error) {
+    console.error("Failed to fetch mentioned comments:", error);
+    throw new Error("Failed to fetch mentioned comments");
+  }
+}
+
+/**
+ * Mark mentions as read (useful for notification management)
+ */
+export async function markMentionsAsRead(userId: string, commentIds: number[]) {
+  try {
+    // Note: You might want to add a 'read' field to your mentions table
+    // For now, this is a placeholder that could update a separate table
+    // or add a timestamp field to track when mentions were acknowledged
+
+    // If you add an 'acknowledgedAt' field to mentions table:
+    // await db
+    //   .update(mentions)
+    //   .set({ acknowledgedAt: new Date() })
+    //   .where(
+    //     and(
+    //       eq(mentions.mentionedUserId, userId),
+    //       inArray(mentions.commentId, commentIds)
+    //     )
+    //   );
+
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to mark mentions as read:", error);
+    throw new Error("Failed to mark mentions as read");
   }
 }
