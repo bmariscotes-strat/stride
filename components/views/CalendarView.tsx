@@ -249,6 +249,11 @@ function CustomEvent({ event }: { event: CalendarEvent }) {
     }
   };
 
+  // Determine if this is a single-day or multi-day event
+  const isSingleDay = event.start?.getTime() === event.end?.getTime();
+  const hasStartDate =
+    card.startDate && card.dueDate && card.startDate !== card.dueDate;
+
   return (
     <div
       className={`p-1 rounded text-xs border-l-4 ${getPriorityColor(
@@ -258,6 +263,29 @@ function CustomEvent({ event }: { event: CalendarEvent }) {
       <div className="font-medium leading-snug break-words line-clamp-2">
         {card.title}
       </div>
+
+      {/* Show date info for single-day events */}
+      {isSingleDay && (
+        <div className="text-[10px] text-gray-600">
+          {card.startDate && card.dueDate && card.startDate === card.dueDate
+            ? "Start & Due"
+            : card.startDate
+              ? "Start"
+              : "Due"}
+        </div>
+      )}
+
+      {/* Show duration for multi-day events */}
+      {hasStartDate && (
+        <div className="text-[10px] text-gray-600">
+          {Math.ceil(
+            (new Date(card.dueDate!).getTime() -
+              new Date(card.startDate!).getTime()) /
+              (1000 * 60 * 60 * 24)
+          )}{" "}
+          days
+        </div>
+      )}
 
       {card.labels && card.labels.length > 0 && (
         <div className="flex flex-wrap gap-1">
@@ -374,14 +402,38 @@ export default function CalendarView({
   // Convert cards to calendar events
   const events: CalendarEvent[] = useMemo(() => {
     return cards
-      .filter((card) => card.dueDate)
-      .map((card) => ({
-        id: card.id,
-        title: card.title,
-        start: new Date(card.dueDate!),
-        end: new Date(card.dueDate!),
-        card,
-      }));
+      .filter((card) => card.dueDate || card.startDate) // Show cards with either date
+      .map((card) => {
+        // Determine start and end dates
+        let start: Date;
+        let end: Date;
+
+        if (card.startDate && card.dueDate) {
+          // Card has both start and due date - use as range
+          start = new Date(card.startDate);
+          end = new Date(card.dueDate);
+        } else if (card.startDate) {
+          // Only start date - make it a single day event
+          start = new Date(card.startDate);
+          end = new Date(card.startDate);
+        } else if (card.dueDate) {
+          // Only due date - make it a single day event
+          start = new Date(card.dueDate);
+          end = new Date(card.dueDate);
+        } else {
+          // Fallback (shouldn't reach here due to filter above)
+          start = new Date();
+          end = new Date();
+        }
+
+        return {
+          id: card.id,
+          title: card.title,
+          start,
+          end,
+          card,
+        };
+      });
   }, [cards]);
 
   // Keyboard shortcuts
@@ -462,22 +514,36 @@ export default function CalendarView({
     async ({ event, start, end }: RBCEventInteractionArgs<CalendarEvent>) => {
       if (!canEditCards) return;
 
+      const newStart = new Date(start);
+      const newEnd = new Date(end);
+
       // 🌟 optimistic update
       setLocalEvents((prev) =>
         prev.map((e) =>
-          e.id === event.id
-            ? { ...e, start: new Date(start), end: new Date(end) }
-            : e
+          e.id === event.id ? { ...e, start: newStart, end: newEnd } : e
         )
       );
 
       try {
+        // Prepare update data
+        const updateData: any = {};
+
+        // Always update both dates when resizing
+        updateData.startDate = newStart.toISOString();
+        updateData.dueDate = newEnd.toISOString();
+
+        // If the dates are the same, it's a single-day event
+        if (newStart.getTime() === newEnd.getTime()) {
+          // You might want to only update dueDate for single-day events
+          // or keep both - depends on your business logic
+          updateData.startDate = newStart.toISOString();
+          updateData.dueDate = newEnd.toISOString();
+        }
+
         const response = await fetch(`/api/cards/${event.id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            dueDate: new Date(end).toISOString(),
-          }),
+          body: JSON.stringify(updateData),
         });
 
         if (!response.ok) throw new Error("Failed to resize event");
@@ -485,6 +551,21 @@ export default function CalendarView({
         onDataChange?.(); // refresh
       } catch (error) {
         console.error("Failed to resize event:", error);
+        // Revert optimistic update on error
+        const originalStart = event.card.startDate
+          ? new Date(event.card.startDate)
+          : new Date(event.card.dueDate!);
+        const originalEnd = event.card.dueDate
+          ? new Date(event.card.dueDate)
+          : new Date(event.card.startDate!);
+
+        setLocalEvents((prev) =>
+          prev.map((e) =>
+            e.id === event.id
+              ? { ...e, start: originalStart, end: originalEnd }
+              : e
+          )
+        );
         onDataChange?.();
       }
     },
@@ -495,27 +576,60 @@ export default function CalendarView({
     async ({ event, start, end }: RBCEventInteractionArgs<CalendarEvent>) => {
       if (!canEditCards) return;
 
-      // 🌟 optimistic update
+      const newStart = new Date(start);
+      const newEnd = new Date(end);
+
+      // Calculate the duration of the original event
+      const originalStart = event.start;
+      const originalEnd = event.end;
+
+      // Handle case where originalEnd might be undefined
+      if (!originalEnd || !originalStart) {
+        console.warn("Original end date is undefined, using start date");
+        return;
+      }
+
+      const duration = originalEnd.getTime() - originalStart.getTime();
+
+      // optimistic update
       setLocalEvents((prev) =>
         prev.map((e) =>
-          e.id === event.id
-            ? { ...e, start: new Date(start), end: new Date(end) }
-            : e
+          e.id === event.id ? { ...e, start: newStart, end: newEnd } : e
         )
       );
 
       try {
+        const updateData: any = {};
+
+        if (duration === 0) {
+          // Single-day event - update both dates to the same value
+          updateData.startDate = newStart.toISOString();
+          updateData.dueDate = newStart.toISOString();
+        } else {
+          // Multi-day event - maintain duration
+          updateData.startDate = newStart.toISOString();
+          updateData.dueDate = newEnd.toISOString();
+        }
+
         const response = await fetch(`/api/cards/${event.id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ dueDate: new Date(start).toISOString() }),
+          body: JSON.stringify(updateData),
         });
 
-        if (!response.ok) throw new Error("Failed to update due date");
+        if (!response.ok) throw new Error("Failed to update event dates");
 
         onDataChange?.(); // trigger upstream refresh
       } catch (error) {
-        console.error("Failed to update card due date:", error);
+        console.error("Failed to update card dates:", error);
+        // Revert optimistic update
+        setLocalEvents((prev) =>
+          prev.map((e) =>
+            e.id === event.id
+              ? { ...e, start: originalStart, end: originalEnd }
+              : e
+          )
+        );
         onDataChange?.(); // rollback via refresh
       }
     },

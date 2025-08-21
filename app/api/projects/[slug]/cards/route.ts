@@ -7,6 +7,7 @@ import { db } from "@/lib/db/db";
 import { columns, cardLabels, cards, projects } from "@/lib/db/schema";
 import { eq, inArray } from "drizzle-orm";
 import { z } from "zod";
+import type { UpdateCardInput } from "@/types/forms/tasks";
 
 const createCardSchema = z.object({
   columnId: z.string().min(1, "Column ID is required"),
@@ -306,6 +307,73 @@ export async function GET(
 
     return NextResponse.json(
       { error: "Internal server error" },
+      { status: 500 }
+    );
+  }
+}
+
+export async function PATCH(
+  request: Request,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const body = await request.json();
+    const { startDate, dueDate, ...otherFields } = body;
+
+    // Convert date strings to Date objects if provided
+    const processedStartDate = startDate ? new Date(startDate) : undefined;
+    const processedDueDate = dueDate ? new Date(dueDate) : undefined;
+
+    // Validation: ensure startDate is not after dueDate
+    if (processedStartDate && processedDueDate) {
+      if (processedStartDate > processedDueDate) {
+        return NextResponse.json(
+          { error: "Start date cannot be after due date" },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Create the UpdateCardInput object with the card ID and other fields
+    const updateInput: UpdateCardInput = {
+      id: params.id,
+      ...otherFields,
+      ...(processedStartDate !== undefined && {
+        startDate: processedStartDate,
+      }),
+      ...(processedDueDate !== undefined && { dueDate: processedDueDate }),
+    };
+
+    // Update the card in your database
+    const updatedCard = await TaskCRUDService.updateCard(
+      updateInput,
+      currentUser.id
+    );
+
+    return NextResponse.json(updatedCard);
+  } catch (error) {
+    console.error("Error updating card:", error);
+
+    if (error instanceof Error) {
+      if (
+        error.message.includes("permissions") ||
+        error.message.includes("access")
+      ) {
+        return NextResponse.json({ error: error.message }, { status: 403 });
+      }
+
+      if (error.message.includes("not found")) {
+        return NextResponse.json({ error: error.message }, { status: 404 });
+      }
+    }
+
+    return NextResponse.json(
+      { error: "Failed to update card" },
       { status: 500 }
     );
   }
