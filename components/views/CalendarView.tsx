@@ -251,16 +251,20 @@ function CustomEvent({ event }: { event: CalendarEvent }) {
 
   return (
     <div
-      className={`p-1 rounded text-xs border-l-4 ${getPriorityColor(card.priority)}`}
+      className={`p-1 rounded text-xs border-l-4 ${getPriorityColor(
+        card.priority
+      )} flex flex-col gap-1 min-w-0`}
     >
-      <div className="font-medium truncate">{card.title}</div>
+      <div className="font-medium leading-snug break-words line-clamp-2">
+        {card.title}
+      </div>
 
       {card.labels && card.labels.length > 0 && (
-        <div className="flex gap-1 mt-1 overflow-hidden">
+        <div className="flex flex-wrap gap-1">
           {card.labels.slice(0, 2).map((label) => (
             <span
               key={label.id}
-              className="px-1 py-0.5 text-xs rounded-full font-medium"
+              className="px-1 py-0.5 text-[10px] rounded-full font-medium shrink-0"
               style={{
                 backgroundColor: label.color + "40",
                 color: label.color,
@@ -270,7 +274,7 @@ function CustomEvent({ event }: { event: CalendarEvent }) {
             </span>
           ))}
           {card.labels.length > 2 && (
-            <span className="text-xs text-gray-500">
+            <span className="text-[10px] text-gray-500">
               +{card.labels.length - 2}
             </span>
           )}
@@ -278,15 +282,15 @@ function CustomEvent({ event }: { event: CalendarEvent }) {
       )}
 
       {card.assignee && (
-        <div className="flex items-center mt-1">
+        <div className="flex items-center min-w-0">
           {card.assignee.avatarUrl ? (
             <img
               src={card.assignee.avatarUrl}
               alt={`${card.assignee.firstName} ${card.assignee.lastName}`}
-              className="w-4 h-4 rounded-full mr-1"
+              className="w-4 h-4 rounded-full mr-1 shrink-0"
             />
           ) : (
-            <div className="w-4 h-4 rounded-full bg-blue-100 flex items-center justify-center mr-1">
+            <div className="w-4 h-4 rounded-full bg-blue-100 flex items-center justify-center mr-1 shrink-0">
               <User size={10} className="text-blue-600" />
             </div>
           )}
@@ -670,14 +674,16 @@ export default function CalendarView({
       </div>
 
       {/* Calendar */}
-      <div style={{ height: "calc(100vh - 200px)" }}>
+      <div style={{ height: "calc(105vh - 200px)" }}>
         <DragAndDropCalendar
           localizer={localizer}
           events={localEvents}
           startAccessor="start"
           endAccessor="end"
           view={currentView}
+          popup={true}
           onView={setCurrentView}
+          showAllEvents={true}
           date={currentDate}
           onNavigate={setCurrentDate}
           onSelectEvent={handleSelectEvent}
