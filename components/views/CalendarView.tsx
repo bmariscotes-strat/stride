@@ -1,23 +1,23 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Calendar, momentLocalizer, Event, View } from "react-big-calendar";
+import withDragAndDrop from "react-big-calendar/lib/addons/dragAndDrop";
 import moment from "moment";
 import {
   RefreshCw,
   Calendar as CalendarIcon,
   User,
   AlertCircle,
-  Plus,
-  Edit,
   Trash2,
-  Copy,
   Archive,
 } from "lucide-react";
 import { Card } from "@/types/forms/tasks";
 import { MIN_FETCH_INTERVAL } from "@/lib/constants/limits";
 import "react-big-calendar/lib/css/react-big-calendar.css";
+import "react-big-calendar/lib/addons/dragAndDrop/styles.css";
 
 const localizer = momentLocalizer(moment);
+const DragAndDropCalendar = withDragAndDrop(Calendar);
 
 interface CalendarViewProps {
   projectId: string;
@@ -121,6 +121,57 @@ function useCalendarData(projectSlug: string, onDataChange?: () => void) {
   };
 }
 
+// Confirmation Dialog Component
+function ConfirmationDialog({
+  isOpen,
+  onClose,
+  onConfirm,
+  title,
+  message,
+  confirmText = "Delete",
+  cancelText = "Cancel",
+  variant = "danger",
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+  title: string;
+  message: string;
+  confirmText?: string;
+  cancelText?: string;
+  variant?: "danger" | "warning";
+}) {
+  if (!isOpen) return null;
+
+  const confirmButtonClass =
+    variant === "danger"
+      ? "bg-red-600 hover:bg-red-700 text-white"
+      : "bg-yellow-600 hover:bg-yellow-700 text-white";
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+      <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+        <h3 className="text-lg font-medium text-gray-900 mb-2">{title}</h3>
+        <p className="text-sm text-gray-600 mb-6">{message}</p>
+        <div className="flex justify-end gap-3">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50"
+          >
+            {cancelText}
+          </button>
+          <button
+            onClick={onConfirm}
+            className={`px-4 py-2 text-sm rounded-md ${confirmButtonClass}`}
+          >
+            {confirmText}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // Bulk Actions Toolbar Component
 function BulkActionsToolbar({
   selectedCards,
@@ -135,7 +186,7 @@ function BulkActionsToolbar({
 
   return (
     <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50">
-      <div className="bg-white shadow-lg rounded-lg border p-4 min-w-96">
+      <div className="bg-white shadow-lg rounded-lg border p-4 min-w-80">
         <div className="flex items-center justify-between mb-3">
           <span className="text-sm font-medium text-gray-900">
             {cardIds.length} card{cardIds.length !== 1 ? "s" : ""} selected
@@ -149,20 +200,6 @@ function BulkActionsToolbar({
         </div>
 
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => onAction("edit", cardIds)}
-            className="flex items-center gap-1 px-3 py-1.5 text-sm bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200"
-          >
-            <Edit size={14} />
-            Edit
-          </button>
-          <button
-            onClick={() => onAction("duplicate", cardIds)}
-            className="flex items-center gap-1 px-3 py-1.5 text-sm bg-green-100 text-green-700 rounded-md hover:bg-green-200"
-          >
-            <Copy size={14} />
-            Duplicate
-          </button>
           <button
             onClick={() => onAction("archive", cardIds)}
             className="flex items-center gap-1 px-3 py-1.5 text-sm bg-yellow-100 text-yellow-700 rounded-md hover:bg-yellow-200"
@@ -276,6 +313,18 @@ export default function CalendarView({
     selectedCards: new Set(),
     isVisible: false,
   });
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    action: () => void;
+    variant?: "danger" | "warning";
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    action: () => {},
+  });
 
   // Initial fetch
   useEffect(() => {
@@ -352,7 +401,7 @@ export default function CalendarView({
   }, [events, bulkActions.selectedCards, manualRefresh]);
 
   const handleSelectEvent = useCallback(
-    (event: CalendarEvent, e: React.SyntheticEvent) => {
+    (event: CalendarEvent, e: React.MouseEvent<Element>) => {
       if (e.ctrlKey || e.metaKey) {
         // Multi-select
         setBulkActions((prev) => {
@@ -379,8 +428,16 @@ export default function CalendarView({
     [projectSlug, router, bulkActions.selectedCards.size]
   );
 
-  const handleEventDrop = useCallback(
-    async ({ event, start }: { event: CalendarEvent; start: Date }) => {
+  const handleEventResize = useCallback(
+    async ({
+      event,
+      start,
+      end,
+    }: {
+      event: CalendarEvent;
+      start: Date;
+      end: Date;
+    }) => {
       if (!canEditCards) return;
 
       const cardId = event.id;
@@ -405,7 +462,45 @@ export default function CalendarView({
         debouncedRefresh();
       } catch (error) {
         console.error("Failed to update card due date:", error);
-        // Could show a toast notification here
+      }
+    },
+    [canEditCards, debouncedRefresh]
+  );
+
+  const handleEventDrop = useCallback(
+    async ({
+      event,
+      start,
+      end,
+    }: {
+      event: CalendarEvent;
+      start: Date;
+      end: Date;
+    }) => {
+      if (!canEditCards) return;
+
+      const cardId = event.id;
+      const newDueDate = start;
+
+      try {
+        const response = await fetch(`/api/cards/${cardId}`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            dueDate: newDueDate.toISOString(),
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to update due date");
+        }
+
+        // Refresh the calendar data
+        debouncedRefresh();
+      } catch (error) {
+        console.error("Failed to update card due date:", error);
       }
     },
     [canEditCards, debouncedRefresh]
@@ -413,50 +508,59 @@ export default function CalendarView({
 
   const handleBulkAction = useCallback(
     async (action: string, cardIds: string[]) => {
-      // Implement bulk actions here
-      console.log(`Bulk action: ${action}`, cardIds);
+      if (action === "delete") {
+        // Show confirmation dialog for delete
+        setConfirmDialog({
+          isOpen: true,
+          title: "Delete Cards",
+          message: `Are you sure you want to permanently delete ${cardIds.length} card${cardIds.length !== 1 ? "s" : ""}? This action cannot be undone.`,
+          variant: "danger",
+          action: async () => {
+            try {
+              await Promise.all(
+                cardIds.map((cardId) =>
+                  fetch(`/api/cards/${cardId}`, { method: "DELETE" })
+                )
+              );
 
-      try {
-        switch (action) {
-          case "delete":
-            // Implement bulk delete
-            await Promise.all(
-              cardIds.map((cardId) =>
-                fetch(`/api/cards/${cardId}`, { method: "DELETE" })
-              )
-            );
-            break;
-          case "archive":
-            // Implement bulk archive
-            await Promise.all(
-              cardIds.map((cardId) =>
-                fetch(`/api/cards/${cardId}`, {
-                  method: "PATCH",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ isArchived: true }),
-                })
-              )
-            );
-            break;
-          case "duplicate":
-            // Implement bulk duplicate
-            await Promise.all(
-              cardIds.map((cardId) =>
-                fetch(`/api/cards/${cardId}/duplicate`, { method: "POST" })
-              )
-            );
-            break;
-          case "edit":
-            // For edit, you might want to open a bulk edit modal
-            console.log("Bulk edit not implemented yet");
-            break;
-        }
+              // Clear selection and refresh
+              setBulkActions({ selectedCards: new Set(), isVisible: false });
+              debouncedRefresh();
+            } catch (error) {
+              console.error("Bulk delete failed:", error);
+            }
+          },
+        });
+        return;
+      }
 
-        // Clear selection and refresh
-        setBulkActions({ selectedCards: new Set(), isVisible: false });
-        debouncedRefresh();
-      } catch (error) {
-        console.error(`Bulk ${action} failed:`, error);
+      if (action === "archive") {
+        // Show confirmation dialog for archive
+        setConfirmDialog({
+          isOpen: true,
+          title: "Archive Cards",
+          message: `Are you sure you want to archive ${cardIds.length} card${cardIds.length !== 1 ? "s" : ""}?`,
+          variant: "warning",
+          action: async () => {
+            try {
+              await Promise.all(
+                cardIds.map((cardId) =>
+                  fetch(`/api/cards/${cardId}`, {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ isArchived: true }),
+                  })
+                )
+              );
+
+              // Clear selection and refresh
+              setBulkActions({ selectedCards: new Set(), isVisible: false });
+              debouncedRefresh();
+            } catch (error) {
+              console.error("Bulk archive failed:", error);
+            }
+          },
+        });
       }
     },
     [debouncedRefresh]
@@ -572,7 +676,7 @@ export default function CalendarView({
 
       {/* Calendar */}
       <div style={{ height: "calc(100vh - 200px)" }}>
-        <Calendar
+        <DragAndDropCalendar
           localizer={localizer}
           events={events}
           startAccessor="start"
@@ -583,6 +687,7 @@ export default function CalendarView({
           onNavigate={setCurrentDate}
           onSelectEvent={handleSelectEvent}
           onEventDrop={canEditCards ? handleEventDrop : undefined}
+          onEventResize={canEditCards ? handleEventResize : undefined}
           eventPropGetter={eventStyleGetter}
           components={{
             event: CustomEvent,
@@ -593,6 +698,7 @@ export default function CalendarView({
           culture="en-US"
           style={{ height: "100%" }}
           dayLayoutAlgorithm="no-overlap"
+          resizable={canEditCards}
         />
       </div>
 
@@ -606,6 +712,20 @@ export default function CalendarView({
           }
         />
       )}
+
+      {/* Confirmation Dialog */}
+      <ConfirmationDialog
+        isOpen={confirmDialog.isOpen}
+        onClose={() => setConfirmDialog({ ...confirmDialog, isOpen: false })}
+        onConfirm={() => {
+          confirmDialog.action();
+          setConfirmDialog({ ...confirmDialog, isOpen: false });
+        }}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        variant={confirmDialog.variant}
+        confirmText={confirmDialog.variant === "danger" ? "Delete" : "Archive"}
+      />
 
       {/* Empty state */}
       {events.length === 0 && !loading && (

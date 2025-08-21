@@ -38,18 +38,6 @@ export const CALENDAR_KEYBOARD_SHORTCUTS: KeyboardShortcut[] = [
     action: "delete_selected",
     description: "Delete selected cards",
   },
-  {
-    key: "d",
-    ctrlKey: true,
-    action: "duplicate_selected",
-    description: "Duplicate selected cards",
-  },
-  {
-    key: "e",
-    ctrlKey: true,
-    action: "edit_selected",
-    description: "Edit selected cards",
-  },
 ];
 
 export interface BulkOperation {
@@ -65,46 +53,6 @@ export const createBulkOperations = (
   projectSlug: string,
   onComplete: () => void
 ): BulkOperation[] => [
-  {
-    id: "edit",
-    label: "Edit",
-    icon: "Edit",
-    variant: "default",
-    action: async (cardIds: string[]) => {
-      // This would typically open a bulk edit modal
-      console.log("Bulk edit:", cardIds);
-      // For now, we'll just log - you can implement a bulk edit modal here
-    },
-  },
-  {
-    id: "duplicate",
-    label: "Duplicate",
-    icon: "Copy",
-    variant: "default",
-    action: async (cardIds: string[]) => {
-      const results = await Promise.allSettled(
-        cardIds.map(async (cardId) => {
-          const response = await fetch(`/api/cards/${cardId}/duplicate`, {
-            method: "POST",
-          });
-          if (!response.ok) {
-            throw new Error(`Failed to duplicate card ${cardId}`);
-          }
-          return response.json();
-        })
-      );
-
-      const failed = results.filter(
-        (result) => result.status === "rejected"
-      ).length;
-
-      if (failed > 0) {
-        console.error(`Failed to duplicate ${failed} cards`);
-      }
-
-      onComplete();
-    },
-  },
   {
     id: "archive",
     label: "Archive",
