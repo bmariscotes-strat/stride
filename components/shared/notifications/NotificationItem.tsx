@@ -17,13 +17,14 @@ import {
   getNotificationUrlById,
 } from "@/lib/utils/notif-helper";
 
+// Update the interface in NotificationItem.tsx
 interface NotificationItemProps {
   notification: NotificationWithRelations;
   onMarkAsRead: (id: number) => Promise<void> | void;
   onRemove: (id: number) => void;
-  onClose?: () => void; // Add close function prop
+  onClose?: () => void;
   fetchSlugs: (
-    teamId: string,
+    teamId?: string, // Make teamId optional
     projectId?: string
   ) => Promise<{ teamSlug: string; projectSlug?: string }>;
 }
