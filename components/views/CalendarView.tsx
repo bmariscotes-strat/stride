@@ -55,7 +55,6 @@ function useCalendarData(projectSlug: string, onDataChange?: () => void) {
   const [isRefetching, setIsRefetching] = useState(false);
   const lastFetchTime = React.useRef<number>(0);
   const refreshTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
-  const [localEvents, setLocalEvents] = useState<CalendarEvent[]>([]);
 
   const fetchCalendarData = useCallback(
     async (showLoader = true) => {
@@ -122,8 +121,7 @@ function useCalendarData(projectSlug: string, onDataChange?: () => void) {
 
   return {
     cards,
-    localEvents,
-    setLocalEvents,
+    setCards,
     loading,
     error,
     isRefetching,
@@ -343,6 +341,7 @@ export default function CalendarView({
   const router = useRouter();
   const {
     cards,
+    setCards,
     loading,
     error,
     isRefetching,
@@ -352,7 +351,6 @@ export default function CalendarView({
   } = useCalendarData(projectSlug, onDataChange);
 
   const [currentView, setCurrentView] = useState<View>("month");
-  const [localEvents, setLocalEvents] = useState<CalendarEvent[]>([]);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [bulkActions, setBulkActions] = useState<BulkActions>({
     selectedCards: new Set(),
@@ -370,20 +368,6 @@ export default function CalendarView({
     message: "",
     action: () => {},
   });
-
-  useEffect(() => {
-    const mappedEvents = cards
-      .filter((card) => card.dueDate)
-      .map((card) => ({
-        id: card.id,
-        title: card.title,
-        start: new Date(card.dueDate!),
-        end: new Date(card.dueDate!),
-        card,
-      }));
-
-    setLocalEvents(mappedEvents);
-  }, [cards]);
 
   // Initial fetch
   useEffect(() => {
@@ -517,28 +501,27 @@ export default function CalendarView({
       const newStart = new Date(start);
       const newEnd = new Date(end);
 
-      // 🌟 optimistic update
-      setLocalEvents((prev) =>
-        prev.map((e) =>
-          e.id === event.id ? { ...e, start: newStart, end: newEnd } : e
+      // Store original values for rollback
+      const originalCard = event.card;
+
+      // Optimistic update
+      setCards((prev) =>
+        prev.map((card) =>
+          card.id === event.id
+            ? {
+                ...card,
+                startDate: newStart, // keep as Date
+                dueDate: newEnd, // keep as Date
+              }
+            : card
         )
       );
 
       try {
-        // Prepare update data
-        const updateData: any = {};
-
-        // Always update both dates when resizing
-        updateData.startDate = newStart.toISOString();
-        updateData.dueDate = newEnd.toISOString();
-
-        // If the dates are the same, it's a single-day event
-        if (newStart.getTime() === newEnd.getTime()) {
-          // You might want to only update dueDate for single-day events
-          // or keep both - depends on your business logic
-          updateData.startDate = newStart.toISOString();
-          updateData.dueDate = newEnd.toISOString();
-        }
+        const updateData: any = {
+          startDate: newStart.toISOString(),
+          dueDate: newEnd.toISOString(),
+        };
 
         const response = await fetch(`/api/cards/${event.id}`, {
           method: "PATCH",
@@ -548,28 +531,25 @@ export default function CalendarView({
 
         if (!response.ok) throw new Error("Failed to resize event");
 
-        onDataChange?.(); // refresh
+        onDataChange?.();
       } catch (error) {
         console.error("Failed to resize event:", error);
         // Revert optimistic update on error
-        const originalStart = event.card.startDate
-          ? new Date(event.card.startDate)
-          : new Date(event.card.dueDate!);
-        const originalEnd = event.card.dueDate
-          ? new Date(event.card.dueDate)
-          : new Date(event.card.startDate!);
-
-        setLocalEvents((prev) =>
-          prev.map((e) =>
-            e.id === event.id
-              ? { ...e, start: originalStart, end: originalEnd }
-              : e
+        setCards((prev) =>
+          prev.map((card) =>
+            card.id === event.id
+              ? {
+                  ...card,
+                  startDate: originalCard.startDate,
+                  dueDate: originalCard.dueDate,
+                }
+              : card
           )
         );
         onDataChange?.();
       }
     },
-    [canEditCards, onDataChange]
+    [canEditCards, onDataChange, setCards]
   );
 
   const handleEventDrop = useCallback(
@@ -590,12 +570,28 @@ export default function CalendarView({
       }
 
       const duration = originalEnd.getTime() - originalStart.getTime();
+      const originalCard = event.card;
 
-      // optimistic update
-      setLocalEvents((prev) =>
-        prev.map((e) =>
-          e.id === event.id ? { ...e, start: newStart, end: newEnd } : e
-        )
+      // Optimistic update
+      setCards((prev) =>
+        prev.map((card) => {
+          if (card.id === event.id) {
+            if (duration === 0) {
+              return {
+                ...card,
+                startDate: newStart, // keep as Date
+                dueDate: newStart,
+              };
+            } else {
+              return {
+                ...card,
+                startDate: newStart,
+                dueDate: newEnd,
+              };
+            }
+          }
+          return card;
+        })
       );
 
       try {
@@ -623,17 +619,21 @@ export default function CalendarView({
       } catch (error) {
         console.error("Failed to update card dates:", error);
         // Revert optimistic update
-        setLocalEvents((prev) =>
-          prev.map((e) =>
-            e.id === event.id
-              ? { ...e, start: originalStart, end: originalEnd }
-              : e
+        setCards((prev) =>
+          prev.map((card) =>
+            card.id === event.id
+              ? {
+                  ...card,
+                  startDate: originalCard.startDate,
+                  dueDate: originalCard.dueDate,
+                }
+              : card
           )
         );
         onDataChange?.(); // rollback via refresh
       }
     },
-    [canEditCards, onDataChange]
+    [canEditCards, onDataChange, setCards]
   );
 
   const handleBulkAction = useCallback(
@@ -791,7 +791,7 @@ export default function CalendarView({
       <div style={{ height: "calc(105vh - 200px)" }}>
         <DragAndDropCalendar
           localizer={localizer}
-          events={localEvents}
+          events={events}
           startAccessor="start"
           endAccessor="end"
           view={currentView}
