@@ -19,6 +19,15 @@ import "react-big-calendar/lib/addons/dragAndDrop/styles.css";
 const localizer = momentLocalizer(moment);
 const DragAndDropCalendar = withDragAndDrop<CalendarEvent, object>(Calendar);
 
+type RBCEventInteractionArgs<TEvent> = {
+  event: TEvent;
+  start: Date | string;
+  end: Date | string;
+  allDay?: boolean;
+  isAllDay?: boolean;
+  resourceId?: any;
+};
+
 interface CalendarViewProps {
   projectId: string;
   projectSlug: string;
@@ -46,6 +55,7 @@ function useCalendarData(projectSlug: string, onDataChange?: () => void) {
   const [isRefetching, setIsRefetching] = useState(false);
   const lastFetchTime = React.useRef<number>(0);
   const refreshTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+  const [localEvents, setLocalEvents] = useState<CalendarEvent[]>([]);
 
   const fetchCalendarData = useCallback(
     async (showLoader = true) => {
@@ -112,6 +122,8 @@ function useCalendarData(projectSlug: string, onDataChange?: () => void) {
 
   return {
     cards,
+    localEvents,
+    setLocalEvents,
     loading,
     error,
     isRefetching,
@@ -308,6 +320,7 @@ export default function CalendarView({
   } = useCalendarData(projectSlug, onDataChange);
 
   const [currentView, setCurrentView] = useState<View>("month");
+  const [localEvents, setLocalEvents] = useState<CalendarEvent[]>([]);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [bulkActions, setBulkActions] = useState<BulkActions>({
     selectedCards: new Set(),
@@ -325,6 +338,20 @@ export default function CalendarView({
     message: "",
     action: () => {},
   });
+
+  useEffect(() => {
+    const mappedEvents = cards
+      .filter((card) => card.dueDate)
+      .map((card) => ({
+        id: card.id,
+        title: card.title,
+        start: new Date(card.dueDate!),
+        end: new Date(card.dueDate!),
+        card,
+      }));
+
+    setLocalEvents(mappedEvents);
+  }, [cards]);
 
   // Initial fetch
   useEffect(() => {
@@ -428,61 +455,67 @@ export default function CalendarView({
   );
 
   const handleEventResize = useCallback(
-    async (args: {
-      event: CalendarEvent;
-      start: string | Date;
-      end: string | Date;
-    }) => {
+    async ({ event, start, end }: RBCEventInteractionArgs<CalendarEvent>) => {
       if (!canEditCards) return;
 
-      const { event, start } = args;
-      const cardId = event.id;
-      const newDueDate = new Date(start); // convert in case it's a string
+      // 🌟 optimistic update
+      setLocalEvents((prev) =>
+        prev.map((e) =>
+          e.id === event.id
+            ? { ...e, start: new Date(start), end: new Date(end) }
+            : e
+        )
+      );
 
       try {
-        const response = await fetch(`/api/cards/${cardId}`, {
+        const response = await fetch(`/api/cards/${event.id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ dueDate: newDueDate.toISOString() }),
+          body: JSON.stringify({
+            dueDate: new Date(end).toISOString(),
+          }),
         });
 
-        if (!response.ok) throw new Error("Failed to update due date");
+        if (!response.ok) throw new Error("Failed to resize event");
 
-        debouncedRefresh();
+        onDataChange?.(); // refresh
       } catch (error) {
-        console.error("Failed to update card due date:", error);
+        console.error("Failed to resize event:", error);
+        onDataChange?.();
       }
     },
-    [canEditCards, debouncedRefresh]
+    [canEditCards, onDataChange]
   );
 
   const handleEventDrop = useCallback(
-    async (args: {
-      event: CalendarEvent;
-      start: string | Date;
-      end: string | Date;
-    }) => {
+    async ({ event, start, end }: RBCEventInteractionArgs<CalendarEvent>) => {
       if (!canEditCards) return;
 
-      const { event, start } = args;
-      const cardId = event.id;
-      const newDueDate = new Date(start);
+      // 🌟 optimistic update
+      setLocalEvents((prev) =>
+        prev.map((e) =>
+          e.id === event.id
+            ? { ...e, start: new Date(start), end: new Date(end) }
+            : e
+        )
+      );
 
       try {
-        const response = await fetch(`/api/cards/${cardId}`, {
+        const response = await fetch(`/api/cards/${event.id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ dueDate: newDueDate.toISOString() }),
+          body: JSON.stringify({ dueDate: new Date(start).toISOString() }),
         });
 
         if (!response.ok) throw new Error("Failed to update due date");
 
-        debouncedRefresh();
+        onDataChange?.(); // trigger upstream refresh
       } catch (error) {
         console.error("Failed to update card due date:", error);
+        onDataChange?.(); // rollback via refresh
       }
     },
-    [canEditCards, debouncedRefresh]
+    [canEditCards, onDataChange]
   );
 
   const handleBulkAction = useCallback(
@@ -657,7 +690,7 @@ export default function CalendarView({
       <div style={{ height: "calc(100vh - 200px)" }}>
         <DragAndDropCalendar
           localizer={localizer}
-          events={events}
+          events={localEvents}
           startAccessor="start"
           endAccessor="end"
           view={currentView}
