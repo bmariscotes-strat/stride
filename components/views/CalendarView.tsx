@@ -53,6 +53,7 @@ function useCalendarData(projectSlug: string, onDataChange?: () => void) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isRefetching, setIsRefetching] = useState(false);
+  const [hasInitialLoad, setHasInitialLoad] = useState(false); // Track if initial load completed
   const lastFetchTime = React.useRef<number>(0);
   const refreshTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
 
@@ -60,11 +61,22 @@ function useCalendarData(projectSlug: string, onDataChange?: () => void) {
     async (showLoader = true) => {
       try {
         const now = Date.now();
-        if (now - lastFetchTime.current < MIN_FETCH_INTERVAL) {
-          return;
-        }
+        console.log(
+          "Calendar: fetchCalendarData called, showLoader:",
+          showLoader
+        );
+        console.log(
+          "Calendar: Time since last fetch:",
+          now - lastFetchTime.current
+        );
 
-        if (showLoader) {
+        // Remove the interval check for external refreshes
+        // if (now - lastFetchTime.current < MIN_FETCH_INTERVAL) {
+        //   console.log('Calendar: Skipping fetch due to interval limit');
+        //   return;
+        // }
+
+        if (showLoader && !hasInitialLoad) {
           setLoading(true);
         } else {
           setIsRefetching(true);
@@ -72,6 +84,7 @@ function useCalendarData(projectSlug: string, onDataChange?: () => void) {
         setError(null);
         lastFetchTime.current = now;
 
+        console.log("Calendar: Fetching data from API...");
         // Fetch all cards for the project
         const response = await fetch(`/api/projects/${projectSlug}/cards`, {
           headers: {
@@ -84,17 +97,24 @@ function useCalendarData(projectSlug: string, onDataChange?: () => void) {
         }
 
         const cardsData = await response.json();
+        console.log(
+          "Calendar: Received cards data:",
+          cardsData.length,
+          "cards"
+        );
         setCards(cardsData);
+        setHasInitialLoad(true); // Mark initial load as complete
         onDataChange?.();
       } catch (err) {
         console.error("Error fetching calendar data:", err);
         setError(err instanceof Error ? err.message : "An error occurred");
+        setHasInitialLoad(true); // Even on error, mark as loaded to show empty state
       } finally {
         setLoading(false);
         setIsRefetching(false);
       }
     },
-    [projectSlug, onDataChange]
+    [projectSlug, onDataChange, hasInitialLoad]
   );
 
   const debouncedRefresh = useCallback(() => {
@@ -108,6 +128,12 @@ function useCalendarData(projectSlug: string, onDataChange?: () => void) {
   }, [fetchCalendarData]);
 
   const manualRefresh = useCallback(() => {
+    fetchCalendarData(false);
+  }, [fetchCalendarData]);
+
+  // Expose a method to force refresh (for external triggers)
+  const forceRefresh = useCallback(() => {
+    setIsRefetching(true);
     fetchCalendarData(false);
   }, [fetchCalendarData]);
 
@@ -125,9 +151,11 @@ function useCalendarData(projectSlug: string, onDataChange?: () => void) {
     loading,
     error,
     isRefetching,
+    hasInitialLoad,
     fetchCalendarData,
     debouncedRefresh,
     manualRefresh,
+    forceRefresh,
   };
 }
 
@@ -345,9 +373,11 @@ export default function CalendarView({
     loading,
     error,
     isRefetching,
+    hasInitialLoad,
     fetchCalendarData,
     debouncedRefresh,
     manualRefresh,
+    forceRefresh,
   } = useCalendarData(projectSlug, onDataChange);
 
   const [currentView, setCurrentView] = useState<View>("month");
@@ -376,12 +406,33 @@ export default function CalendarView({
     }
   }, [projectSlug, fetchCalendarData]);
 
-  // Handle external refresh triggers
+  // Handle external refresh triggers - FIXED
+  const previousRefreshTrigger = React.useRef<number | undefined>(undefined);
+
   useEffect(() => {
-    if (refreshTrigger && refreshTrigger > 0) {
-      debouncedRefresh();
+    if (
+      refreshTrigger &&
+      refreshTrigger > 0 &&
+      refreshTrigger !== previousRefreshTrigger.current
+    ) {
+      console.log(
+        "Calendar: External refresh trigger detected:",
+        refreshTrigger
+      );
+      console.log("Calendar: Triggering force refresh...");
+
+      // Call fetchCalendarData directly - it handles its own loading states
+      fetchCalendarData(false)
+        .then(() => {
+          console.log("Calendar: Force refresh completed");
+        })
+        .catch((error) => {
+          console.error("Calendar: Force refresh failed:", error);
+        });
+
+      previousRefreshTrigger.current = refreshTrigger;
     }
-  }, [refreshTrigger, debouncedRefresh]);
+  }, [refreshTrigger, fetchCalendarData]);
 
   // Convert cards to calendar events
   const events: CalendarEvent[] = useMemo(() => {
@@ -713,7 +764,8 @@ export default function CalendarView({
     [bulkActions.selectedCards]
   );
 
-  if (loading) {
+  // Show loading state only during initial load
+  if (loading && !hasInitialLoad) {
     return (
       <div className="flex items-center justify-center h-96">
         <div className="text-center">
@@ -724,7 +776,7 @@ export default function CalendarView({
     );
   }
 
-  if (error) {
+  if (error && !hasInitialLoad) {
     return (
       <div className="flex items-center justify-center h-96">
         <div className="text-center">
@@ -787,35 +839,37 @@ export default function CalendarView({
         </div>
       </div>
 
-      {/* Calendar */}
-      <div style={{ height: "calc(105vh - 200px)" }}>
-        <DragAndDropCalendar
-          localizer={localizer}
-          events={events}
-          startAccessor="start"
-          endAccessor="end"
-          view={currentView}
-          popup={true}
-          onView={setCurrentView}
-          showAllEvents={true}
-          date={currentDate}
-          onNavigate={setCurrentDate}
-          onSelectEvent={handleSelectEvent}
-          onEventDrop={canEditCards ? handleEventDrop : undefined}
-          onEventResize={canEditCards ? handleEventResize : undefined}
-          eventPropGetter={eventStyleGetter}
-          components={{
-            event: CustomEvent,
-          }}
-          views={["month", "week", "day", "agenda"]}
-          step={60}
-          showMultiDayTimes
-          culture="en-US"
-          style={{ height: "100%" }}
-          dayLayoutAlgorithm="no-overlap"
-          resizable={canEditCards}
-        />
-      </div>
+      {/* Calendar - Only show when we have initial load completed */}
+      {hasInitialLoad && (
+        <div style={{ height: "calc(105vh - 200px)" }}>
+          <DragAndDropCalendar
+            localizer={localizer}
+            events={events}
+            startAccessor="start"
+            endAccessor="end"
+            view={currentView}
+            popup={true}
+            onView={setCurrentView}
+            showAllEvents={true}
+            date={currentDate}
+            onNavigate={setCurrentDate}
+            onSelectEvent={handleSelectEvent}
+            onEventDrop={canEditCards ? handleEventDrop : undefined}
+            onEventResize={canEditCards ? handleEventResize : undefined}
+            eventPropGetter={eventStyleGetter}
+            components={{
+              event: CustomEvent,
+            }}
+            views={["month", "week", "day", "agenda"]}
+            step={60}
+            showMultiDayTimes
+            culture="en-US"
+            style={{ height: "100%" }}
+            dayLayoutAlgorithm="no-overlap"
+            resizable={canEditCards}
+          />
+        </div>
+      )}
 
       {/* Bulk Actions Toolbar */}
       {bulkActions.isVisible && (
@@ -842,8 +896,8 @@ export default function CalendarView({
         confirmText={confirmDialog.variant === "danger" ? "Delete" : "Archive"}
       />
 
-      {/* Empty state */}
-      {events.length === 0 && !loading && (
+      {/* Empty state - Only show when initial load is complete and no events */}
+      {hasInitialLoad && events.length === 0 && !loading && (
         <div className="absolute inset-0 flex items-center justify-center">
           <div className="text-center text-gray-500">
             <CalendarIcon className="h-12 w-12 mx-auto mb-3 text-gray-400" />
