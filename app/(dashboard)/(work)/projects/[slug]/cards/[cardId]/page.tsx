@@ -1,10 +1,13 @@
-// projects/[slug]/page.tsx - Server Component
+// app/(dashboard)/(work)/projects/[slug]/cards/[cardId]/page.tsx - Server component
 import { notFound, redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/services/users";
 import { ProjectPermissionChecker } from "@/lib/permissions/checkers/project-permission-checker";
 import { getProjectBySlugForUser } from "@/lib/services/projects";
+import { db } from "@/lib/db/db";
+import { cards } from "@/lib/db/schema";
+import { eq } from "drizzle-orm";
 import type { ProjectWithPartialRelations } from "@/types";
-import ProjectPageClient from "@/app/(dashboard)/(work)/projects/[slug]/ProjectPage.client";
+import CardPageClient from "./CardPage.client";
 
 // Extended interface to include columns
 interface ProjectPageData extends ProjectWithPartialRelations {
@@ -16,11 +19,14 @@ interface ProjectPageData extends ProjectWithPartialRelations {
   }>;
 }
 
-interface ProjectPageProps {
-  params: Promise<{ slug: string }>;
+interface CardPageProps {
+  params: Promise<{
+    slug: string;
+    cardId: string;
+  }>;
 }
 
-export default async function ProjectPage({ params }: ProjectPageProps) {
+export default async function CardPage({ params }: CardPageProps) {
   const currentUser = await getCurrentUser();
   const userId = currentUser?.id || null;
 
@@ -28,7 +34,9 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
     redirect("/sign-in");
   }
 
-  const { slug } = await params;
+  const { slug, cardId } = await params;
+
+  // Get project data
   const project = (await getProjectBySlugForUser(
     slug,
     userId
@@ -38,9 +46,29 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
     notFound();
   }
 
+  // Verify the card exists and belongs to this project
+  const card = await db.query.cards.findFirst({
+    where: eq(cards.id, cardId),
+    with: {
+      column: {
+        with: {
+          project: true,
+        },
+      },
+    },
+  });
+
+  if (!card || card.column.project.id !== project.id) {
+    notFound();
+  }
+
   // Check permissions
   const permissionChecker = new ProjectPermissionChecker();
   await permissionChecker.loadContext(userId, project.id);
+
+  if (!permissionChecker.canViewProject()) {
+    notFound();
+  }
 
   const canEditProject = permissionChecker.canEditProject();
   const canManageTeams = permissionChecker.canManageTeams();
@@ -61,7 +89,7 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
   const serializedProject = JSON.parse(JSON.stringify(project));
 
   return (
-    <ProjectPageClient
+    <CardPageClient
       project={serializedProject}
       userId={userId}
       canCreateCards={canCreateCards}
@@ -73,4 +101,53 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
       views={views}
     />
   );
+}
+
+// Generate metadata for the card page
+export async function generateMetadata({ params }: CardPageProps) {
+  const { slug, cardId } = await params;
+
+  try {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
+      return {
+        title: "Card Not Found",
+      };
+    }
+
+    const project = await getProjectBySlugForUser(slug, currentUser.id);
+    if (!project) {
+      return {
+        title: "Project Not Found",
+      };
+    }
+
+    const card = await db.query.cards.findFirst({
+      where: eq(cards.id, cardId),
+      with: {
+        column: {
+          with: {
+            project: true,
+          },
+        },
+      },
+    });
+
+    if (!card || card.column.project.id !== project.id) {
+      return {
+        title: "Card Not Found",
+      };
+    }
+
+    return {
+      title: `${card.title} - ${project.name}`,
+      description: card.description
+        ? card.description.substring(0, 160)
+        : `Task in ${project.name}`,
+    };
+  } catch (error) {
+    return {
+      title: "Card Not Found",
+    };
+  }
 }

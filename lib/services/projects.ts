@@ -8,6 +8,8 @@ import {
   users,
   teamMembers,
   columns,
+  cards,
+  labels,
   projectTeams,
   projectTeamMembers,
 } from "@/lib/db/schema";
@@ -1485,6 +1487,7 @@ export async function getProjectBySlugForUser(
       (p) => p.projectId
     );
 
+    // 3. Get the project with access check
     const projRow = await db
       .select({
         id: projects.id,
@@ -1543,12 +1546,190 @@ export async function getProjectBySlugForUser(
       userRole = matchingTeam?.teamRole;
     }
 
-    // 5. Get teams for the project
-    const teamsMap = await getTeamsForProjectIds([project.id]);
+    // 5. Get associated teams for this project
+    const teamsResult = await db
+      .select({
+        id: teams.id,
+        name: teams.name,
+        slug: teams.slug,
+      })
+      .from(projectTeams)
+      .innerJoin(teams, eq(projectTeams.teamId, teams.id))
+      .where(eq(projectTeams.projectId, project.id));
+
+    // 6. Get columns with their cards
+    const columnsResult = await db
+      .select({
+        // Column fields
+        columnId: columns.id,
+        columnName: columns.name,
+        columnPosition: columns.position,
+        columnColor: columns.color,
+        columnCreatedAt: columns.createdAt,
+        columnUpdatedAt: columns.updatedAt,
+        // Card fields (optional due to LEFT JOIN)
+        cardId: cards.id,
+        cardTitle: cards.title,
+        cardDescription: cards.description,
+        cardAssigneeId: cards.assigneeId,
+        cardPriority: cards.priority,
+        cardStartDate: cards.startDate,
+        cardDueDate: cards.dueDate,
+        cardPosition: cards.position,
+        cardStatus: cards.status,
+        cardIsArchived: cards.isArchived,
+        cardSchemaVersion: cards.schemaVersion,
+        cardCreatedAt: cards.createdAt,
+        cardUpdatedAt: cards.updatedAt,
+        // Assignee fields (optional)
+        assigneeId: users.id,
+        assigneeFirstName: users.firstName,
+        assigneeLastName: users.lastName,
+        assigneeEmail: users.email,
+        assigneeAvatarUrl: users.avatarUrl,
+      })
+      .from(columns)
+      .leftJoin(
+        cards,
+        and(eq(cards.columnId, columns.id), eq(cards.isArchived, false))
+      )
+      .leftJoin(users, eq(cards.assigneeId, users.id))
+      .where(eq(columns.projectId, project.id))
+      .orderBy(asc(columns.position), asc(cards.position));
+
+    // Group columns and cards
+    const columnsMap = new Map();
+
+    for (const row of columnsResult) {
+      if (!columnsMap.has(row.columnId)) {
+        columnsMap.set(row.columnId, {
+          id: row.columnId,
+          projectId: project.id,
+          name: row.columnName,
+          position: row.columnPosition,
+          color: row.columnColor,
+          createdAt: row.columnCreatedAt,
+          updatedAt: row.columnUpdatedAt,
+          cards: [],
+        });
+      }
+
+      if (row.cardId) {
+        columnsMap.get(row.columnId).cards.push({
+          id: row.cardId,
+          columnId: row.columnId,
+          title: row.cardTitle,
+          description: row.cardDescription,
+          assigneeId: row.cardAssigneeId,
+          priority: row.cardPriority,
+          startDate: row.cardStartDate,
+          dueDate: row.cardDueDate,
+          position: row.cardPosition,
+          status: row.cardStatus,
+          isArchived: row.cardIsArchived,
+          schemaVersion: row.cardSchemaVersion,
+          createdAt: row.cardCreatedAt,
+          updatedAt: row.cardUpdatedAt,
+          assignee: row.assigneeId
+            ? {
+                id: row.assigneeId,
+                firstName: row.assigneeFirstName,
+                lastName: row.assigneeLastName,
+                email: row.assigneeEmail,
+                avatarUrl: row.assigneeAvatarUrl,
+              }
+            : null,
+        });
+      }
+    }
+
+    const columnsArray = Array.from(columnsMap.values());
+
+    // 7. Get project labels
+    const labelsResult = await db
+      .select({
+        id: labels.id,
+        name: labels.name,
+        color: labels.color,
+        createdAt: labels.createdAt,
+      })
+      .from(labels)
+      .where(eq(labels.projectId, project.id));
+
+    // 8. Get project team members with ALL required fields
+    const projectTeamMembersResult = await db
+      .select({
+        // ALL ProjectTeamMember fields
+        id: projectTeamMembers.id,
+        projectId: projectTeamMembers.projectId,
+        teamMemberId: projectTeamMembers.teamMemberId,
+        role: projectTeamMembers.role,
+        addedBy: projectTeamMembers.addedBy,
+        createdAt: projectTeamMembers.createdAt,
+        updatedAt: projectTeamMembers.updatedAt,
+        // TeamMember info
+        teamMemberTeamId: teamMembers.teamId,
+        teamMemberUserId: teamMembers.userId,
+        teamMemberRole: teamMembers.role,
+        teamMemberJoinedAt: teamMembers.joinedAt,
+        // ALL User fields
+        userId: users.id,
+        userClerkUserId: users.clerkUserId,
+        userFirstName: users.firstName,
+        userLastName: users.lastName,
+        userUsername: users.username,
+        userEmail: users.email,
+        userAvatarUrl: users.avatarUrl,
+        userPersonalTeamId: users.personalTeamId,
+        userSchemaVersion: users.schemaVersion,
+        userCreatedAt: users.createdAt,
+        userUpdatedAt: users.updatedAt,
+      })
+      .from(projectTeamMembers)
+      .innerJoin(
+        teamMembers,
+        eq(projectTeamMembers.teamMemberId, teamMembers.id)
+      )
+      .innerJoin(users, eq(teamMembers.userId, users.id))
+      .where(eq(projectTeamMembers.projectId, project.id));
+
+    // Transform to match ProjectTeamMemberWithRelations type
+    const formattedProjectTeamMembers = projectTeamMembersResult.map((row) => ({
+      id: row.id,
+      projectId: row.projectId,
+      teamMemberId: row.teamMemberId,
+      role: row.role,
+      addedBy: row.addedBy,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+      teamMember: {
+        id: row.teamMemberId,
+        teamId: row.teamMemberTeamId,
+        userId: row.teamMemberUserId,
+        role: row.teamMemberRole,
+        joinedAt: row.teamMemberJoinedAt,
+        user: {
+          id: row.userId,
+          clerkUserId: row.userClerkUserId,
+          firstName: row.userFirstName,
+          lastName: row.userLastName,
+          username: row.userUsername,
+          email: row.userEmail,
+          avatarUrl: row.userAvatarUrl,
+          personalTeamId: row.userPersonalTeamId,
+          schemaVersion: row.userSchemaVersion,
+          createdAt: row.userCreatedAt,
+          updatedAt: row.userUpdatedAt,
+        },
+      },
+    }));
 
     const result = {
       ...project,
-      teams: teamsMap.get(project.id) ?? [],
+      teams: teamsResult,
+      columns: columnsArray,
+      labels: labelsResult,
+      projectTeamMembers: formattedProjectTeamMembers,
       userRole,
     };
 

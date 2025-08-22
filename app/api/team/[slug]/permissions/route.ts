@@ -8,7 +8,7 @@ export async function GET(
 ) {
   try {
     const userId = await getRequiredUserId();
-    const { teamId } = await params; // Await the params Promise
+    const { teamId } = await params;
 
     const permissionChecker = new TeamPermissionChecker();
     const context = await permissionChecker.loadContext(userId, teamId);

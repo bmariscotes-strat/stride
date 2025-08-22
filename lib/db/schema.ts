@@ -283,6 +283,7 @@ export const cards = pgTable(
     status: varchar("status", { length: 50 }),
     isArchived: boolean("is_archived").default(false).notNull(),
     schemaVersion: integer("schema_version").default(1).notNull(),
+    ownerId: uuid("owner_id").notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
@@ -302,10 +303,15 @@ export const cards = pgTable(
       foreignColumns: [users.id],
       name: "fk_cards_assignee_id",
     }).onDelete("set null"),
+    ownerIdIdx: index("cards_owner_id_idx").on(table.ownerId),
+    ownerIdFk: foreignKey({
+      columns: [table.ownerId],
+      foreignColumns: [users.id],
+      name: "fk_cards_owner_id",
+    }).onDelete("restrict"),
   })
 );
 
-// UPDATED: Labels - Now scoped to projects instead of teams since teams can have different roles per project
 export const labels = pgTable(
   "labels",
   {

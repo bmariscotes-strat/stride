@@ -1,7 +1,8 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import { X, Check, Users, Crown, Shield, Eye } from "lucide-react";
-import { useProject } from "@/hooks/useProjects"; // Add useProject import
+import { X, Check, Users } from "lucide-react";
+import { useProject } from "@/hooks/useProjects";
+import { getRoleIcon, getRoleBadgeClass, getIcon } from "@/lib/ui/icons-colors";
 import type { TeamWithRelations, TeamWithMemberRoles } from "@/types";
 
 interface TeamSelectionModalProps {
@@ -70,7 +71,7 @@ export default function TeamSelectionModal({
     if (freshProjectData?.projectTeamMembers) {
       const freshRoles: Record<string, "admin" | "editor" | "viewer"> = {};
 
-      freshProjectData.projectTeamMembers.forEach((ptm) => {
+      freshProjectData.projectTeamMembers.forEach((ptm: any) => {
         if (ptm.teamMember?.user?.id && ptm.role) {
           freshRoles[ptm.teamMember.user.id] = ptm.role;
         }
@@ -207,28 +208,6 @@ export default function TeamSelectionModal({
   };
 
   const uniqueMembers = getUniqueMembers();
-
-  const getRoleIcon = (role: "admin" | "editor" | "viewer") => {
-    switch (role) {
-      case "admin":
-        return <Crown className="h-4 w-4 text-red-600" />;
-      case "editor":
-        return <Shield className="h-4 w-4 text-blue-600" />;
-      case "viewer":
-        return <Eye className="h-4 w-4 text-gray-600" />;
-    }
-  };
-
-  const getRoleBadgeColor = (role: "admin" | "editor" | "viewer") => {
-    switch (role) {
-      case "admin":
-        return "bg-red-100 text-red-800 border-red-200";
-      case "editor":
-        return "bg-blue-100 text-blue-800 border-blue-200";
-      case "viewer":
-        return "bg-gray-100 text-gray-800 border-gray-200";
-    }
-  };
 
   if (!isOpen) return null;
 

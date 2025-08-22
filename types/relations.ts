@@ -91,7 +91,7 @@ export interface ColumnWithRelations extends Column {
 }
 
 export interface CardWithRelations extends Card {
-  column?: Column;
+  column: Column;
   assignee?: User;
   labels?: CardLabel[];
   comments?: CardComment[];
