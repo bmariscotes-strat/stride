@@ -795,6 +795,8 @@ export default function CalendarView({
     );
   }
 
+  // Replace the calendar rendering section in your CalendarView component with this:
+
   return (
     <div className="h-full relative">
       {/* Header */}
@@ -839,8 +841,23 @@ export default function CalendarView({
         </div>
       </div>
 
-      {/* Calendar - Only show when we have initial load completed */}
-      {hasInitialLoad && (
+      {/* Main Content Area */}
+      {hasInitialLoad && events.length === 0 ? (
+        // Empty state - only show when no events and not loading
+        <div
+          className="flex items-center justify-center"
+          style={{ height: "calc(105vh - 200px)" }}
+        >
+          <div className="text-center text-gray-500">
+            <CalendarIcon className="h-12 w-12 mx-auto mb-3 text-gray-400" />
+            <p className="text-lg font-medium mb-1">No cards with due dates</p>
+            <p className="text-sm">
+              Cards will appear on the calendar when you set due dates
+            </p>
+          </div>
+        </div>
+      ) : hasInitialLoad ? (
+        // Calendar - only show when we have initial load completed and have events
         <div style={{ height: "calc(105vh - 200px)" }}>
           <DragAndDropCalendar
             localizer={localizer}
@@ -869,7 +886,7 @@ export default function CalendarView({
             resizable={canEditCards}
           />
         </div>
-      )}
+      ) : null}
 
       {/* Bulk Actions Toolbar */}
       {bulkActions.isVisible && (
@@ -895,19 +912,6 @@ export default function CalendarView({
         variant={confirmDialog.variant}
         confirmText={confirmDialog.variant === "danger" ? "Delete" : "Archive"}
       />
-
-      {/* Empty state - Only show when initial load is complete and no events */}
-      {hasInitialLoad && events.length === 0 && !loading && (
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="text-center text-gray-500">
-            <CalendarIcon className="h-12 w-12 mx-auto mb-3 text-gray-400" />
-            <p className="text-lg font-medium mb-1">No cards with due dates</p>
-            <p className="text-sm">
-              Cards will appear on the calendar when you set due dates
-            </p>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

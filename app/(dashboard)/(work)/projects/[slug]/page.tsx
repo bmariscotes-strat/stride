@@ -38,7 +38,6 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
     notFound();
   }
 
-  // Check permissions
   const permissionChecker = new ProjectPermissionChecker();
   await permissionChecker.loadContext(userId, project.id);
 
@@ -49,7 +48,6 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
 
   const isProjectOwner = project.ownerId === userId;
 
-  // Get the first column for creating cards
   const defaultColumnId = project.columns?.[0]?.id;
 
   const views = [
