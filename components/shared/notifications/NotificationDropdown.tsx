@@ -56,15 +56,25 @@ export default function NotificationDropdown({
     [isLoading, isLoadingMore, hasMoreNotifications, onLoadMore]
   );
 
-  const fetchSlugs = async (teamId: string, projectId?: string) => {
+  const fetchSlugs = async (teamId?: string, projectId?: string) => {
     try {
+      // Must provide at least one ID
+      if (!teamId && !projectId) {
+        console.warn("[fetchSlugs] No teamId or projectId provided");
+        return { teamSlug: "", projectSlug: undefined };
+      }
+
       const res = await fetch("/api/slugs", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ teamId, projectId }),
       });
 
-      if (!res.ok) throw new Error("Failed to fetch slugs");
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(`Failed to fetch slugs: ${errorData.error}`);
+      }
+
       return await res.json();
     } catch (err) {
       console.error("[fetchSlugs] Error:", err);
@@ -185,21 +195,6 @@ export default function NotificationDropdown({
           </>
         )}
       </div>
-
-      {/* Footer */}
-      {notifications.length > 0 && (
-        <div className="p-3 border-t border-gray-200 bg-gray-50">
-          <button
-            className="w-full text-sm text-blue-600 hover:text-blue-800 font-medium transition-colors"
-            onClick={() => {
-              onClose();
-              onViewAll?.();
-            }}
-          >
-            View all notifications
-          </button>
-        </div>
-      )}
     </div>
   );
 }

@@ -1,4 +1,4 @@
-// lib/services/tasks/crud.ts - Fixed static method calls
+// lib/services/tasks/crud.ts
 import { db } from "@/lib/db/db";
 import {
   cards,
@@ -15,6 +15,8 @@ import {
   type MoveCardInput,
 } from "./base";
 import type { CardWithRelations } from "@/types";
+import { ActivityService } from "@/lib/services/activity";
+import { NotificationService } from "@/lib/services/notification";
 
 export class TaskCRUDService extends BaseTaskService {
   /**
@@ -36,7 +38,7 @@ export class TaskCRUDService extends BaseTaskService {
       throw new Error("Column not found");
     }
 
-    // FIXED: Use static method call instead of this
+    // Check permissions
     const canCreate = await TaskCRUDService.canUserCreateCardsInProject(
       userId,
       column.project.id
@@ -61,7 +63,6 @@ export class TaskCRUDService extends BaseTaskService {
       }
     }
 
-    // FIXED: Use static method call
     const position =
       input.position ??
       (await TaskCRUDService.getNextCardPosition(input.columnId));
@@ -85,7 +86,38 @@ export class TaskCRUDService extends BaseTaskService {
       })
       .returning();
 
-    // FIXED: Use static method call
+    // Log activity and send notifications
+    try {
+      await NotificationService.notifyCardCreated(
+        userId,
+        column.project.id,
+        newCard.id,
+        newCard.title,
+        column.name
+      );
+
+      // If assigned to someone, send additional assignment notification
+      if (input.assigneeId && input.assigneeId !== userId) {
+        const assignee = await db.query.users.findFirst({
+          where: eq(users.id, input.assigneeId),
+        });
+
+        if (assignee) {
+          await NotificationService.notifyCardAssigned(
+            userId,
+            column.project.id,
+            newCard.id,
+            newCard.title,
+            input.assigneeId,
+            `${assignee.firstName} ${assignee.lastName}`.trim()
+          );
+        }
+      }
+    } catch (error) {
+      console.error("Failed to log activity/send notifications:", error);
+      // Don't fail the main operation
+    }
+
     return TaskCRUDService.getCardById(newCard.id);
   }
 
@@ -137,7 +169,7 @@ export class TaskCRUDService extends BaseTaskService {
     // Transform labels to match CardWithRelations structure
     const transformedLabels = card.labels.map((labelItem) => ({
       ...labelItem,
-      color: labelItem.label.color, // Flatten the color property
+      color: labelItem.label.color,
     }));
 
     return {
@@ -154,14 +186,16 @@ export class TaskCRUDService extends BaseTaskService {
     input: UpdateCardInput,
     userId: string
   ): Promise<CardWithRelations> {
-    // FIXED: Use static method call
     const canEdit = await TaskCRUDService.canUserEditCard(userId, input.id);
     if (!canEdit) {
       throw new Error("Insufficient permissions to edit this card");
     }
 
+    // Get current card state for comparison
+    const currentCard = await TaskCRUDService.getCardById(input.id);
+
     // If moving to a different column, validate the new column
-    if (input.columnId) {
+    if (input.columnId && input.columnId !== currentCard.columnId) {
       const column = await db.query.columns.findFirst({
         where: eq(columns.id, input.columnId),
         with: { project: true },
@@ -185,7 +219,6 @@ export class TaskCRUDService extends BaseTaskService {
     // Validate assignee if being updated
     if (input.assigneeId !== undefined) {
       if (input.assigneeId) {
-        const currentCard = await TaskCRUDService.getCardById(input.id);
         const canAssign = await TaskCRUDService.canUserCreateCardsInProject(
           input.assigneeId,
           currentCard.column?.projectId
@@ -198,25 +231,193 @@ export class TaskCRUDService extends BaseTaskService {
       }
     }
 
-    // Update the card
+    // Prepare update data
     const updateData: Partial<typeof cards.$inferInsert> = {
       updatedAt: new Date(),
     };
 
-    // Only include fields that are being updated
-    if (input.title !== undefined) updateData.title = input.title;
-    if (input.description !== undefined)
+    // Track changes for activity logging
+    const changes: Array<{
+      field: string;
+      oldValue: any;
+      newValue: any;
+    }> = [];
+
+    // Only include fields that are being updated and track changes
+    if (input.title !== undefined && input.title !== currentCard.title) {
+      updateData.title = input.title;
+      changes.push({
+        field: "title",
+        oldValue: currentCard.title,
+        newValue: input.title,
+      });
+    }
+
+    if (
+      input.description !== undefined &&
+      input.description !== currentCard.description
+    ) {
       updateData.description = input.description;
-    if (input.assigneeId !== undefined)
+      changes.push({
+        field: "description",
+        oldValue: currentCard.description,
+        newValue: input.description,
+      });
+    }
+
+    if (
+      input.assigneeId !== undefined &&
+      input.assigneeId !== currentCard.assigneeId
+    ) {
       updateData.assigneeId = input.assigneeId;
-    if (input.priority !== undefined) updateData.priority = input.priority;
-    if (input.startDate !== undefined) updateData.startDate = input.startDate;
-    if (input.dueDate !== undefined) updateData.dueDate = input.dueDate;
+      changes.push({
+        field: "assigneeId",
+        oldValue: currentCard.assigneeId,
+        newValue: input.assigneeId,
+      });
+    }
+
+    if (
+      input.priority !== undefined &&
+      input.priority !== currentCard.priority
+    ) {
+      updateData.priority = input.priority;
+      changes.push({
+        field: "priority",
+        oldValue: currentCard.priority,
+        newValue: input.priority,
+      });
+    }
+
+    if (
+      input.startDate !== undefined &&
+      input.startDate !== currentCard.startDate
+    ) {
+      updateData.startDate = input.startDate;
+      changes.push({
+        field: "startDate",
+        oldValue: currentCard.startDate,
+        newValue: input.startDate,
+      });
+    }
+
+    if (input.dueDate !== undefined && input.dueDate !== currentCard.dueDate) {
+      updateData.dueDate = input.dueDate;
+      changes.push({
+        field: "dueDate",
+        oldValue: currentCard.dueDate,
+        newValue: input.dueDate,
+      });
+    }
+
+    if (input.status !== undefined && input.status !== currentCard.status) {
+      updateData.status = input.status;
+      changes.push({
+        field: "status",
+        oldValue: currentCard.status,
+        newValue: input.status,
+      });
+    }
+
     if (input.position !== undefined) updateData.position = input.position;
-    if (input.status !== undefined) updateData.status = input.status;
     if (input.columnId !== undefined) updateData.columnId = input.columnId;
 
+    // Update the card
     await db.update(cards).set(updateData).where(eq(cards.id, input.id));
+
+    // Log activities and send notifications for significant changes
+    try {
+      const projectId = currentCard.column?.projectId;
+
+      if (projectId) {
+        // Log general card update if there are changes
+        if (changes.length > 0) {
+          await ActivityService.logCardUpdated(
+            userId,
+            projectId,
+            input.id,
+            changes
+          );
+        }
+
+        // Handle assignment change notifications
+        if (
+          input.assigneeId !== undefined &&
+          input.assigneeId !== currentCard.assigneeId
+        ) {
+          const previousAssignee = currentCard.assignee;
+          let newAssignee = null;
+
+          if (input.assigneeId) {
+            newAssignee = await db.query.users.findFirst({
+              where: eq(users.id, input.assigneeId),
+            });
+          }
+
+          if (input.assigneeId) {
+            // Card was assigned
+            await NotificationService.notifyCardAssigned(
+              userId,
+              projectId,
+              input.id,
+              currentCard.title,
+              input.assigneeId,
+              newAssignee
+                ? `${newAssignee.firstName} ${newAssignee.lastName}`.trim()
+                : "Unknown User",
+              previousAssignee?.id,
+              previousAssignee
+                ? `${previousAssignee.firstName} ${previousAssignee.lastName}`.trim()
+                : undefined
+            );
+          } else if (previousAssignee) {
+            // Card was unassigned
+            await ActivityService.logCardUnassigned(
+              userId,
+              projectId,
+              input.id,
+              currentCard.title,
+              previousAssignee.id,
+              `${previousAssignee.firstName} ${previousAssignee.lastName}`.trim()
+            );
+          }
+        }
+
+        // Handle due date change notifications
+        if (
+          input.dueDate !== undefined &&
+          input.dueDate !== currentCard.dueDate &&
+          input.dueDate
+        ) {
+          await NotificationService.notifyCardDueDateChanged(
+            userId,
+            projectId,
+            input.id,
+            currentCard.title,
+            input.dueDate,
+            currentCard.dueDate || undefined
+          );
+        }
+
+        // Handle priority change
+        if (
+          input.priority !== undefined &&
+          input.priority !== currentCard.priority
+        ) {
+          await ActivityService.logCardPriorityChanged(
+            userId,
+            projectId,
+            input.id,
+            currentCard.title,
+            currentCard.priority || "none",
+            input.priority || "none"
+          );
+        }
+      }
+    } catch (error) {
+      console.error("Failed to log activity/send notifications:", error);
+      // Don't fail the main operation
+    }
 
     return TaskCRUDService.getCardById(input.id);
   }
@@ -228,7 +429,6 @@ export class TaskCRUDService extends BaseTaskService {
     input: MoveCardInput,
     userId: string
   ): Promise<CardWithRelations> {
-    // FIXED: Use static method call
     const canEdit = await TaskCRUDService.canUserEditCard(userId, input.cardId);
     if (!canEdit) {
       throw new Error("Insufficient permissions to move this card");
@@ -237,6 +437,16 @@ export class TaskCRUDService extends BaseTaskService {
     const card = await TaskCRUDService.getCardById(input.cardId);
     const oldColumnId = card.columnId;
     const oldPosition = card.position;
+
+    // Get column names for notifications
+    const [oldColumn, newColumn] = await Promise.all([
+      db.query.columns.findFirst({ where: eq(columns.id, oldColumnId) }),
+      db.query.columns.findFirst({ where: eq(columns.id, input.newColumnId) }),
+    ]);
+
+    if (!oldColumn || !newColumn) {
+      throw new Error("Column not found");
+    }
 
     // If moving to the same column, just update position
     if (oldColumnId === input.newColumnId) {
@@ -269,20 +479,11 @@ export class TaskCRUDService extends BaseTaskService {
       }
     } else {
       // Moving to different column
-      const newColumn = await db.query.columns.findFirst({
-        where: eq(columns.id, input.newColumnId),
-        with: { project: true },
-      });
-
-      if (!newColumn) {
-        throw new Error("Target column not found");
-      }
-
       // Check permissions for target column
       const canCreateInProject =
         await TaskCRUDService.canUserCreateCardsInProject(
           userId,
-          newColumn.project.id
+          newColumn.projectId
         );
 
       if (!canCreateInProject) {
@@ -312,6 +513,23 @@ export class TaskCRUDService extends BaseTaskService {
           updatedAt: new Date(),
         })
         .where(eq(cards.id, input.cardId));
+
+      // Log activity and send notifications for column moves
+      try {
+        await NotificationService.notifyCardMoved(
+          userId,
+          newColumn.projectId,
+          input.cardId,
+          card.title,
+          oldColumnId,
+          input.newColumnId,
+          oldColumn.name,
+          newColumn.name
+        );
+      } catch (error) {
+        console.error("Failed to log move activity/send notifications:", error);
+        // Don't fail the main operation
+      }
     }
 
     return TaskCRUDService.getCardById(input.cardId);
@@ -326,9 +544,7 @@ export class TaskCRUDService extends BaseTaskService {
       throw new Error("Insufficient permissions to archive this card");
     }
 
-    const card = await db.query.cards.findFirst({
-      where: eq(cards.id, cardId),
-    });
+    const card = await TaskCRUDService.getCardById(cardId);
 
     if (!card) {
       throw new Error("Card not found");
@@ -349,6 +565,24 @@ export class TaskCRUDService extends BaseTaskService {
       card.position + 1,
       -1
     );
+
+    // Log activity
+    try {
+      const projectId = card.column?.projectId;
+      const columnName = card.column?.name || "Unknown Column";
+
+      if (projectId) {
+        await ActivityService.logCardDeleted(
+          userId,
+          projectId,
+          cardId,
+          card.title,
+          columnName
+        );
+      }
+    } catch (error) {
+      console.error("Failed to log archive activity:", error);
+    }
   }
 
   /**
@@ -397,6 +631,19 @@ export class TaskCRUDService extends BaseTaskService {
       })
       .where(eq(cards.id, cardId));
 
+    // Log activity
+    try {
+      await ActivityService.logCardCreated(
+        userId,
+        card.column.project.id,
+        cardId,
+        card.title,
+        card.column.name
+      );
+    } catch (error) {
+      console.error("Failed to log restore activity:", error);
+    }
+
     return TaskCRUDService.getCardById(cardId);
   }
 
@@ -409,12 +656,28 @@ export class TaskCRUDService extends BaseTaskService {
       throw new Error("Insufficient permissions to delete this card");
     }
 
-    const card = await db.query.cards.findFirst({
-      where: eq(cards.id, cardId),
-    });
+    const card = await TaskCRUDService.getCardById(cardId);
 
     if (!card) {
       throw new Error("Card not found");
+    }
+
+    // Log activity before deletion
+    try {
+      const projectId = card.column?.projectId;
+      const columnName = card.column?.name || "Unknown Column";
+
+      if (projectId) {
+        await ActivityService.logCardDeleted(
+          userId,
+          projectId,
+          cardId,
+          card.title,
+          columnName
+        );
+      }
+    } catch (error) {
+      console.error("Failed to log delete activity:", error);
     }
 
     // Delete the card (cascade will handle related records)

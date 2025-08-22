@@ -1,3 +1,4 @@
+// lib\templates\notif-template.ts
 import { NotificationType, NotificationTemplate } from "@/types";
 
 // Notification templates with dynamic message generation

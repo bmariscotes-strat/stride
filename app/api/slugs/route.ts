@@ -1,12 +1,16 @@
-// app/api/slugs/route.ts or /pages/api/slugs.ts depending on your structure
+// app/api/slugs/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { getSlugById } from "@/lib/services/utils/getters";
 
 export async function POST(req: NextRequest) {
   const { teamId, projectId } = await req.json();
 
-  if (!teamId) {
-    return NextResponse.json({ error: "Missing teamId" }, { status: 400 });
+  // Now we allow either teamId or projectId (or both)
+  if (!teamId && !projectId) {
+    return NextResponse.json(
+      { error: "Either teamId or projectId must be provided" },
+      { status: 400 }
+    );
   }
 
   try {

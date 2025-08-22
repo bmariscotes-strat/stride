@@ -1,5 +1,4 @@
 // lib/helpers/notification-helpers.ts
-
 import { NotificationType } from "@/types/enums/notif";
 import { NOTIFICATION_TEMPLATES } from "@/lib/templates/notif-template";
 import { NotificationWithRelations } from "@/types";
@@ -42,31 +41,49 @@ export const formatTimeAgo = (dateString: Date) => {
 export async function getNotificationUrlById(
   notification: NotificationWithRelations,
   fetchSlugs: (
-    teamId: string,
+    teamId?: string,
     projectId?: string
   ) => Promise<{ teamSlug: string; projectSlug?: string }>
 ): Promise<string> {
-  if (!notification.teamId) {
-    return "#";
-  }
-
   try {
-    const { teamSlug, projectSlug } = await fetchSlugs(
-      notification.teamId,
-      notification.projectId || undefined
-    );
-
-    if (notification.cardId && projectSlug) {
-      return `/team/${teamSlug}/project/${projectSlug}/card/${notification.cardId}`;
+    // Handle card notifications - these use project slug directly
+    if (notification.cardId && notification.projectId) {
+      const { projectSlug } = await fetchSlugs("", notification.projectId);
+      if (projectSlug) {
+        return `/projects/${projectSlug}/cards/${notification.cardId}`;
+      }
     }
 
-    if (notification.projectId && projectSlug) {
-      return `projects/${projectSlug}`;
+    // Handle project notifications - need team context
+    if (notification.projectId && notification.teamId) {
+      const { projectSlug } = await fetchSlugs(
+        notification.teamId,
+        notification.projectId
+      );
+      if (projectSlug) {
+        return `/projects/${projectSlug}`;
+      }
     }
 
-    return `/team/${teamSlug}`;
+    // Handle team notifications
+    if (notification.teamId) {
+      const { teamSlug } = await fetchSlugs(notification.teamId);
+      if (teamSlug) {
+        return `/team/${teamSlug}`;
+      }
+    }
+
+    // Handle standalone card notifications (if they don't have projectId but have cardId)
+    if (notification.cardId && !notification.projectId) {
+      // You might need to fetch the project ID from the card ID
+      // For now, return a generic fallback
+      return `/dashboard`; // or wherever you want to redirect
+    }
+
+    // Fallback for notifications without specific context
+    return "/dashboard";
   } catch (error) {
     console.error("Error fetching slugs for notification URL:", error);
-    return "#";
+    return "/dashboard"; // Better fallback than "#"
   }
 }

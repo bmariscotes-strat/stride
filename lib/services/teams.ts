@@ -128,8 +128,9 @@ export async function createTeamAction(
 
           await db.insert(teamMembers).values(teamMemberInserts);
 
-          // Log each team member addition
+          // Log each team member addition and send notifications
           for (const user of existingUsers) {
+            // Log activity
             await ActivityService.logTeamMemberAdded(
               createdBy,
               null, // No specific project, this is team-level
@@ -140,6 +141,24 @@ export async function createTeamAction(
               "member",
               newTeam.id
             );
+
+            // Send notification to the newly added team member
+            try {
+              await NotificationService.notifyTeamMemberAdded(
+                createdBy,
+                newTeam.id,
+                user.id,
+                `${user.firstName} ${user.lastName}` ||
+                  user.username ||
+                  user.email,
+                "member"
+              );
+            } catch (notificationError) {
+              console.error(
+                `Failed to send notification to user ${user.id}:`,
+                notificationError
+              );
+            }
           }
 
           // Mark existing users as successfully added

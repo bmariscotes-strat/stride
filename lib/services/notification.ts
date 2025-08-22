@@ -937,12 +937,15 @@ export class NotificationService {
     const actor = await this.getUser(actorUserId);
     const actorName = `${actor?.firstName} ${actor?.lastName}`;
 
+    // Format the update summary to be more user-friendly
+    const formattedSummary = formatUpdateSummary(updateSummary);
+
     const projectUpdatedNotification = createNotificationContent(
       "project_updated",
       {
         actorName,
         projectName,
-        updateSummary,
+        updateSummary: formattedSummary,
       }
     );
 
@@ -1061,7 +1064,7 @@ export class NotificationService {
   }
 
   // =============================================================================
-  // MISSING HELPER METHODS
+  // HELPER METHODS
   // =============================================================================
 
   /**
@@ -1085,5 +1088,57 @@ export class NotificationService {
       })
       .from(teamMembers)
       .where(and(...whereConditions));
+  }
+}
+
+// HELPER FUNCTIONS
+function formatUpdateSummary(updateSummary: string): string {
+  // Parse the update summary and make it more readable
+  const updates = updateSummary.split(", ").map((update) => {
+    // Handle name changes
+    if (update.includes("name:")) {
+      const match = update.match(/name: (.+) → (.+)/);
+      if (match) {
+        return `renamed to "${match[2]}"`;
+      }
+    }
+
+    // Handle description changes
+    if (update.includes("description:")) {
+      const match = update.match(/description: (.+) → (.+)/);
+      if (match) {
+        const newDesc = match[2];
+        // Truncate long descriptions
+        const truncatedDesc =
+          newDesc.length > 50 ? newDesc.substring(0, 50) + "..." : newDesc;
+        return `description updated to "${truncatedDesc}"`;
+      }
+    }
+
+    // Handle status changes
+    if (update.includes("status:")) {
+      const match = update.match(/status: (.+) → (.+)/);
+      if (match) {
+        return `status changed to ${match[2]}`;
+      }
+    }
+
+    // Handle other field changes generically
+    const fieldMatch = update.match(/(\w+): (.+) → (.+)/);
+    if (fieldMatch) {
+      const [, field, oldValue, newValue] = fieldMatch;
+      return `${field} updated`;
+    }
+
+    return update;
+  });
+
+  // Join updates nicely
+  if (updates.length === 1) {
+    return updates[0];
+  } else if (updates.length === 2) {
+    return `${updates[0]} and ${updates[1]}`;
+  } else {
+    return `${updates.slice(0, -1).join(", ")}, and ${updates[updates.length - 1]}`;
   }
 }
