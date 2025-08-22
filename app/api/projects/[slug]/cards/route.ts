@@ -313,14 +313,17 @@ export async function GET(
 }
 
 export async function PATCH(
-  request: Request,
-  { params }: { params: { id: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ slug: string }> }
 ) {
   try {
     const currentUser = await getCurrentUser();
     if (!currentUser) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    const resolvedParams = await params;
+    const { slug: cardId } = resolvedParams;
 
     const body = await request.json();
     const { startDate, dueDate, ...otherFields } = body;
@@ -341,7 +344,7 @@ export async function PATCH(
 
     // Create the UpdateCardInput object with the card ID and other fields
     const updateInput: UpdateCardInput = {
-      id: params.id,
+      id: cardId,
       ...otherFields,
       ...(processedStartDate !== undefined && {
         startDate: processedStartDate,
