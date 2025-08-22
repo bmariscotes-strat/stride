@@ -4,7 +4,7 @@ import React, { useState, lazy, Suspense, useCallback, useEffect } from "react";
 import Link from "next/link";
 import DualPanelLayout from "@/components/layout/shared/DualPanelLayout";
 import AppBreadcrumb from "@/components/shared/AppBreadcrumb";
-import { Settings, Calendar, Users, Crown, Kanban } from "lucide-react";
+import { Settings, Calendar, Users, Crown, Kanban, Table } from "lucide-react";
 import KanbanBoard from "@/components/views/KanbanBoard";
 import CalendarView from "@/components/views/CalendarView";
 import type { ProjectPageClientProps } from "@/types";
@@ -17,6 +17,17 @@ const CreateTaskDialog = lazy(
 
 // View type definition
 type ViewType = "kanban" | "calendar" | "table";
+
+// Icon mapping to ensure correct icons are shown
+const getViewIcon = (iconName: string) => {
+  const iconMap = {
+    Kanban: Kanban,
+    Calendar: Calendar,
+    Table: Table,
+  };
+
+  return iconMap[iconName as keyof typeof iconMap] || getIcon(iconName);
+};
 
 export default function ProjectPageClient({
   project,
@@ -43,11 +54,17 @@ export default function ProjectPageClient({
 
   // Callback to trigger board refresh
   const triggerRefresh = useCallback(() => {
-    setRefreshTrigger((prev) => prev + 1);
-  }, []);
+    console.log("Triggering refresh, current trigger:", refreshTrigger);
+    setRefreshTrigger((prev) => {
+      const newValue = prev + 1;
+      console.log("New refresh trigger value:", newValue);
+      return newValue;
+    });
+  }, [refreshTrigger]);
 
   // Handle successful card creation
   const handleCardCreated = useCallback(() => {
+    console.log("Card created successfully, closing dialog and refreshing");
     setCreateTaskOpen(false);
     triggerRefresh();
   }, [triggerRefresh]);
@@ -55,9 +72,14 @@ export default function ProjectPageClient({
   // Handle task dialog close
   const handleTaskDialogClose = useCallback(
     (open: boolean) => {
+      console.log("Task dialog close handler called, open:", open);
       setCreateTaskOpen(open);
       if (!open) {
-        setTimeout(triggerRefresh, 100);
+        // Add a small delay before triggering refresh to ensure the dialog is fully closed
+        setTimeout(() => {
+          console.log("Dialog closed, triggering refresh after delay");
+          triggerRefresh();
+        }, 100);
       }
     },
     [triggerRefresh]
@@ -65,6 +87,7 @@ export default function ProjectPageClient({
 
   // Handle view change
   const handleViewChange = useCallback((viewId: ViewType) => {
+    console.log("Changing view to:", viewId);
     setActiveView(viewId);
   }, []);
 
@@ -73,6 +96,9 @@ export default function ProjectPageClient({
     ...view,
     isActive: view.id === activeView,
   }));
+
+  console.log("Current active view:", activeView);
+  console.log("Updated views:", updatedViews);
 
   // Render the appropriate view component
   const renderActiveView = () => {
@@ -227,7 +253,10 @@ export default function ProjectPageClient({
               {canCreateCards && (
                 <button
                   type="button"
-                  onClick={() => setCreateTaskOpen(true)}
+                  onClick={() => {
+                    console.log("Create task button clicked");
+                    setCreateTaskOpen(true);
+                  }}
                   className="w-full bg-blue-600 text-white px-3 py-2 rounded-md text-sm font-medium hover:bg-blue-700 transition-colors"
                 >
                   Create New Card
@@ -239,7 +268,7 @@ export default function ProjectPageClient({
               <h3 className="font-medium text-gray-900 mb-3">Views</h3>
               <div className="space-y-1">
                 {updatedViews.map(({ id, label, icon, isActive }) => {
-                  const Icon = getIcon(icon);
+                  const Icon = getViewIcon(icon);
                   return (
                     <button
                       key={id}
