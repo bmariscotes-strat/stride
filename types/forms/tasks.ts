@@ -1,5 +1,5 @@
 // types/tasks.ts - Updated with fixed pagination types
-import type { Priority } from "@/types/enums/notif";
+import type { Priority, User } from "@/types";
 
 // =============================================================================
 // TASK/CARD INPUT TYPES - For service layer operations
@@ -469,4 +469,18 @@ export interface CardPageClientProps {
     icon: string;
     isActive: boolean;
   }>;
+}
+
+export interface CalendarEvent {
+  id: string;
+  title: string;
+  start: Date;
+  end: Date;
+  allDay?: boolean;
+  resource?: {
+    card: Card;
+    priority: Card["priority"];
+    labels: Label[];
+    assignee: User | null;
+  };
 }
