@@ -42,7 +42,6 @@ interface KanbanBoardProps {
   refreshTrigger?: number;
 }
 
-// Add Column Component - Updated to use useCreateColumn hook
 function AddColumnCard({
   projectSlug,
   onColumnAdded,

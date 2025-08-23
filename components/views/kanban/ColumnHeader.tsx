@@ -1,7 +1,7 @@
 // components/ColumnHeader.tsx
 import React, { useState } from "react";
 import { MoreHorizontal, Edit2, Trash2, Check, X } from "lucide-react";
-import { useDeleteColumn } from "@/hooks/useColumns";
+import { useDeleteColumn, useUpdateColumn } from "@/hooks/useColumns";
 import DeleteColumnModal from "@/components/views/kanban/dialog/DeleteColumnDialog";
 
 interface Column {
@@ -31,6 +31,7 @@ export function ColumnHeader({
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   const deleteColumn = useDeleteColumn();
+  const updateColumn = useUpdateColumn();
 
   const handleStartEdit = () => {
     setColumnName(column.name);
@@ -50,20 +51,19 @@ export function ColumnHeader({
     }
 
     try {
-      // You'll need to create an update column hook similar to delete
-      const response = await fetch(`/api/columns/${column.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: columnName.trim() }),
+      await updateColumn.mutateAsync({
+        id: column.id,
+        name: columnName.trim(),
+        color: column.color ?? undefined,
+        position: column.position,
+        projectSlug,
       });
-
-      if (!response.ok) throw new Error("Failed to update column");
 
       setIsEditing(false);
       onColumnUpdated?.();
     } catch (error) {
       console.error("Error updating column:", error);
-      setColumnName(column.name); // Reset on error
+      setColumnName(column.name);
     }
   };
 
