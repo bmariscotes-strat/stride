@@ -97,7 +97,7 @@ export function ColumnHeader({
 
   return (
     <>
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-4 group">
         <div className="flex items-center space-x-2 flex-1">
           {column.color && (
             <div

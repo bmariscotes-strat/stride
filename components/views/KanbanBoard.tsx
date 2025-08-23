@@ -22,6 +22,8 @@ import { Card } from "@/types/forms/tasks";
 import { MIN_FETCH_INTERVAL } from "@/lib/constants/limits";
 import { useKanbanStore } from "@/stores/views/board-store";
 import { ColumnHeader } from "@/components/views/kanban/ColumnHeader";
+import { useCreateColumn, useProjectColumns } from "@/hooks/useColumns";
+
 interface Column {
   id: string;
   name: string;
@@ -40,7 +42,7 @@ interface KanbanBoardProps {
   refreshTrigger?: number;
 }
 
-// Add Column Component (unchanged)
+// Add Column Component - Updated to use useCreateColumn hook
 function AddColumnCard({
   projectSlug,
   onColumnAdded,
@@ -53,8 +55,9 @@ function AddColumnCard({
   const [isAdding, setIsAdding] = useState(false);
   const [columnName, setColumnName] = useState("");
   const [columnColor, setColumnColor] = useState("#3B82F6");
-  const [isLoading, setIsLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const createColumnMutation = useCreateColumn();
 
   const predefinedColors = [
     "#3B82F6",
@@ -86,34 +89,23 @@ function AddColumnCard({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!columnName.trim() || isLoading) return;
+    if (!columnName.trim() || createColumnMutation.isPending) return;
 
-    setIsLoading(true);
     try {
-      const response = await fetch(`/api/projects/${projectSlug}/columns`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          name: columnName.trim(),
-          color: columnColor,
-          position: position,
-        }),
+      await createColumnMutation.mutateAsync({
+        projectSlug,
+        name: columnName.trim(),
+        color: columnColor,
+        position: position,
       });
-
-      if (!response.ok) {
-        throw new Error("Failed to create column");
-      }
 
       setIsAdding(false);
       setColumnName("");
       setColumnColor("#3B82F6");
       onColumnAdded();
     } catch (error) {
+      // Error is already handled by the mutation's onError callback
       console.error("Error creating column:", error);
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -144,7 +136,7 @@ function AddColumnCard({
               placeholder="Column name"
               className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               maxLength={50}
-              disabled={isLoading}
+              disabled={createColumnMutation.isPending}
             />
           </div>
 
@@ -164,7 +156,7 @@ function AddColumnCard({
                       : "border-gray-300 hover:border-gray-400"
                   } transition-all duration-150`}
                   style={{ backgroundColor: color }}
-                  disabled={isLoading}
+                  disabled={createColumnMutation.isPending}
                 />
               ))}
             </div>
@@ -173,10 +165,10 @@ function AddColumnCard({
           <div className="flex gap-2">
             <button
               type="submit"
-              disabled={!columnName.trim() || isLoading}
+              disabled={!columnName.trim() || createColumnMutation.isPending}
               className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white text-sm font-medium py-2 px-3 rounded-md transition-colors flex items-center justify-center"
             >
-              {isLoading ? (
+              {createColumnMutation.isPending ? (
                 <RefreshCw size={14} className="animate-spin" />
               ) : (
                 <>
@@ -188,7 +180,7 @@ function AddColumnCard({
             <button
               type="button"
               onClick={handleCancel}
-              disabled={isLoading}
+              disabled={createColumnMutation.isPending}
               className="bg-gray-200 hover:bg-gray-300 disabled:bg-gray-100 text-gray-700 text-sm font-medium py-2 px-3 rounded-md transition-colors flex items-center justify-center"
             >
               <X size={14} />
@@ -200,50 +192,33 @@ function AddColumnCard({
   );
 }
 
-// Custom hook for managing refetch logic with Zustand
+// Custom hook for managing refetch logic with React Query
 function useKanbanRefetch(projectSlug: string, onDataChange?: () => void) {
-  const { getColumns, setColumns, getIsLoading, setLoading, shouldRefetch } =
-    useKanbanStore();
+  const { setColumns, getColumns, getIsLoading, setLoading } = useKanbanStore();
 
-  const columns = getColumns(projectSlug);
-  const loading = getIsLoading(projectSlug);
+  // Use the useProjectColumns hook
+  const {
+    data: columnsData,
+    isLoading: queryLoading,
+    error: queryError,
+    refetch,
+    isRefetching,
+  } = useProjectColumns(projectSlug);
+
   const [error, setError] = useState<string | null>(null);
-  const [isRefetching, setIsRefetching] = useState(false);
+  const [isLoadingCards, setIsLoadingCards] = useState(false);
   const lastFetchTime = useRef<number>(0);
   const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const fetchKanbanData = useCallback(
-    async (showLoader = true) => {
+  // Get columns with cards from Zustand store
+  const columns = getColumns(projectSlug);
+
+  const fetchCardsForColumns = useCallback(
+    async (columns: any[]) => {
+      setIsLoadingCards(true);
       try {
-        const now = Date.now();
-        if (now - lastFetchTime.current < MIN_FETCH_INTERVAL) {
-          return;
-        }
-
-        if (showLoader) {
-          setLoading(projectSlug, true);
-        } else {
-          setIsRefetching(true);
-        }
-        setError(null);
-        lastFetchTime.current = now;
-
-        const columnsResponse = await fetch(
-          `/api/projects/${projectSlug}/columns`,
-          {
-            headers: {
-              "Cache-Control": "no-cache",
-            },
-          }
-        );
-
-        if (!columnsResponse.ok) {
-          throw new Error("Failed to fetch columns");
-        }
-        const columnsData = await columnsResponse.json();
-
         const columnsWithCards = await Promise.all(
-          columnsData.map(async (column: any) => {
+          columns.map(async (column: any) => {
             const cardsResponse = await fetch(
               `/api/columns/${column.id}/cards`,
               {
@@ -271,16 +246,32 @@ function useKanbanRefetch(projectSlug: string, onDataChange?: () => void) {
 
         setColumns(projectSlug, sortedColumns);
         onDataChange?.();
+        setError(null);
       } catch (err) {
-        console.error("Error fetching kanban data:", err);
-        setError(err instanceof Error ? err.message : "An error occurred");
+        console.error("Error fetching cards:", err);
+        setError(err instanceof Error ? err.message : "Failed to fetch cards");
       } finally {
-        setLoading(projectSlug, false);
-        setIsRefetching(false);
+        setIsLoadingCards(false);
       }
     },
-    [projectSlug, onDataChange, setColumns, setLoading]
+    [projectSlug, onDataChange, setColumns]
   );
+
+  // Update columns when data changes
+  useEffect(() => {
+    if (columnsData) {
+      fetchCardsForColumns(columnsData);
+    }
+  }, [columnsData, fetchCardsForColumns]);
+
+  // Handle query error
+  useEffect(() => {
+    if (queryError) {
+      setError(
+        queryError instanceof Error ? queryError.message : "An error occurred"
+      );
+    }
+  }, [queryError]);
 
   const debouncedRefresh = useCallback(() => {
     if (refreshTimeoutRef.current) {
@@ -288,21 +279,13 @@ function useKanbanRefetch(projectSlug: string, onDataChange?: () => void) {
     }
 
     refreshTimeoutRef.current = setTimeout(() => {
-      fetchKanbanData(false);
+      refetch();
     }, 500);
-  }, [fetchKanbanData]);
+  }, [refetch]);
 
   const manualRefresh = useCallback(() => {
-    fetchKanbanData(false);
-  }, [fetchKanbanData]);
-
-  // Auto-fetch if data is stale
-  useEffect(() => {
-    if (shouldRefetch(projectSlug, 5 * 60 * 1000)) {
-      // 5 minutes
-      fetchKanbanData();
-    }
-  }, [projectSlug, fetchKanbanData, shouldRefetch]);
+    refetch();
+  }, [refetch]);
 
   useEffect(() => {
     return () => {
@@ -314,10 +297,10 @@ function useKanbanRefetch(projectSlug: string, onDataChange?: () => void) {
 
   return {
     columns,
-    loading,
+    loading: queryLoading || isLoadingCards,
     error,
-    isRefetching,
-    fetchKanbanData,
+    isRefetching: isRefetching || isLoadingCards,
+    fetchKanbanData: manualRefresh,
     debouncedRefresh,
     manualRefresh,
   };
@@ -489,7 +472,7 @@ function DroppableColumn({
   return (
     <div
       ref={setNodeRef}
-      className={`bg-gray-50 rounded-lg p-4 min-w-80 max-w-80 flex flex-col group ${
+      className={`bg-gray-50 rounded-lg p-4 min-w-80 max-w-80 flex flex-col ${
         isOver ? "bg-blue-50 border-2 border-blue-300 border-dashed" : ""
       }`}
     >
@@ -525,7 +508,6 @@ export default function KanbanBoard({
     loading,
     error,
     isRefetching,
-    fetchKanbanData,
     debouncedRefresh,
     manualRefresh,
   } = useKanbanRefetch(projectSlug, onDataChange);
@@ -546,13 +528,6 @@ export default function KanbanBoard({
       },
     })
   );
-
-  // Initial fetch if no data
-  useEffect(() => {
-    if (projectSlug && columns.length === 0) {
-      fetchKanbanData();
-    }
-  }, [projectSlug, columns.length, fetchKanbanData]);
 
   // Handle external refresh triggers
   useEffect(() => {
