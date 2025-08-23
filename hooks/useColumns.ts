@@ -1,14 +1,8 @@
 // hooks/useColumns.ts
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-
-interface Column {
-  id: string;
-  name: string;
-  position: number;
-  color: string | null;
-  projectId: string;
-}
+import { useKanbanStore } from "@/stores/views/board-store";
+import { Column } from "@/types";
 
 interface CreateColumnInput {
   name: string;
@@ -133,15 +127,20 @@ export function useUpdateColumn() {
 // Hook for deleting a column
 export function useDeleteColumn() {
   const queryClient = useQueryClient();
+  const { removeColumn } = useKanbanStore();
 
   return useMutation({
     mutationFn: async (input: { columnId: string; projectSlug: string }) => {
-      return apiCall(`/api/columns/${input.columnId}`, {
+      const response = await apiCall(`/api/columns/${input.columnId}`, {
         method: "DELETE",
       });
+      return response;
     },
     onSuccess: (_, variables) => {
-      // Remove from cache
+      // Update Zustand store
+      removeColumn(variables.projectSlug, variables.columnId);
+
+      // Remove from React Query cache
       queryClient.removeQueries({
         queryKey: columnKeys.column(variables.columnId),
       });

@@ -17,9 +17,21 @@ import {
 } from "@dnd-kit/sortable";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { User, Calendar, RefreshCw, Plus, X, Check } from "lucide-react";
+import {
+  User,
+  Calendar,
+  RefreshCw,
+  Plus,
+  X,
+  Check,
+  MoreHorizontal,
+  Edit2,
+  Trash2,
+} from "lucide-react";
 import { Card } from "@/types/forms/tasks";
 import { MIN_FETCH_INTERVAL } from "@/lib/constants/limits";
+import { useKanbanStore } from "@/stores/views/board-store";
+import { useDeleteColumn } from "@/hooks/useColumns";
 
 interface Column {
   id: string;
@@ -39,7 +51,190 @@ interface KanbanBoardProps {
   refreshTrigger?: number;
 }
 
-// Add Column Component
+// Column Header Component with Delete/Edit functionality
+function ColumnHeader({
+  column,
+  projectSlug,
+  onColumnUpdated,
+}: {
+  column: Column;
+  projectSlug: string;
+  onColumnUpdated?: () => void;
+}) {
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [columnName, setColumnName] = useState(column.name);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const deleteColumn = useDeleteColumn();
+
+  const handleStartEdit = () => {
+    setColumnName(column.name);
+    setIsEditing(true);
+    setIsMenuOpen(false);
+  };
+
+  const handleCancelEdit = () => {
+    setColumnName(column.name);
+    setIsEditing(false);
+  };
+
+  const handleSaveEdit = async () => {
+    if (columnName.trim() === column.name.trim()) {
+      setIsEditing(false);
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/columns/${column.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: columnName.trim() }),
+      });
+
+      if (!response.ok) throw new Error("Failed to update column");
+
+      setIsEditing(false);
+      onColumnUpdated?.();
+    } catch (error) {
+      console.error("Error updating column:", error);
+      setColumnName(column.name);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (column.cards.length > 0) {
+      alert(
+        `Cannot delete column "${column.name}" because it contains ${column.cards.length} task(s). Please move or delete all tasks first.`
+      );
+      return;
+    }
+
+    if (
+      !confirm(
+        `Are you sure you want to delete the column "${column.name}"? This action cannot be undone.`
+      )
+    ) {
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      await deleteColumn.mutateAsync({
+        columnId: column.id,
+        projectSlug,
+      });
+      setIsMenuOpen(false);
+    } catch (error) {
+      console.error("Error deleting column:", error);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      handleSaveEdit();
+    } else if (e.key === "Escape") {
+      handleCancelEdit();
+    }
+  };
+
+  return (
+    <div className="flex items-center justify-between mb-4 group">
+      <div className="flex items-center space-x-2 flex-1">
+        {column.color && (
+          <div
+            className="w-3 h-3 rounded-full flex-shrink-0"
+            style={{ backgroundColor: column.color }}
+          />
+        )}
+
+        {isEditing ? (
+          <div className="flex items-center space-x-2 flex-1">
+            <input
+              type="text"
+              value={columnName}
+              onChange={(e) => setColumnName(e.target.value)}
+              onKeyDown={handleKeyPress}
+              className="font-semibold text-gray-900 bg-transparent border-b border-blue-300 focus:outline-none focus:border-blue-500 flex-1 min-w-0"
+              maxLength={50}
+              autoFocus
+            />
+            <button
+              onClick={handleSaveEdit}
+              className="p-1 text-green-600 hover:text-green-700"
+              disabled={!columnName.trim()}
+            >
+              <Check size={16} />
+            </button>
+            <button
+              onClick={handleCancelEdit}
+              className="p-1 text-gray-500 hover:text-gray-700"
+            >
+              <X size={16} />
+            </button>
+          </div>
+        ) : (
+          <>
+            <h3 className="font-semibold text-gray-900 truncate">
+              {column.name}
+            </h3>
+            <span className="text-sm font-normal text-gray-500 flex-shrink-0">
+              ({column.cards.length})
+            </span>
+          </>
+        )}
+      </div>
+
+      {!isEditing && (
+        <div className="relative">
+          <button
+            onClick={() => setIsMenuOpen(!isMenuOpen)}
+            className="p-1 text-gray-400 hover:text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity"
+          >
+            <MoreHorizontal size={16} />
+          </button>
+
+          {isMenuOpen && (
+            <>
+              <div
+                className="fixed inset-0 z-10"
+                onClick={() => setIsMenuOpen(false)}
+              />
+
+              <div className="absolute right-0 top-full mt-1 bg-white rounded-md shadow-lg border z-20 min-w-[120px]">
+                <button
+                  onClick={handleStartEdit}
+                  className="flex items-center space-x-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 first:rounded-t-md"
+                >
+                  <Edit2 size={14} />
+                  <span>Rename</span>
+                </button>
+
+                <button
+                  onClick={handleDelete}
+                  disabled={isDeleting || column.cards.length > 0}
+                  className="flex items-center space-x-2 w-full px-3 py-2 text-sm text-red-600 hover:bg-red-50 disabled:text-gray-400 disabled:cursor-not-allowed last:rounded-b-md"
+                  title={
+                    column.cards.length > 0
+                      ? `Cannot delete column with ${column.cards.length} task(s)`
+                      : "Delete column"
+                  }
+                >
+                  <Trash2 size={14} />
+                  <span>{isDeleting ? "Deleting..." : "Delete"}</span>
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Add Column Component (unchanged)
 function AddColumnCard({
   projectSlug,
   onColumnAdded,
@@ -56,14 +251,14 @@ function AddColumnCard({
   const inputRef = useRef<HTMLInputElement>(null);
 
   const predefinedColors = [
-    "#3B82F6", // blue
-    "#10B981", // emerald
-    "#F59E0B", // amber
-    "#EF4444", // red
-    "#8B5CF6", // violet
-    "#06B6D4", // cyan
-    "#84CC16", // lime
-    "#F97316", // orange
+    "#3B82F6",
+    "#10B981",
+    "#F59E0B",
+    "#EF4444",
+    "#8B5CF6",
+    "#06B6D4",
+    "#84CC16",
+    "#F97316",
   ];
 
   useEffect(() => {
@@ -111,7 +306,6 @@ function AddColumnCard({
       onColumnAdded();
     } catch (error) {
       console.error("Error creating column:", error);
-      // You might want to show a toast notification here
     } finally {
       setIsLoading(false);
     }
@@ -200,10 +394,13 @@ function AddColumnCard({
   );
 }
 
-// Custom hook for managing refetch logic
+// Custom hook for managing refetch logic with Zustand
 function useKanbanRefetch(projectSlug: string, onDataChange?: () => void) {
-  const [columns, setColumns] = useState<Column[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { getColumns, setColumns, getIsLoading, setLoading, shouldRefetch } =
+    useKanbanStore();
+
+  const columns = getColumns(projectSlug);
+  const loading = getIsLoading(projectSlug);
   const [error, setError] = useState<string | null>(null);
   const [isRefetching, setIsRefetching] = useState(false);
   const lastFetchTime = useRef<number>(0);
@@ -213,20 +410,18 @@ function useKanbanRefetch(projectSlug: string, onDataChange?: () => void) {
     async (showLoader = true) => {
       try {
         const now = Date.now();
-        // Prevent excessive API calls
         if (now - lastFetchTime.current < MIN_FETCH_INTERVAL) {
           return;
         }
 
         if (showLoader) {
-          setLoading(true);
+          setLoading(projectSlug, true);
         } else {
           setIsRefetching(true);
         }
         setError(null);
         lastFetchTime.current = now;
 
-        // Fetch columns for the project
         const columnsResponse = await fetch(
           `/api/projects/${projectSlug}/columns`,
           {
@@ -241,7 +436,6 @@ function useKanbanRefetch(projectSlug: string, onDataChange?: () => void) {
         }
         const columnsData = await columnsResponse.json();
 
-        // Fetch cards for each column in parallel
         const columnsWithCards = await Promise.all(
           columnsData.map(async (column: any) => {
             const cardsResponse = await fetch(
@@ -265,41 +459,45 @@ function useKanbanRefetch(projectSlug: string, onDataChange?: () => void) {
           })
         );
 
-        // Sort columns by position
         const sortedColumns = columnsWithCards.sort(
           (a, b) => a.position - b.position
         );
 
-        setColumns(sortedColumns);
-        onDataChange?.(); // Notify parent of data change
+        setColumns(projectSlug, sortedColumns);
+        onDataChange?.();
       } catch (err) {
         console.error("Error fetching kanban data:", err);
         setError(err instanceof Error ? err.message : "An error occurred");
       } finally {
-        setLoading(false);
+        setLoading(projectSlug, false);
         setIsRefetching(false);
       }
     },
-    [projectSlug, onDataChange]
+    [projectSlug, onDataChange, setColumns, setLoading]
   );
 
-  // Debounced refresh function
   const debouncedRefresh = useCallback(() => {
     if (refreshTimeoutRef.current) {
       clearTimeout(refreshTimeoutRef.current);
     }
 
     refreshTimeoutRef.current = setTimeout(() => {
-      fetchKanbanData(false); // Don't show full loader for background refresh
-    }, 500); // 500ms debounce
+      fetchKanbanData(false);
+    }, 500);
   }, [fetchKanbanData]);
 
-  // Manual refresh function
   const manualRefresh = useCallback(() => {
     fetchKanbanData(false);
   }, [fetchKanbanData]);
 
-  // Cleanup timeout on unmount
+  // Auto-fetch if data is stale
+  useEffect(() => {
+    if (shouldRefetch(projectSlug, 5 * 60 * 1000)) {
+      // 5 minutes
+      fetchKanbanData();
+    }
+  }, [projectSlug, fetchKanbanData, shouldRefetch]);
+
   useEffect(() => {
     return () => {
       if (refreshTimeoutRef.current) {
@@ -310,7 +508,6 @@ function useKanbanRefetch(projectSlug: string, onDataChange?: () => void) {
 
   return {
     columns,
-    setColumns,
     loading,
     error,
     isRefetching,
@@ -407,13 +604,11 @@ function DraggableCard({
         isDragging ? "cursor-grabbing" : "cursor-pointer hover:scale-[1.02]"
       }`}
     >
-      {/* Title + Labels */}
       <div className="mb-3">
         <h4 className="font-medium text-gray-900 line-clamp-2 text-left">
           {card.title}
         </h4>
 
-        {/* Labels row */}
         {(card.labels ?? []).length > 0 && (
           <div className="flex flex-wrap gap-1 mt-1">
             {(card.labels ?? []).map((label) => (
@@ -432,7 +627,6 @@ function DraggableCard({
         )}
       </div>
 
-      {/* Footer: Assignee + Due Date */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-2">
           {card.assignee && (
@@ -466,12 +660,16 @@ function DraggableCard({
   );
 }
 
-// Droppable Column Component (unchanged)
+// Droppable Column Component
 function DroppableColumn({
   column,
+  projectSlug,
+  onColumnUpdated,
   children,
 }: {
   column: Column;
+  projectSlug: string;
+  onColumnUpdated?: () => void;
   children: React.ReactNode;
 }) {
   const { setNodeRef, isOver } = useSortable({
@@ -489,20 +687,11 @@ function DroppableColumn({
         isOver ? "bg-blue-50 border-2 border-blue-300 border-dashed" : ""
       }`}
     >
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="font-semibold text-gray-900 flex items-center space-x-2">
-          {column.color && (
-            <div
-              className="w-3 h-3 rounded-full"
-              style={{ backgroundColor: column.color }}
-            />
-          )}
-          <span>{column.name}</span>
-          <span className="text-sm font-normal text-gray-500">
-            ({column.cards.length})
-          </span>
-        </h3>
-      </div>
+      <ColumnHeader
+        column={column}
+        projectSlug={projectSlug}
+        onColumnUpdated={onColumnUpdated}
+      />
 
       <div className="flex-1 min-h-32">
         <SortableContext
@@ -527,7 +716,6 @@ export default function KanbanBoard({
 }: KanbanBoardProps) {
   const {
     columns,
-    setColumns,
     loading,
     error,
     isRefetching,
@@ -536,9 +724,9 @@ export default function KanbanBoard({
     manualRefresh,
   } = useKanbanRefetch(projectSlug, onDataChange);
 
+  const { moveCard, reorderCardsInColumn } = useKanbanStore();
   const [activeCard, setActiveCard] = useState<Card | null>(null);
 
-  // Configure sensors for drag and drop
   const sensors = useSensors(
     useSensor(MouseSensor, {
       activationConstraint: {
@@ -553,12 +741,12 @@ export default function KanbanBoard({
     })
   );
 
-  // Initial fetch
+  // Initial fetch if no data
   useEffect(() => {
-    if (projectSlug) {
+    if (projectSlug && columns.length === 0) {
       fetchKanbanData();
     }
-  }, [projectSlug, fetchKanbanData]);
+  }, [projectSlug, columns.length, fetchKanbanData]);
 
   // Handle external refresh triggers
   useEffect(() => {
@@ -568,7 +756,10 @@ export default function KanbanBoard({
   }, [refreshTrigger, debouncedRefresh]);
 
   const handleColumnAdded = () => {
-    // Refresh the kanban data when a new column is added
+    debouncedRefresh();
+  };
+
+  const handleColumnUpdated = () => {
     debouncedRefresh();
   };
 
@@ -602,7 +793,7 @@ export default function KanbanBoard({
 
     if (!overColumn) return;
 
-    // Same column reordering logic
+    // Same column reordering
     if (activeCard.columnId === overColumn.id) {
       const columnCards = overColumn.cards;
       const oldIndex = columnCards.findIndex(
@@ -610,30 +801,23 @@ export default function KanbanBoard({
       );
       const newIndex =
         over.id === overColumn.id
-          ? columnCards.length
+          ? columnCards.length - 1 // Drop at end if dropped on column
           : columnCards.findIndex((card) => card.id === over.id);
 
       if (oldIndex === newIndex) return;
 
-      // Optimistic update
+      // Create new order for cards in the column
       const newCards = [...columnCards];
       const [movedCard] = newCards.splice(oldIndex, 1);
       newCards.splice(newIndex, 0, movedCard);
 
-      const updatedColumns = columns.map((col) =>
-        col.id === overColumn.id
-          ? {
-              ...col,
-              cards: newCards.map((card, index) => ({
-                ...card,
-                position: index,
-              })),
-            }
-          : col
-      );
-      setColumns(updatedColumns);
+      // Update positions in Zustand store
+      const cardOrders = newCards.map((card, index) => ({
+        id: card.id,
+        position: index,
+      }));
+      reorderCardsInColumn(projectSlug, overColumn.id, cardOrders);
 
-      // Update database and refresh on success/error
       try {
         const response = await fetch(`/api/cards/${activeCard.id}/move`, {
           method: "PATCH",
@@ -648,62 +832,22 @@ export default function KanbanBoard({
           throw new Error("Failed to move card");
         }
 
-        // Refresh after successful move to ensure data consistency
+        // Refresh to sync positions with server
         debouncedRefresh();
       } catch (error) {
         console.error("Failed to update card position:", error);
-        // Revert optimistic update and refresh
-        setColumns(columns);
         debouncedRefresh();
       }
     } else {
       // Moving to different column
-      const sourceColumn = columns.find(
-        (col) => col.id === activeCard.columnId
-      );
-      if (!sourceColumn) return;
-
       const newIndex =
         over.id === overColumn.id
           ? overColumn.cards.length
           : overColumn.cards.findIndex((card) => card.id === over.id);
 
-      // Optimistic update
-      const sourceCards = sourceColumn.cards.filter(
-        (card) => card.id !== activeCard.id
-      );
-      const targetCards = [...overColumn.cards];
-      const updatedCard = {
-        ...activeCard,
-        columnId: overColumn.id,
-        position: newIndex,
-      };
-      targetCards.splice(newIndex, 0, updatedCard);
+      // Update Zustand store optimistically
+      moveCard(projectSlug, activeCard.id, overColumn.id, newIndex);
 
-      const updatedColumns = columns.map((col) => {
-        if (col.id === sourceColumn.id) {
-          return {
-            ...col,
-            cards: sourceCards.map((card, index) => ({
-              ...card,
-              position: index,
-            })),
-          };
-        }
-        if (col.id === overColumn.id) {
-          return {
-            ...col,
-            cards: targetCards.map((card, index) => ({
-              ...card,
-              position: index,
-            })),
-          };
-        }
-        return col;
-      });
-      setColumns(updatedColumns);
-
-      // Update database and refresh
       try {
         const response = await fetch(`/api/cards/${activeCard.id}/move`, {
           method: "PATCH",
@@ -718,18 +862,15 @@ export default function KanbanBoard({
           throw new Error("Failed to move card");
         }
 
-        // Refresh after successful move
         debouncedRefresh();
       } catch (error) {
         console.error("Failed to move card:", error);
-        // Revert optimistic update and refresh
-        setColumns(columns);
         debouncedRefresh();
       }
     }
   };
 
-  if (loading) {
+  if (loading && columns.length === 0) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
@@ -758,11 +899,7 @@ export default function KanbanBoard({
     );
   }
 
-  if (
-    !loading &&
-    columns.length > 0 &&
-    columns.every((col) => col.cards.length === 0)
-  ) {
+  if (columns.length > 0 && columns.every((col) => col.cards.length === 0)) {
     return (
       <div className="flex flex-col items-center justify-center h-64 text-gray-500">
         <p className="mb-2">No tasks yet</p>
@@ -772,7 +909,6 @@ export default function KanbanBoard({
 
   return (
     <div className="h-full overflow-x-auto custom-scrollbar">
-      {/* Refresh indicator */}
       {isRefetching && (
         <div className="absolute top-4 right-4 z-50">
           <div className="inline-flex items-center gap-2 bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm">
@@ -782,7 +918,6 @@ export default function KanbanBoard({
         </div>
       )}
 
-      {/* Manual refresh button */}
       <div className="absolute top-4 right-4 z-40">
         <button
           onClick={manualRefresh}
@@ -802,7 +937,12 @@ export default function KanbanBoard({
       >
         <div className="flex space-x-6 p-6 min-w-max">
           {columns.map((column) => (
-            <DroppableColumn key={column.id} column={column}>
+            <DroppableColumn
+              key={column.id}
+              column={column}
+              projectSlug={projectSlug}
+              onColumnUpdated={handleColumnUpdated}
+            >
               {column.cards.map((card) => (
                 <DraggableCard
                   key={card.id}
@@ -813,7 +953,6 @@ export default function KanbanBoard({
             </DroppableColumn>
           ))}
 
-          {/* Add Column Button */}
           {canEditCards && (
             <AddColumnCard
               projectSlug={projectSlug}
