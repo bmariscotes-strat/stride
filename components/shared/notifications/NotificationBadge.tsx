@@ -24,7 +24,7 @@ export default function NotificationBadge({
       <span className="relative inline-flex">
         <Bell className="w-4 h-4" />
         {count > 0 && (
-          <span className="absolute -top-[4px] -right-[4px] flex items-center justify-center w-3 h-3 text-xs font-bold text-white bg-red-500 rounded-full">
+          <span className="absolute -top-[4px] -right-[7px] flex items-center justify-center w-[15px] h-[15px] text-[10px] font-bold text-white bg-red-500 rounded-full">
             {count > 99 ? "99+" : count}
           </span>
         )}
