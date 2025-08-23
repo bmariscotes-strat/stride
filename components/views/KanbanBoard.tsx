@@ -103,6 +103,9 @@ function ColumnHeader({
   };
 
   const handleDelete = async () => {
+    console.log("Deleting column:", column.id); // Add this line
+    console.log("Project slug:", projectSlug); // Add this line
+
     if (column.cards.length > 0) {
       alert(
         `Cannot delete column "${column.name}" because it contains ${column.cards.length} task(s). Please move or delete all tasks first.`

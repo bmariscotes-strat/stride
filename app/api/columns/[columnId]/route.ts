@@ -1,4 +1,4 @@
-// app/api/columns/[id]/route.ts
+// app/api/columns/[columnId]/route.ts
 import { db } from "@/lib/db/db";
 import { columns, cards } from "@/lib/db/schema";
 import { eq, count } from "drizzle-orm";
@@ -7,7 +7,7 @@ import { getRequiredUserId } from "@/lib/utils/get-current-user";
 
 export async function GET(request: NextRequest, context: any) {
   try {
-    const columnId = context.params.id;
+    const columnId = context.params.columnId;
 
     const column = await db.query.columns.findFirst({
       where: eq(columns.id, columnId),
@@ -37,7 +37,7 @@ export async function PATCH(request: NextRequest, context: any) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const columnId = context.params.id;
+    const columnId = context.params.columnId;
     const body = await request.json();
     const { name, color, position } = body;
 
@@ -103,7 +103,7 @@ export async function DELETE(request: NextRequest, context: any) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const columnId = context.params.id;
+    const columnId = context.params.columnId;
 
     // Find the column
     const column = await db.query.columns.findFirst({
