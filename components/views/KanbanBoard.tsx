@@ -17,22 +17,11 @@ import {
 } from "@dnd-kit/sortable";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import {
-  User,
-  Calendar,
-  RefreshCw,
-  Plus,
-  X,
-  Check,
-  MoreHorizontal,
-  Edit2,
-  Trash2,
-} from "lucide-react";
+import { User, Calendar, RefreshCw, Plus, X, Check } from "lucide-react";
 import { Card } from "@/types/forms/tasks";
 import { MIN_FETCH_INTERVAL } from "@/lib/constants/limits";
 import { useKanbanStore } from "@/stores/views/board-store";
-import { useDeleteColumn } from "@/hooks/useColumns";
-
+import { ColumnHeader } from "@/components/views/kanban/ColumnHeader";
 interface Column {
   id: string;
   name: string;
@@ -49,192 +38,6 @@ interface KanbanBoardProps {
   canEditCards?: boolean;
   onDataChange?: () => void;
   refreshTrigger?: number;
-}
-
-// Column Header Component with Delete/Edit functionality
-function ColumnHeader({
-  column,
-  projectSlug,
-  onColumnUpdated,
-}: {
-  column: Column;
-  projectSlug: string;
-  onColumnUpdated?: () => void;
-}) {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
-  const [columnName, setColumnName] = useState(column.name);
-  const [isDeleting, setIsDeleting] = useState(false);
-
-  const deleteColumn = useDeleteColumn();
-
-  const handleStartEdit = () => {
-    setColumnName(column.name);
-    setIsEditing(true);
-    setIsMenuOpen(false);
-  };
-
-  const handleCancelEdit = () => {
-    setColumnName(column.name);
-    setIsEditing(false);
-  };
-
-  const handleSaveEdit = async () => {
-    if (columnName.trim() === column.name.trim()) {
-      setIsEditing(false);
-      return;
-    }
-
-    try {
-      const response = await fetch(`/api/columns/${column.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: columnName.trim() }),
-      });
-
-      if (!response.ok) throw new Error("Failed to update column");
-
-      setIsEditing(false);
-      onColumnUpdated?.();
-    } catch (error) {
-      console.error("Error updating column:", error);
-      setColumnName(column.name);
-    }
-  };
-
-  const handleDelete = async () => {
-    console.log("Deleting column:", column.id); // Add this line
-    console.log("Project slug:", projectSlug); // Add this line
-
-    if (column.cards.length > 0) {
-      alert(
-        `Cannot delete column "${column.name}" because it contains ${column.cards.length} task(s). Please move or delete all tasks first.`
-      );
-      return;
-    }
-
-    if (
-      !confirm(
-        `Are you sure you want to delete the column "${column.name}"? This action cannot be undone.`
-      )
-    ) {
-      return;
-    }
-
-    setIsDeleting(true);
-    try {
-      await deleteColumn.mutateAsync({
-        columnId: column.id,
-        projectSlug,
-      });
-      setIsMenuOpen(false);
-    } catch (error) {
-      console.error("Error deleting column:", error);
-    } finally {
-      setIsDeleting(false);
-    }
-  };
-
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
-      handleSaveEdit();
-    } else if (e.key === "Escape") {
-      handleCancelEdit();
-    }
-  };
-
-  return (
-    <div className="flex items-center justify-between mb-4 group">
-      <div className="flex items-center space-x-2 flex-1">
-        {column.color && (
-          <div
-            className="w-3 h-3 rounded-full flex-shrink-0"
-            style={{ backgroundColor: column.color }}
-          />
-        )}
-
-        {isEditing ? (
-          <div className="flex items-center space-x-2 flex-1">
-            <input
-              type="text"
-              value={columnName}
-              onChange={(e) => setColumnName(e.target.value)}
-              onKeyDown={handleKeyPress}
-              className="font-semibold text-gray-900 bg-transparent border-b border-blue-300 focus:outline-none focus:border-blue-500 flex-1 min-w-0"
-              maxLength={50}
-              autoFocus
-            />
-            <button
-              onClick={handleSaveEdit}
-              className="p-1 text-green-600 hover:text-green-700"
-              disabled={!columnName.trim()}
-            >
-              <Check size={16} />
-            </button>
-            <button
-              onClick={handleCancelEdit}
-              className="p-1 text-gray-500 hover:text-gray-700"
-            >
-              <X size={16} />
-            </button>
-          </div>
-        ) : (
-          <>
-            <h3 className="font-semibold text-gray-900 truncate">
-              {column.name}
-            </h3>
-            <span className="text-sm font-normal text-gray-500 flex-shrink-0">
-              ({column.cards.length})
-            </span>
-          </>
-        )}
-      </div>
-
-      {!isEditing && (
-        <div className="relative">
-          <button
-            onClick={() => setIsMenuOpen(!isMenuOpen)}
-            className="p-1 text-gray-400 hover:text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity"
-          >
-            <MoreHorizontal size={16} />
-          </button>
-
-          {isMenuOpen && (
-            <>
-              <div
-                className="fixed inset-0 z-10"
-                onClick={() => setIsMenuOpen(false)}
-              />
-
-              <div className="absolute right-0 top-full mt-1 bg-white rounded-md shadow-lg border z-20 min-w-[120px]">
-                <button
-                  onClick={handleStartEdit}
-                  className="flex items-center space-x-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 first:rounded-t-md"
-                >
-                  <Edit2 size={14} />
-                  <span>Rename</span>
-                </button>
-
-                <button
-                  onClick={handleDelete}
-                  disabled={isDeleting || column.cards.length > 0}
-                  className="flex items-center space-x-2 w-full px-3 py-2 text-sm text-red-600 hover:bg-red-50 disabled:text-gray-400 disabled:cursor-not-allowed last:rounded-b-md"
-                  title={
-                    column.cards.length > 0
-                      ? `Cannot delete column with ${column.cards.length} task(s)`
-                      : "Delete column"
-                  }
-                >
-                  <Trash2 size={14} />
-                  <span>{isDeleting ? "Deleting..." : "Delete"}</span>
-                </button>
-              </div>
-            </>
-          )}
-        </div>
-      )}
-    </div>
-  );
 }
 
 // Add Column Component (unchanged)
@@ -686,7 +489,7 @@ function DroppableColumn({
   return (
     <div
       ref={setNodeRef}
-      className={`bg-gray-50 rounded-lg p-4 min-w-80 max-w-80 flex flex-col ${
+      className={`bg-gray-50 rounded-lg p-4 min-w-80 max-w-80 flex flex-col group ${
         isOver ? "bg-blue-50 border-2 border-blue-300 border-dashed" : ""
       }`}
     >
