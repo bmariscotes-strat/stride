@@ -1,0 +1,917 @@
+import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { useRouter } from "next/navigation";
+import { Calendar, momentLocalizer, Event, View } from "react-big-calendar";
+import withDragAndDrop from "react-big-calendar/lib/addons/dragAndDrop";
+import moment from "moment";
+import {
+  RefreshCw,
+  Calendar as CalendarIcon,
+  User,
+  AlertCircle,
+  Trash2,
+  Archive,
+} from "lucide-react";
+import { Card } from "@/types/forms/tasks";
+import { MIN_FETCH_INTERVAL } from "@/lib/constants/limits";
+import "react-big-calendar/lib/css/react-big-calendar.css";
+import "react-big-calendar/lib/addons/dragAndDrop/styles.css";
+
+const localizer = momentLocalizer(moment);
+const DragAndDropCalendar = withDragAndDrop<CalendarEvent, object>(Calendar);
+
+type RBCEventInteractionArgs<TEvent> = {
+  event: TEvent;
+  start: Date | string;
+  end: Date | string;
+  allDay?: boolean;
+  isAllDay?: boolean;
+  resourceId?: any;
+};
+
+interface CalendarViewProps {
+  projectId: string;
+  projectSlug: string;
+  userId: string;
+  canEditCards?: boolean;
+  onDataChange?: () => void;
+  refreshTrigger?: number;
+}
+
+interface CalendarEvent extends Event {
+  id: string;
+  card: Card;
+}
+
+interface BulkActions {
+  selectedCards: Set<string>;
+  isVisible: boolean;
+}
+
+// Custom hook for managing calendar data
+function useCalendarData(projectSlug: string, onDataChange?: () => void) {
+  const [cards, setCards] = useState<Card[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isRefetching, setIsRefetching] = useState(false);
+  const [hasInitialLoad, setHasInitialLoad] = useState(false); // Track if initial load completed
+  const lastFetchTime = React.useRef<number>(0);
+  const refreshTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+
+  const fetchCalendarData = useCallback(
+    async (showLoader = true) => {
+      try {
+        const now = Date.now();
+        console.log(
+          "Calendar: fetchCalendarData called, showLoader:",
+          showLoader
+        );
+        console.log(
+          "Calendar: Time since last fetch:",
+          now - lastFetchTime.current
+        );
+
+        // Remove the interval check for external refreshes
+        // if (now - lastFetchTime.current < MIN_FETCH_INTERVAL) {
+        //   console.log('Calendar: Skipping fetch due to interval limit');
+        //   return;
+        // }
+
+        if (showLoader && !hasInitialLoad) {
+          setLoading(true);
+        } else {
+          setIsRefetching(true);
+        }
+        setError(null);
+        lastFetchTime.current = now;
+
+        console.log("Calendar: Fetching data from API...");
+        // Fetch all cards for the project
+        const response = await fetch(`/api/projects/${projectSlug}/cards`, {
+          headers: {
+            "Cache-Control": "no-cache",
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch cards");
+        }
+
+        const cardsData = await response.json();
+        console.log(
+          "Calendar: Received cards data:",
+          cardsData.length,
+          "cards"
+        );
+        setCards(cardsData);
+        setHasInitialLoad(true); // Mark initial load as complete
+        onDataChange?.();
+      } catch (err) {
+        console.error("Error fetching calendar data:", err);
+        setError(err instanceof Error ? err.message : "An error occurred");
+        setHasInitialLoad(true); // Even on error, mark as loaded to show empty state
+      } finally {
+        setLoading(false);
+        setIsRefetching(false);
+      }
+    },
+    [projectSlug, onDataChange, hasInitialLoad]
+  );
+
+  const debouncedRefresh = useCallback(() => {
+    if (refreshTimeoutRef.current) {
+      clearTimeout(refreshTimeoutRef.current);
+    }
+
+    refreshTimeoutRef.current = setTimeout(() => {
+      fetchCalendarData(false);
+    }, 500);
+  }, [fetchCalendarData]);
+
+  const manualRefresh = useCallback(() => {
+    fetchCalendarData(false);
+  }, [fetchCalendarData]);
+
+  // Expose a method to force refresh (for external triggers)
+  const forceRefresh = useCallback(() => {
+    setIsRefetching(true);
+    fetchCalendarData(false);
+  }, [fetchCalendarData]);
+
+  useEffect(() => {
+    return () => {
+      if (refreshTimeoutRef.current) {
+        clearTimeout(refreshTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  return {
+    cards,
+    setCards,
+    loading,
+    error,
+    isRefetching,
+    hasInitialLoad,
+    fetchCalendarData,
+    debouncedRefresh,
+    manualRefresh,
+    forceRefresh,
+  };
+}
+
+// Confirmation Dialog Component
+function ConfirmationDialog({
+  isOpen,
+  onClose,
+  onConfirm,
+  title,
+  message,
+  confirmText = "Delete",
+  cancelText = "Cancel",
+  variant = "danger",
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+  title: string;
+  message: string;
+  confirmText?: string;
+  cancelText?: string;
+  variant?: "danger" | "warning";
+}) {
+  if (!isOpen) return null;
+
+  const confirmButtonClass =
+    variant === "danger"
+      ? "bg-red-600 hover:bg-red-700 text-white"
+      : "bg-yellow-600 hover:bg-yellow-700 text-white";
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+      <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+        <h3 className="text-lg font-medium text-gray-900 mb-2">{title}</h3>
+        <p className="text-sm text-gray-600 mb-6">{message}</p>
+        <div className="flex justify-end gap-3">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50"
+          >
+            {cancelText}
+          </button>
+          <button
+            onClick={onConfirm}
+            className={`px-4 py-2 text-sm rounded-md ${confirmButtonClass}`}
+          >
+            {confirmText}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Bulk Actions Toolbar Component
+function BulkActionsToolbar({
+  selectedCards,
+  onAction,
+  onClose,
+}: {
+  selectedCards: Set<string>;
+  onAction: (action: string, cardIds: string[]) => void;
+  onClose: () => void;
+}) {
+  const cardIds = Array.from(selectedCards);
+
+  return (
+    <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50">
+      <div className="bg-white shadow-lg rounded-lg border p-4 min-w-80">
+        <div className="flex items-center justify-between mb-3">
+          <span className="text-sm font-medium text-gray-900">
+            {cardIds.length} card{cardIds.length !== 1 ? "s" : ""} selected
+          </span>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600"
+          >
+            ×
+          </button>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => onAction("archive", cardIds)}
+            className="flex items-center gap-1 px-3 py-1.5 text-sm bg-yellow-100 text-yellow-700 rounded-md hover:bg-yellow-200"
+          >
+            <Archive size={14} />
+            Archive
+          </button>
+          <button
+            onClick={() => onAction("delete", cardIds)}
+            className="flex items-center gap-1 px-3 py-1.5 text-sm bg-red-100 text-red-700 rounded-md hover:bg-red-200"
+          >
+            <Trash2 size={14} />
+            Delete
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Custom Event Component
+function CustomEvent({ event }: { event: CalendarEvent }) {
+  const { card } = event;
+
+  const getPriorityColor = (priority: Card["priority"]) => {
+    switch (priority) {
+      case "high":
+        return "bg-red-100 border-red-400 text-red-800";
+      case "medium":
+        return "bg-yellow-100 border-yellow-400 text-yellow-800";
+      case "low":
+        return "bg-green-100 border-green-400 text-green-800";
+      default:
+        return "bg-gray-100 border-gray-400 text-gray-800";
+    }
+  };
+
+  // Determine if this is a single-day or multi-day event
+  const isSingleDay = event.start?.getTime() === event.end?.getTime();
+  const hasStartDate =
+    card.startDate && card.dueDate && card.startDate !== card.dueDate;
+
+  return (
+    <div
+      className={`p-1 rounded text-xs border-l-4 ${getPriorityColor(
+        card.priority
+      )} flex flex-col gap-1 min-w-0`}
+    >
+      <div className="font-medium leading-snug break-words line-clamp-2">
+        {card.title}
+      </div>
+
+      {/* Show date info for single-day events */}
+      {isSingleDay && (
+        <div className="text-[10px] text-gray-600">
+          {card.startDate && card.dueDate && card.startDate === card.dueDate
+            ? "Start & Due"
+            : card.startDate
+              ? "Start"
+              : "Due"}
+        </div>
+      )}
+
+      {/* Show duration for multi-day events */}
+      {hasStartDate && (
+        <div className="text-[10px] text-gray-600">
+          {Math.ceil(
+            (new Date(card.dueDate!).getTime() -
+              new Date(card.startDate!).getTime()) /
+              (1000 * 60 * 60 * 24)
+          )}{" "}
+          days
+        </div>
+      )}
+
+      {card.labels && card.labels.length > 0 && (
+        <div className="flex flex-wrap gap-1">
+          {card.labels.slice(0, 2).map((label) => (
+            <span
+              key={label.id}
+              className="px-1 py-0.5 text-[10px] rounded-full font-medium shrink-0"
+              style={{
+                backgroundColor: label.color + "40",
+                color: label.color,
+              }}
+            >
+              {label.name}
+            </span>
+          ))}
+          {card.labels.length > 2 && (
+            <span className="text-[10px] text-gray-500">
+              +{card.labels.length - 2}
+            </span>
+          )}
+        </div>
+      )}
+
+      {card.assignee && (
+        <div className="flex items-center min-w-0">
+          {card.assignee.avatarUrl ? (
+            <img
+              src={card.assignee.avatarUrl}
+              alt={`${card.assignee.firstName} ${card.assignee.lastName}`}
+              className="w-4 h-4 rounded-full mr-1 shrink-0"
+            />
+          ) : (
+            <div className="w-4 h-4 rounded-full bg-blue-100 flex items-center justify-center mr-1 shrink-0">
+              <User size={10} className="text-blue-600" />
+            </div>
+          )}
+          <span className="text-xs text-gray-600 truncate">
+            {card.assignee.firstName}
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Main Calendar View Component
+export default function CalendarView({
+  projectId,
+  projectSlug,
+  userId,
+  canEditCards = true,
+  onDataChange,
+  refreshTrigger,
+}: CalendarViewProps) {
+  const router = useRouter();
+  const {
+    cards,
+    setCards,
+    loading,
+    error,
+    isRefetching,
+    hasInitialLoad,
+    fetchCalendarData,
+    debouncedRefresh,
+    manualRefresh,
+    forceRefresh,
+  } = useCalendarData(projectSlug, onDataChange);
+
+  const [currentView, setCurrentView] = useState<View>("month");
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [bulkActions, setBulkActions] = useState<BulkActions>({
+    selectedCards: new Set(),
+    isVisible: false,
+  });
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    action: () => void;
+    variant?: "danger" | "warning";
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    action: () => {},
+  });
+
+  // Initial fetch
+  useEffect(() => {
+    if (projectSlug) {
+      fetchCalendarData();
+    }
+  }, [projectSlug, fetchCalendarData]);
+
+  // Handle external refresh triggers - FIXED
+  const previousRefreshTrigger = React.useRef<number | undefined>(undefined);
+
+  useEffect(() => {
+    if (
+      refreshTrigger &&
+      refreshTrigger > 0 &&
+      refreshTrigger !== previousRefreshTrigger.current
+    ) {
+      console.log(
+        "Calendar: External refresh trigger detected:",
+        refreshTrigger
+      );
+      console.log("Calendar: Triggering force refresh...");
+
+      // Call fetchCalendarData directly - it handles its own loading states
+      fetchCalendarData(false)
+        .then(() => {
+          console.log("Calendar: Force refresh completed");
+        })
+        .catch((error) => {
+          console.error("Calendar: Force refresh failed:", error);
+        });
+
+      previousRefreshTrigger.current = refreshTrigger;
+    }
+  }, [refreshTrigger, fetchCalendarData]);
+
+  // Convert cards to calendar events
+  const events: CalendarEvent[] = useMemo(() => {
+    return cards
+      .filter((card) => card.dueDate || card.startDate) // Show cards with either date
+      .map((card) => {
+        // Determine start and end dates
+        let start: Date;
+        let end: Date;
+
+        if (card.startDate && card.dueDate) {
+          // Card has both start and due date - use as range
+          start = new Date(card.startDate);
+          end = new Date(card.dueDate);
+        } else if (card.startDate) {
+          // Only start date - make it a single day event
+          start = new Date(card.startDate);
+          end = new Date(card.startDate);
+        } else if (card.dueDate) {
+          // Only due date - make it a single day event
+          start = new Date(card.dueDate);
+          end = new Date(card.dueDate);
+        } else {
+          // Fallback (shouldn't reach here due to filter above)
+          start = new Date();
+          end = new Date();
+        }
+
+        return {
+          id: card.id,
+          title: card.title,
+          start,
+          end,
+          card,
+        };
+      });
+  }, [cards]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Only handle shortcuts if no input is focused
+      if (
+        document.activeElement?.tagName === "INPUT" ||
+        document.activeElement?.tagName === "TEXTAREA"
+      ) {
+        return;
+      }
+
+      if (e.ctrlKey || e.metaKey) {
+        switch (e.key) {
+          case "a":
+            e.preventDefault();
+            // Select all visible cards
+            const visibleCardIds = new Set(events.map((event) => event.id));
+            setBulkActions({
+              selectedCards: visibleCardIds,
+              isVisible: visibleCardIds.size > 0,
+            });
+            break;
+          case "r":
+            e.preventDefault();
+            manualRefresh();
+            break;
+        }
+      }
+
+      switch (e.key) {
+        case "Escape":
+          setBulkActions({ selectedCards: new Set(), isVisible: false });
+          break;
+        case "Delete":
+        case "Backspace":
+          if (bulkActions.selectedCards.size > 0) {
+            e.preventDefault();
+            handleBulkAction("delete", Array.from(bulkActions.selectedCards));
+          }
+          break;
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [events, bulkActions.selectedCards, manualRefresh]);
+
+  const handleSelectEvent = useCallback(
+    (event: CalendarEvent, e?: unknown) => {
+      const native = (e as React.SyntheticEvent)?.nativeEvent as
+        | MouseEvent
+        | undefined;
+      const isCtrlOrMeta = native?.ctrlKey || native?.metaKey;
+
+      if (isCtrlOrMeta) {
+        setBulkActions((prev) => {
+          const newSelected = new Set(prev.selectedCards);
+          if (newSelected.has(event.id)) newSelected.delete(event.id);
+          else newSelected.add(event.id);
+          return {
+            selectedCards: newSelected,
+            isVisible: newSelected.size > 0,
+          };
+        });
+      } else if (bulkActions.selectedCards.size > 0) {
+        setBulkActions({ selectedCards: new Set(), isVisible: false });
+        router.push(`/projects/${projectSlug}/cards/${event.id}`);
+      } else {
+        router.push(`/projects/${projectSlug}/cards/${event.id}`);
+      }
+    },
+    [projectSlug, router, bulkActions.selectedCards.size]
+  );
+
+  const handleEventResize = useCallback(
+    async ({ event, start, end }: RBCEventInteractionArgs<CalendarEvent>) => {
+      if (!canEditCards) return;
+
+      const newStart = new Date(start);
+      const newEnd = new Date(end);
+
+      // Store original values for rollback
+      const originalCard = event.card;
+
+      // Optimistic update
+      setCards((prev) =>
+        prev.map((card) =>
+          card.id === event.id
+            ? {
+                ...card,
+                startDate: newStart, // keep as Date
+                dueDate: newEnd, // keep as Date
+              }
+            : card
+        )
+      );
+
+      try {
+        const updateData: any = {
+          startDate: newStart.toISOString(),
+          dueDate: newEnd.toISOString(),
+        };
+
+        const response = await fetch(`/api/cards/${event.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(updateData),
+        });
+
+        if (!response.ok) throw new Error("Failed to resize event");
+
+        onDataChange?.();
+      } catch (error) {
+        console.error("Failed to resize event:", error);
+        // Revert optimistic update on error
+        setCards((prev) =>
+          prev.map((card) =>
+            card.id === event.id
+              ? {
+                  ...card,
+                  startDate: originalCard.startDate,
+                  dueDate: originalCard.dueDate,
+                }
+              : card
+          )
+        );
+        onDataChange?.();
+      }
+    },
+    [canEditCards, onDataChange, setCards]
+  );
+
+  const handleEventDrop = useCallback(
+    async ({ event, start, end }: RBCEventInteractionArgs<CalendarEvent>) => {
+      if (!canEditCards) return;
+
+      const newStart = new Date(start);
+      const newEnd = new Date(end);
+
+      // Calculate the duration of the original event
+      const originalStart = event.start;
+      const originalEnd = event.end;
+
+      // Handle case where originalEnd might be undefined
+      if (!originalEnd || !originalStart) {
+        console.warn("Original end date is undefined, using start date");
+        return;
+      }
+
+      const duration = originalEnd.getTime() - originalStart.getTime();
+      const originalCard = event.card;
+
+      // Optimistic update
+      setCards((prev) =>
+        prev.map((card) => {
+          if (card.id === event.id) {
+            if (duration === 0) {
+              return {
+                ...card,
+                startDate: newStart, // keep as Date
+                dueDate: newStart,
+              };
+            } else {
+              return {
+                ...card,
+                startDate: newStart,
+                dueDate: newEnd,
+              };
+            }
+          }
+          return card;
+        })
+      );
+
+      try {
+        const updateData: any = {};
+
+        if (duration === 0) {
+          // Single-day event - update both dates to the same value
+          updateData.startDate = newStart.toISOString();
+          updateData.dueDate = newStart.toISOString();
+        } else {
+          // Multi-day event - maintain duration
+          updateData.startDate = newStart.toISOString();
+          updateData.dueDate = newEnd.toISOString();
+        }
+
+        const response = await fetch(`/api/cards/${event.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(updateData),
+        });
+
+        if (!response.ok) throw new Error("Failed to update event dates");
+
+        onDataChange?.(); // trigger upstream refresh
+      } catch (error) {
+        console.error("Failed to update card dates:", error);
+        // Revert optimistic update
+        setCards((prev) =>
+          prev.map((card) =>
+            card.id === event.id
+              ? {
+                  ...card,
+                  startDate: originalCard.startDate,
+                  dueDate: originalCard.dueDate,
+                }
+              : card
+          )
+        );
+        onDataChange?.(); // rollback via refresh
+      }
+    },
+    [canEditCards, onDataChange, setCards]
+  );
+
+  const handleBulkAction = useCallback(
+    async (action: string, cardIds: string[]) => {
+      if (action === "delete") {
+        // Show confirmation dialog for delete
+        setConfirmDialog({
+          isOpen: true,
+          title: "Delete Cards",
+          message: `Are you sure you want to permanently delete ${cardIds.length} card${cardIds.length !== 1 ? "s" : ""}? This action cannot be undone.`,
+          variant: "danger",
+          action: async () => {
+            try {
+              await Promise.all(
+                cardIds.map((cardId) =>
+                  fetch(`/api/cards/${cardId}`, { method: "DELETE" })
+                )
+              );
+
+              // Clear selection and refresh
+              setBulkActions({ selectedCards: new Set(), isVisible: false });
+              debouncedRefresh();
+            } catch (error) {
+              console.error("Bulk delete failed:", error);
+            }
+          },
+        });
+        return;
+      }
+
+      if (action === "archive") {
+        // Show confirmation dialog for archive
+        setConfirmDialog({
+          isOpen: true,
+          title: "Archive Cards",
+          message: `Are you sure you want to archive ${cardIds.length} card${cardIds.length !== 1 ? "s" : ""}?`,
+          variant: "warning",
+          action: async () => {
+            try {
+              await Promise.all(
+                cardIds.map((cardId) =>
+                  fetch(`/api/cards/${cardId}`, {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ isArchived: true }),
+                  })
+                )
+              );
+
+              // Clear selection and refresh
+              setBulkActions({ selectedCards: new Set(), isVisible: false });
+              debouncedRefresh();
+            } catch (error) {
+              console.error("Bulk archive failed:", error);
+            }
+          },
+        });
+      }
+    },
+    [debouncedRefresh]
+  );
+
+  const eventStyleGetter = useCallback(
+    (event: CalendarEvent) => {
+      const isSelected = bulkActions.selectedCards.has(event.id);
+
+      let backgroundColor = "#fff";
+
+      return {
+        style: {
+          backgroundColor: isSelected ? "#1e40af" : backgroundColor,
+          opacity: isSelected ? 0.8 : 1,
+          border: isSelected ? "2px solid #1e40af" : `none`,
+        },
+      };
+    },
+    [bulkActions.selectedCards]
+  );
+
+  // Show loading state only during initial load
+  if (loading && !hasInitialLoad) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+          <p className="text-gray-600">Loading calendar...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error && !hasInitialLoad) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="text-center">
+          <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-2" />
+          <p className="text-red-600 mb-2">Error loading calendar</p>
+          <p className="text-sm text-gray-600 mb-4">{error}</p>
+          <button
+            onClick={manualRefresh}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700 transition-colors"
+          >
+            <RefreshCw size={16} />
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Replace the calendar rendering section in your CalendarView component with this:
+
+  return (
+    <div className="h-full relative">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <CalendarIcon className="h-5 w-5 text-gray-400" />
+          <h3 className="text-lg font-medium text-gray-900">Calendar View</h3>
+          <span className="text-sm text-gray-500">
+            ({events.length} card{events.length !== 1 ? "s" : ""} with due
+            dates)
+          </span>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {/* Keyboard shortcuts help */}
+          <div className="text-xs text-gray-500">
+            <span className="hidden sm:inline">
+              Ctrl+A: Select all • Ctrl+R: Refresh • Esc: Clear selection
+            </span>
+          </div>
+
+          {/* Refresh indicator */}
+          {isRefetching && (
+            <div className="inline-flex items-center gap-2 bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm">
+              <RefreshCw size={14} className="animate-spin" />
+              Syncing...
+            </div>
+          )}
+
+          {/* Manual refresh button */}
+          <button
+            onClick={manualRefresh}
+            disabled={isRefetching}
+            className="p-2 bg-white shadow-sm rounded-md hover:bg-gray-50 transition-colors disabled:opacity-50"
+            title="Refresh calendar (Ctrl+R)"
+          >
+            <RefreshCw
+              size={16}
+              className={isRefetching ? "animate-spin" : ""}
+            />
+          </button>
+        </div>
+      </div>
+
+      {/* Main Content Area */}
+      {hasInitialLoad && events.length === 0 ? (
+        // Empty state - only show when no events and not loading
+        <div
+          className="flex items-center justify-center"
+          style={{ height: "calc(105vh - 200px)" }}
+        >
+          <div className="text-center text-gray-500">
+            <CalendarIcon className="h-12 w-12 mx-auto mb-3 text-gray-400" />
+            <p className="text-lg font-medium mb-1">No cards with due dates</p>
+            <p className="text-sm">
+              Cards will appear on the calendar when you set due dates
+            </p>
+          </div>
+        </div>
+      ) : hasInitialLoad ? (
+        // Calendar - only show when we have initial load completed and have events
+        <div style={{ height: "calc(105vh - 200px)" }}>
+          <DragAndDropCalendar
+            localizer={localizer}
+            events={events}
+            startAccessor="start"
+            endAccessor="end"
+            view={currentView}
+            popup={true}
+            onView={setCurrentView}
+            showAllEvents={true}
+            date={currentDate}
+            onNavigate={setCurrentDate}
+            onSelectEvent={handleSelectEvent}
+            onEventDrop={canEditCards ? handleEventDrop : undefined}
+            onEventResize={canEditCards ? handleEventResize : undefined}
+            eventPropGetter={eventStyleGetter}
+            components={{
+              event: CustomEvent,
+            }}
+            views={["month", "week", "day", "agenda"]}
+            step={60}
+            showMultiDayTimes
+            culture="en-US"
+            style={{ height: "100%" }}
+            dayLayoutAlgorithm="no-overlap"
+            resizable={canEditCards}
+          />
+        </div>
+      ) : null}
+
+      {/* Bulk Actions Toolbar */}
+      {bulkActions.isVisible && (
+        <BulkActionsToolbar
+          selectedCards={bulkActions.selectedCards}
+          onAction={handleBulkAction}
+          onClose={() =>
+            setBulkActions({ selectedCards: new Set(), isVisible: false })
+          }
+        />
+      )}
+
+      {/* Confirmation Dialog */}
+      <ConfirmationDialog
+        isOpen={confirmDialog.isOpen}
+        onClose={() => setConfirmDialog({ ...confirmDialog, isOpen: false })}
+        onConfirm={() => {
+          confirmDialog.action();
+          setConfirmDialog({ ...confirmDialog, isOpen: false });
+        }}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        variant={confirmDialog.variant}
+        confirmText={confirmDialog.variant === "danger" ? "Delete" : "Archive"}
+      />
+    </div>
+  );
+}

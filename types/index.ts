@@ -114,7 +114,27 @@ export type {
   AssignProjectRoleParams,
   ProjectsListOptions,
   UserBasic,
+  ProjectPageData,
+  ProjectPageClientProps,
 } from "./forms/project";
+
+export type {
+  CreateCardInput,
+  UpdateCardInput,
+  MoveCardInput,
+  CardFilters,
+  PaginationOptions,
+  SortOptions,
+  CardQueryResult,
+  ProjectCardsStats,
+  BulkUpdateCardsInput,
+  BulkArchiveCardsInput,
+  DuplicateCardInput,
+  CardWithServiceRelations,
+  CardWithPartialRelations,
+  CardPageData,
+  CardPageClientProps,
+} from "./forms/tasks";
 
 // Notification
 export type {

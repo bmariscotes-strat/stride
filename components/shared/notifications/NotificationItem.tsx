@@ -10,6 +10,14 @@ import {
   UserCog,
   Bell,
   Check,
+  FolderPlus,
+  FileEdit,
+  Archive,
+  Trash2,
+  RefreshCw,
+  Plus,
+  ArrowRight,
+  UserCheck,
 } from "lucide-react";
 import { NotificationWithRelations } from "@/types";
 import {
@@ -17,13 +25,14 @@ import {
   getNotificationUrlById,
 } from "@/lib/utils/notif-helper";
 
+// Update the interface in NotificationItem.tsx
 interface NotificationItemProps {
   notification: NotificationWithRelations;
   onMarkAsRead: (id: number) => Promise<void> | void;
   onRemove: (id: number) => void;
-  onClose?: () => void; // Add close function prop
+  onClose?: () => void;
   fetchSlugs: (
-    teamId: string,
+    teamId?: string,
     projectId?: string
   ) => Promise<{ teamSlug: string; projectSlug?: string }>;
 }
@@ -66,10 +75,26 @@ export default function NotificationItem({
         return <CheckCircle className={`${iconClass} text-blue-500`} />;
       case "task_updated":
         return <AlertCircle className={`${iconClass} text-orange-500`} />;
+      case "task_created":
+        return <Plus className={`${iconClass} text-green-600`} />;
+      case "task_moved":
+        return <ArrowRight className={`${iconClass} text-blue-600`} />;
+      case "task_reassigned":
+        return <UserCheck className={`${iconClass} text-indigo-600`} />;
       case "comment_added":
         return <MessageCircle className={`${iconClass} text-green-500`} />;
       case "mention":
         return <MessageCircle className={`${iconClass} text-purple-500`} />;
+      case "project_created":
+        return <FolderPlus className={`${iconClass} text-emerald-500`} />;
+      case "project_updated":
+        return <FileEdit className={`${iconClass} text-blue-600`} />;
+      case "project_archived":
+        return <Archive className={`${iconClass} text-yellow-600`} />;
+      case "project_deleted":
+        return <Trash2 className={`${iconClass} text-red-600`} />;
+      case "project_restored":
+        return <RefreshCw className={`${iconClass} text-green-600`} />;
       case "due_date_reminder":
         return <Calendar className={`${iconClass} text-red-500`} />;
       case "team_invitation":

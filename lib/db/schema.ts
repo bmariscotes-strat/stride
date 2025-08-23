@@ -283,6 +283,7 @@ export const cards = pgTable(
     status: varchar("status", { length: 50 }),
     isArchived: boolean("is_archived").default(false).notNull(),
     schemaVersion: integer("schema_version").default(1).notNull(),
+    ownerId: uuid("owner_id").notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
@@ -302,10 +303,15 @@ export const cards = pgTable(
       foreignColumns: [users.id],
       name: "fk_cards_assignee_id",
     }).onDelete("set null"),
+    ownerIdIdx: index("cards_owner_id_idx").on(table.ownerId),
+    ownerIdFk: foreignKey({
+      columns: [table.ownerId],
+      foreignColumns: [users.id],
+      name: "fk_cards_owner_id",
+    }).onDelete("restrict"),
   })
 );
 
-// UPDATED: Labels - Now scoped to projects instead of teams since teams can have different roles per project
 export const labels = pgTable(
   "labels",
   {
@@ -369,12 +375,14 @@ export const cardComments = pgTable(
     cardId: uuid("card_id").notNull(),
     userId: uuid("user_id").notNull(),
     content: text("content").notNull(),
+    parentId: integer("parent_id"), // NEW: For reply threading
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
   (table) => ({
     cardIdIdx: index("card_comments_card_id_idx").on(table.cardId),
     userIdIdx: index("card_comments_user_id_idx").on(table.userId),
+    parentIdIdx: index("card_comments_parent_id_idx").on(table.parentId), // NEW
     cardIdFk: foreignKey({
       columns: [table.cardId],
       foreignColumns: [cards.id],
@@ -384,6 +392,12 @@ export const cardComments = pgTable(
       columns: [table.userId],
       foreignColumns: [users.id],
       name: "fk_card_comments_user_id",
+    }).onDelete("cascade"),
+    // NEW: Self-referencing foreign key for replies
+    parentIdFk: foreignKey({
+      columns: [table.parentId],
+      foreignColumns: [table.id],
+      name: "fk_card_comments_parent_id",
     }).onDelete("cascade"),
   })
 );
@@ -693,6 +707,14 @@ export const cardCommentsRelations = relations(
       references: [users.id],
     }),
     mentions: many(mentions),
+    parent: one(cardComments, {
+      fields: [cardComments.parentId],
+      references: [cardComments.id],
+      relationName: "comment_replies",
+    }),
+    replies: many(cardComments, {
+      relationName: "comment_replies",
+    }),
   })
 );
 
