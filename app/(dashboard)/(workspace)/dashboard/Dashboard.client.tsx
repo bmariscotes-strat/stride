@@ -31,13 +31,13 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
       <StatsGrid stats={initialData?.stats} />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <ProjectOverview projects={initialData?.recentProjects} />
+        <UpcomingDeadlines deadlines={initialData?.upcomingDeadlines} />
         <QuickActions />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <RecentActivity activities={initialData?.recentActivity} />
-        <UpcomingDeadlines deadlines={initialData?.upcomingDeadlines} />
+        <ProjectOverview projects={initialData?.recentProjects} />
       </div>
     </div>
   );
