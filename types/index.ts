@@ -147,7 +147,7 @@ export type {
 } from "./enums/notif";
 
 // Activity
-export type { ActivityLogResult } from "./enums/activity";
+export type { ActivityLogResult, ActivityMetadata } from "./enums/activity";
 
 export type {
   ProjectPermissionsResponse,

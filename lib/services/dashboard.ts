@@ -263,6 +263,7 @@ export class DashboardService {
   }
 
   // Get user's recent activity
+  // Get user's recent activity
   static async getUserRecentActivity(userId: string, limit: number = 10) {
     try {
       return await db
@@ -275,8 +276,29 @@ export class DashboardService {
           projectId: activityLog.projectId,
           cardId: activityLog.cardId,
           teamId: activityLog.teamId,
+          // Add user data
+          user: {
+            id: users.id,
+            firstName: users.firstName,
+            lastName: users.lastName,
+            username: users.username,
+            avatarUrl: users.avatarUrl,
+          },
+          // Add card data if needed
+          card: {
+            id: cards.id,
+            title: cards.title,
+          },
+          // Add team data if needed
+          team: {
+            id: teams.id,
+            name: teams.name,
+          },
         })
         .from(activityLog)
+        .leftJoin(users, eq(activityLog.userId, users.id))
+        .leftJoin(cards, eq(activityLog.cardId, cards.id))
+        .leftJoin(teams, eq(activityLog.teamId, teams.id))
         .where(eq(activityLog.userId, userId))
         .orderBy(desc(activityLog.createdAt))
         .limit(limit);
