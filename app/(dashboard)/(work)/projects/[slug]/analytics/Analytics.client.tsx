@@ -29,6 +29,7 @@ import {
   Activity,
   Filter,
 } from "lucide-react";
+import AppBreadcrumb from "@/components/shared/AppBreadcrumb";
 
 interface ProjectAnalyticsData {
   overview: {
@@ -193,15 +194,17 @@ export default function AnalyticsClient({
 
   return (
     <>
-      <div className="space-y-6">
+      <div className="space-y-6 pt-3">
         {/* Header */}
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-bold text-outer_space-500 dark:text-platinum-500">
-              Analytics
-            </h1>
-            <p className="text-payne's_gray-500 dark:text-french_gray-500 mt-2">
-              Track {project.name} performance and team productivity
+            <AppBreadcrumb />
+
+            <h1 className="text-2xl font-bold text-gray-900">Analytics</h1>
+            <p className="mt-1 text-sm text-gray-600">
+              Track{" "}
+              <span className="font-bold text-primary">{project.name} </span>{" "}
+              performance and team productivity
             </p>
           </div>
 
