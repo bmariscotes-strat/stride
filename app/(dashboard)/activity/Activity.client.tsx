@@ -67,7 +67,7 @@ export default function ActivityLogsClient({
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-6 space-y-6">
+    <div className="p-6 space-y-6">
       <div className="border-b border-gray-200 dark:border-gray-700 pb-4">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
           Activity Logs
