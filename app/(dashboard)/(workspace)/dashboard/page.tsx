@@ -1,6 +1,7 @@
 import DashboardClient from "./Dashboard.client";
 import { DashboardService } from "@/lib/services/dashboard";
 import { getRequiredUserId } from "@/lib/utils/get-current-user";
+import { getCurrentUser } from "@/lib/services/users";
 import { redirect } from "next/navigation";
 
 export default async function DashboardPage() {
@@ -10,7 +11,10 @@ export default async function DashboardPage() {
     redirect("/sign-in");
   }
 
-  const initialData = await DashboardService.getDashboardData(userId);
+  const [user, initialData] = await Promise.all([
+    getCurrentUser(),
+    DashboardService.getDashboardData(userId),
+  ]);
 
-  return <DashboardClient initialData={initialData} />;
+  return <DashboardClient user={user} initialData={initialData} />;
 }

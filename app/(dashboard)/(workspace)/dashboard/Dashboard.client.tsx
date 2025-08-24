@@ -10,6 +10,7 @@ import {
 } from "@/components/dashboard";
 
 interface DashboardClientProps {
+  user?: any;
   initialData?: {
     stats: {
       totalProjects: number;
@@ -23,10 +24,13 @@ interface DashboardClientProps {
   };
 }
 
-export default function DashboardClient({ initialData }: DashboardClientProps) {
+export default function DashboardClient({
+  user,
+  initialData,
+}: DashboardClientProps) {
   return (
     <div className="space-y-6">
-      <DashboardHeader />
+      <DashboardHeader user={user} />
 
       <StatsGrid stats={initialData?.stats} />
 
