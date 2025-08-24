@@ -31,6 +31,13 @@ import {
   Filter,
   Download,
 } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/shared/select";
 import AppBreadcrumb from "@/components/shared/AppBreadcrumb";
 import type { AnalyticsClientProps } from "@/types/analytics";
 import { COLORS, PRIORITY_COLORS } from "@/lib/constants/analytics";
@@ -321,7 +328,32 @@ export default function AnalyticsClient({
           </div>
 
           {/* Controls */}
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-4 ">
+            {/* Time Range Filter */}
+            <div className="flex items-center space-x-2">
+              <Filter size={16} className="text-gray-500" />
+
+              <Select
+                value={timeRange}
+                onValueChange={(value) => handleTimeRangeChange(value as any)}
+                disabled={isLoading}
+              >
+                <SelectTrigger className="w-[160px] text-sm disabled:opacity-50">
+                  <SelectValue placeholder="Select range" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="7d">Last 7 days</SelectItem>
+                  <SelectItem value="30d">Last 30 days</SelectItem>
+                  <SelectItem value="90d">Last 90 days</SelectItem>
+                  <SelectItem value="1y">Last year</SelectItem>
+                </SelectContent>
+              </Select>
+
+              {isLoading && (
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+              )}
+            </div>
+
             {/* Export Button */}
             {analyticsPermissions.canExportData && (
               <button
@@ -337,25 +369,6 @@ export default function AnalyticsClient({
                 <span>{isExporting ? "Exporting..." : "Export Excel"}</span>
               </button>
             )}
-
-            {/* Time Range Filter */}
-            <div className="flex items-center space-x-2">
-              <Filter size={16} className="text-gray-500" />
-              <select
-                value={timeRange}
-                onChange={(e) => handleTimeRangeChange(e.target.value as any)}
-                disabled={isLoading}
-                className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-sm disabled:opacity-50"
-              >
-                <option value="7d">Last 7 days</option>
-                <option value="30d">Last 30 days</option>
-                <option value="90d">Last 90 days</option>
-                <option value="1y">Last year</option>
-              </select>
-              {isLoading && (
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-              )}
-            </div>
           </div>
         </div>
 
@@ -400,7 +413,7 @@ export default function AnalyticsClient({
           ].map((metric, index) => (
             <div
               key={index}
-              className="bg-white dark:bg-outer_space-500 rounded-lg border border-french_gray-300 dark:border-payne's_gray-400 p-6"
+              className="bg-white dark:bg-outer_space-500 rounded-lg border border-gray-300 dark:border-payne's_gray-400 p-6"
             >
               <div className="flex items-center justify-between mb-4">
                 <div
@@ -428,7 +441,7 @@ export default function AnalyticsClient({
         {/* Charts Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Cards by Status */}
-          <div className="bg-white dark:bg-outer_space-500 rounded-lg border border-french_gray-300 dark:border-payne's_gray-400 p-6">
+          <div className="bg-white dark:bg-outer_space-500 rounded-lg border border-gray-300 dark:border-payne's_gray-400 p-6">
             <h3 className="text-lg font-semibold text-outer_space-500 dark:text-platinum-500 mb-4">
               Cards by Status
             </h3>
@@ -467,7 +480,7 @@ export default function AnalyticsClient({
           </div>
 
           {/* Cards by Priority */}
-          <div className="bg-white dark:bg-outer_space-500 rounded-lg border border-french_gray-300 dark:border-payne's_gray-400 p-6">
+          <div className="bg-white dark:bg-outer_space-500 rounded-lg border border-gray-300 dark:border-payne's_gray-400 p-6">
             <h3 className="text-lg font-semibold text-outer_space-500 dark:text-platinum-500 mb-4">
               Cards by Priority
             </h3>
@@ -491,7 +504,7 @@ export default function AnalyticsClient({
           </div>
 
           {/* Activity Trend */}
-          <div className="bg-white dark:bg-outer_space-500 rounded-lg border border-french_gray-300 dark:border-payne's_gray-400 p-6">
+          <div className="bg-white dark:bg-outer_space-500 rounded-lg border border-gray-300 dark:border-payne's_gray-400 p-6">
             <h3 className="text-lg font-semibold text-outer_space-500 dark:text-platinum-500 mb-4">
               Activity Trend
             </h3>
@@ -543,7 +556,7 @@ export default function AnalyticsClient({
 
           {/* Team Performance - Only show if user has permission */}
           {analyticsPermissions.canViewTeamPerformance && (
-            <div className="bg-white dark:bg-outer_space-500 rounded-lg border border-french_gray-300 dark:border-payne's_gray-400 p-6">
+            <div className="bg-white dark:bg-outer_space-500 rounded-lg border border-gray-300 dark:border-payne's_gray-400 p-6">
               <h3 className="text-lg font-semibold text-outer_space-500 dark:text-platinum-500 mb-4">
                 Team Performance
               </h3>
@@ -574,7 +587,7 @@ export default function AnalyticsClient({
         {/* Additional Metrics */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Completion Rate Trend */}
-          <div className="bg-white dark:bg-outer_space-500 rounded-lg border border-french_gray-300 dark:border-payne's_gray-400 p-6">
+          <div className="bg-white dark:bg-outer_space-500 rounded-lg border border-gray-300 dark:border-payne's_gray-400 p-6">
             <h3 className="text-lg font-semibold text-outer_space-500 dark:text-platinum-500 mb-4">
               Completion Rate Trend
             </h3>
@@ -605,7 +618,7 @@ export default function AnalyticsClient({
           </div>
 
           {/* Average Time in Columns */}
-          <div className="bg-white dark:bg-outer_space-500 rounded-lg border border-french_gray-300 dark:border-payne's_gray-400 p-6">
+          <div className="bg-white dark:bg-outer_space-500 rounded-lg border border-gray-300 dark:border-payne's_gray-400 p-6">
             <h3 className="text-lg font-semibold text-outer_space-500 dark:text-platinum-500 mb-4">
               Average Time in Columns
             </h3>
@@ -635,7 +648,7 @@ export default function AnalyticsClient({
         {/* Individual Productivity Table */}
         {analyticsPermissions.canViewDetailedAnalytics &&
           analyticsData.teamProductivity.length > 0 && (
-            <div className="bg-white dark:bg-outer_space-500 rounded-lg border border-french_gray-300 dark:border-payne's_gray-400 p-6">
+            <div className="bg-white dark:bg-outer_space-500 rounded-lg border border-gray-300 dark:border-payne's_gray-400 p-6">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-semibold text-outer_space-500 dark:text-platinum-500">
                   Individual Productivity
@@ -644,7 +657,7 @@ export default function AnalyticsClient({
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-gray-200 dark:border-gray-700">
+                    <tr className="border-b border-gray-300 dark:border-gray-700">
                       <th className="text-left p-3 font-medium text-gray-700 dark:text-gray-300">
                         Member
                       </th>
