@@ -33,8 +33,8 @@ const getViewIcon = (iconName: string) => {
     Kanban: Kanban,
     Calendar: Calendar,
     Table: Table,
-    BarChart3: BarChart3, // Add analytics icon
-    Analytics: BarChart3, // Alternative name
+    BarChart3: BarChart3,
+    Analytics: BarChart3,
   };
 
   return iconMap[iconName as keyof typeof iconMap] || getIcon(iconName);
@@ -319,7 +319,7 @@ export default function ProjectPageClient({
                         isActive && !isAnalytics
                           ? "bg-blue-100 text-blue-700 font-medium"
                           : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
-                      } ${isAnalytics ? "border-t border-gray-200 mt-2 pt-2" : ""}`}
+                      } ${isAnalytics ? "border-t border-gray-200 mt-2 pt-4" : ""}`}
                       title={
                         isAnalytics
                           ? "View project analytics and performance metrics"
