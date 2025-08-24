@@ -119,3 +119,60 @@ export interface AnalyticsExportData {
     keyInsights: string[];
   };
 }
+
+// Analytics Page
+export interface ProjectAnalyticsData {
+  overview: {
+    totalCards: number;
+    completedCards: number;
+    averageCompletionTime: number;
+    activeMembers: number;
+    overdueTasks: number;
+  };
+  cardsByStatus: Array<{
+    status: string;
+    count: number;
+    percentage: number;
+  }>;
+  cardsByPriority: Array<{
+    priority: string;
+    count: number;
+    color: string;
+  }>;
+  cardsByAssignee: Array<{
+    assigneeName: string;
+    assigned: number;
+    completed: number;
+    overdue: number;
+  }>;
+  activityTrend: Array<{
+    date: string;
+    cardsCreated: number;
+    cardsCompleted: number;
+    cardsMoved: number;
+  }>;
+  completionTrend: Array<{
+    week: string;
+    completionRate: number;
+    totalCards: number;
+  }>;
+  averageTimeInColumn: Array<{
+    columnName: string;
+    averageHours: number;
+  }>;
+  teamProductivity: Array<{
+    memberName: string;
+    tasksCompleted: number;
+    averageTaskTime: number;
+    productivity: number;
+  }>;
+}
+
+export interface AnalyticsClientProps {
+  project: any;
+  analyticsData: ProjectAnalyticsData;
+  permissions: any;
+  analyticsPermissions: any;
+  userRole: string;
+  initialTimeRange: "7d" | "30d" | "90d" | "1y";
+}

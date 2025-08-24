@@ -1,5 +1,6 @@
 "use client";
 import React, { useState } from "react";
+import * as XLSX from "xlsx";
 import {
   BarChart,
   Bar,
@@ -28,79 +29,11 @@ import {
   Target,
   Activity,
   Filter,
+  Download,
 } from "lucide-react";
 import AppBreadcrumb from "@/components/shared/AppBreadcrumb";
-
-interface ProjectAnalyticsData {
-  overview: {
-    totalCards: number;
-    completedCards: number;
-    averageCompletionTime: number;
-    activeMembers: number;
-    overdueTasks: number;
-  };
-  cardsByStatus: Array<{
-    status: string;
-    count: number;
-    percentage: number;
-  }>;
-  cardsByPriority: Array<{
-    priority: string;
-    count: number;
-    color: string;
-  }>;
-  cardsByAssignee: Array<{
-    assigneeName: string;
-    assigned: number;
-    completed: number;
-    overdue: number;
-  }>;
-  activityTrend: Array<{
-    date: string;
-    cardsCreated: number;
-    cardsCompleted: number;
-    cardsMoved: number;
-  }>;
-  completionTrend: Array<{
-    week: string;
-    completionRate: number;
-    totalCards: number;
-  }>;
-  averageTimeInColumn: Array<{
-    columnName: string;
-    averageHours: number;
-  }>;
-  teamProductivity: Array<{
-    memberName: string;
-    tasksCompleted: number;
-    averageTaskTime: number;
-    productivity: number;
-  }>;
-}
-
-interface AnalyticsClientProps {
-  project: any;
-  analyticsData: ProjectAnalyticsData;
-  permissions: any;
-  analyticsPermissions: any;
-  userRole: string;
-  initialTimeRange: "7d" | "30d" | "90d" | "1y";
-}
-
-const COLORS = [
-  "#3B82F6",
-  "#10B981",
-  "#F59E0B",
-  "#EF4444",
-  "#8B5CF6",
-  "#06B6D4",
-];
-
-const PRIORITY_COLORS = {
-  high: "#EF4444",
-  medium: "#F59E0B",
-  low: "#10B981",
-};
+import type { AnalyticsClientProps } from "@/types/analytics";
+import { COLORS, PRIORITY_COLORS } from "@/lib/constants/analytics";
 
 export default function AnalyticsClient({
   project,
@@ -114,8 +47,189 @@ export default function AnalyticsClient({
     initialTimeRange
   );
   const [isLoading, setIsLoading] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
 
   const hasData = analyticsData.overview.totalCards > 0;
+
+  // Export of Data
+  const exportToExcel = async () => {
+    if (!analyticsPermissions.canExportData) {
+      alert("You do not have permission to export data.");
+      return;
+    }
+
+    setIsExporting(true);
+
+    try {
+      // Create a new workbook
+      const workbook = XLSX.utils.book_new();
+
+      // 1. Overview Data Sheet
+      const overviewData = [
+        [`Analytics Report - ${project.name}`],
+        [`Time Range: ${timeRange}`],
+        [`Generated: ${new Date().toLocaleDateString()}`],
+        [], // Empty row
+        ["Metric", "Value", "Unit"],
+        ["Total Cards", analyticsData.overview.totalCards, "cards"],
+        ["Completed Cards", analyticsData.overview.completedCards, "cards"],
+        [
+          "Completion Rate",
+          Math.round(
+            (analyticsData.overview.completedCards /
+              analyticsData.overview.totalCards) *
+              100
+          ),
+          "%",
+        ],
+        ["Active Members", analyticsData.overview.activeMembers, "members"],
+        [
+          "Average Completion Time",
+          analyticsData.overview.averageCompletionTime,
+          "days",
+        ],
+        ["Overdue Tasks", analyticsData.overview.overdueTasks, "tasks"],
+      ];
+      const overviewSheet = XLSX.utils.aoa_to_sheet(overviewData);
+      overviewSheet["!cols"] = [{ width: 25 }, { width: 15 }, { width: 10 }];
+      XLSX.utils.book_append_sheet(workbook, overviewSheet, "Overview");
+
+      // 2. Cards by Status Sheet
+      if (analyticsData.cardsByStatus.length > 0) {
+        const statusData = [
+          ["Status", "Count", "Percentage"],
+          ...analyticsData.cardsByStatus.map((item) => [
+            item.status,
+            item.count,
+            item.percentage + "%",
+          ]),
+        ];
+        const statusSheet = XLSX.utils.aoa_to_sheet(statusData);
+        XLSX.utils.book_append_sheet(workbook, statusSheet, "Cards by Status");
+      }
+
+      // 3. Cards by Priority Sheet
+      if (analyticsData.cardsByPriority.length > 0) {
+        const priorityData = [
+          ["Priority", "Count"],
+          ...analyticsData.cardsByPriority.map((item) => [
+            item.priority,
+            item.count,
+          ]),
+        ];
+        const prioritySheet = XLSX.utils.aoa_to_sheet(priorityData);
+        XLSX.utils.book_append_sheet(
+          workbook,
+          prioritySheet,
+          "Cards by Priority"
+        );
+      }
+
+      // 4. Activity Trend Sheet
+      if (analyticsData.activityTrend.length > 0) {
+        const activityData = [
+          ["Date", "Cards Created", "Cards Completed", "Cards Moved"],
+          ...analyticsData.activityTrend.map((item) => [
+            item.date,
+            item.cardsCreated,
+            item.cardsCompleted,
+            item.cardsMoved,
+          ]),
+        ];
+        const activitySheet = XLSX.utils.aoa_to_sheet(activityData);
+        XLSX.utils.book_append_sheet(workbook, activitySheet, "Activity Trend");
+      }
+
+      // 5. Team Performance Sheet (if permission allows)
+      if (
+        analyticsPermissions.canViewTeamPerformance &&
+        analyticsData.cardsByAssignee.length > 0
+      ) {
+        const teamData = [
+          ["Assignee", "Assigned Cards", "Completed Cards", "Overdue Cards"],
+          ...analyticsData.cardsByAssignee.map((item) => [
+            item.assigneeName,
+            item.assigned,
+            item.completed,
+            item.overdue,
+          ]),
+        ];
+        const teamSheet = XLSX.utils.aoa_to_sheet(teamData);
+        XLSX.utils.book_append_sheet(workbook, teamSheet, "Team Performance");
+      }
+
+      // 6. Individual Productivity Sheet (if permission allows)
+      if (
+        analyticsPermissions.canViewDetailedAnalytics &&
+        analyticsData.teamProductivity.length > 0
+      ) {
+        const productivityData = [
+          [
+            "Member Name",
+            "Tasks Completed",
+            "Average Task Time (days)",
+            "Productivity Score (%)",
+          ],
+          ...analyticsData.teamProductivity.map((item) => [
+            item.memberName,
+            item.tasksCompleted,
+            formatNumber(item.averageTaskTime, 1),
+            formatNumber(item.productivity, 0),
+          ]),
+        ];
+        const productivitySheet = XLSX.utils.aoa_to_sheet(productivityData);
+        XLSX.utils.book_append_sheet(
+          workbook,
+          productivitySheet,
+          "Individual Productivity"
+        );
+      }
+
+      // 7. Completion Rate Trend Sheet
+      if (analyticsData.completionTrend.length > 0) {
+        const completionData = [
+          ["Week", "Completion Rate (%)"],
+          ...analyticsData.completionTrend.map((item) => [
+            item.week,
+            item.completionRate,
+          ]),
+        ];
+        const completionSheet = XLSX.utils.aoa_to_sheet(completionData);
+        XLSX.utils.book_append_sheet(
+          workbook,
+          completionSheet,
+          "Completion Trend"
+        );
+      }
+
+      // 8. Average Time in Columns Sheet
+      if (analyticsData.averageTimeInColumn.length > 0) {
+        const timeData = [
+          ["Column Name", "Average Time (hours)"],
+          ...analyticsData.averageTimeInColumn.map((item) => [
+            item.columnName,
+            item.averageHours,
+          ]),
+        ];
+        const timeSheet = XLSX.utils.aoa_to_sheet(timeData);
+        XLSX.utils.book_append_sheet(workbook, timeSheet, "Time in Columns");
+      }
+
+      // Generate filename with timestamp
+      const timestamp = new Date().toISOString().split("T")[0];
+      const filename = `${project.name.replace(/[^a-z0-9]/gi, "_")}_Analytics_${timeRange}_${timestamp}.xlsx`;
+
+      // Write and download the file
+      XLSX.writeFile(workbook, filename);
+
+      console.log(`Analytics data exported successfully as ${filename}`);
+    } catch (error) {
+      console.error("Error exporting data:", error);
+      alert("Error exporting data. Please try again.");
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   // Handle time range change with URL update
   const handleTimeRangeChange = async (
@@ -129,8 +243,6 @@ export default function AnalyticsClient({
     url.searchParams.set("timeRange", newRange);
     window.history.pushState({}, "", url.toString());
 
-    // In a real app, you'd refetch data here
-    // For now, we'll just update the state
     setTimeout(() => setIsLoading(false), 500);
   };
 
@@ -208,23 +320,42 @@ export default function AnalyticsClient({
             </p>
           </div>
 
-          {/* Time Range Filter */}
-          <div className="flex items-center space-x-2">
-            <Filter size={16} className="text-gray-500" />
-            <select
-              value={timeRange}
-              onChange={(e) => handleTimeRangeChange(e.target.value as any)}
-              disabled={isLoading}
-              className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-sm disabled:opacity-50"
-            >
-              <option value="7d">Last 7 days</option>
-              <option value="30d">Last 30 days</option>
-              <option value="90d">Last 90 days</option>
-              <option value="1y">Last year</option>
-            </select>
-            {isLoading && (
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+          {/* Controls */}
+          <div className="flex items-center space-x-4">
+            {/* Export Button */}
+            {analyticsPermissions.canExportData && (
+              <button
+                onClick={exportToExcel}
+                disabled={isExporting}
+                className="flex items-center space-x-2 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white rounded-md text-sm font-medium transition-colors"
+              >
+                {isExporting ? (
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                ) : (
+                  <Download size={16} />
+                )}
+                <span>{isExporting ? "Exporting..." : "Export Excel"}</span>
+              </button>
             )}
+
+            {/* Time Range Filter */}
+            <div className="flex items-center space-x-2">
+              <Filter size={16} className="text-gray-500" />
+              <select
+                value={timeRange}
+                onChange={(e) => handleTimeRangeChange(e.target.value as any)}
+                disabled={isLoading}
+                className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-sm disabled:opacity-50"
+              >
+                <option value="7d">Last 7 days</option>
+                <option value="30d">Last 30 days</option>
+                <option value="90d">Last 90 days</option>
+                <option value="1y">Last year</option>
+              </select>
+              {isLoading && (
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -500,6 +631,8 @@ export default function AnalyticsClient({
             )}
           </div>
         </div>
+
+        {/* Individual Productivity Table */}
         {analyticsPermissions.canViewDetailedAnalytics &&
           analyticsData.teamProductivity.length > 0 && (
             <div className="bg-white dark:bg-outer_space-500 rounded-lg border border-french_gray-300 dark:border-payne's_gray-400 p-6">
@@ -507,17 +640,6 @@ export default function AnalyticsClient({
                 <h3 className="text-lg font-semibold text-outer_space-500 dark:text-platinum-500">
                   Individual Productivity
                 </h3>
-                {analyticsPermissions.canExportData && (
-                  <button
-                    className="px-3 py-1 text-sm bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 rounded-md hover:bg-blue-200 dark:hover:bg-blue-900/40 transition-colors"
-                    onClick={() => {
-                      // Implement export functionality
-                      console.log("Export analytics data");
-                    }}
-                  >
-                    Export Data
-                  </button>
-                )}
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
