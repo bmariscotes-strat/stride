@@ -57,11 +57,12 @@ export class DashboardService {
         totalProjectsResult,
         activeCardsResult,
         completedTasksResult,
-        teamMembersResult,
+        userTeamsResult,
         // Get stats from one week ago for comparison
         projectsWeekAgoResult,
         cardsWeekAgoResult,
         tasksWeekAgoResult,
+        teamsWeekAgoResult,
         // Get stats from one month ago for comparison
         projectsMonthAgoResult,
       ] = await Promise.all([
@@ -91,13 +92,14 @@ export class DashboardService {
             and(eq(projects.ownerId, userId), eq(cards.status, "completed"))
           ),
 
+        // Count teams the user is a member of (excluding archived teams)
         db
-          .selectDistinct({ userId: teamMembers.userId })
+          .select({ count: count() })
           .from(teamMembers)
           .leftJoin(teams, eq(teamMembers.teamId, teams.id))
-          .leftJoin(projectTeams, eq(teams.id, projectTeams.teamId))
-          .leftJoin(projects, eq(projectTeams.projectId, projects.id))
-          .where(eq(projects.ownerId, userId)),
+          .where(
+            and(eq(teamMembers.userId, userId), eq(teams.isArchived, false))
+          ),
 
         // Week ago stats
         db
@@ -137,6 +139,19 @@ export class DashboardService {
             )
           ),
 
+        // Teams the user was a member of one week ago
+        db
+          .select({ count: count() })
+          .from(teamMembers)
+          .leftJoin(teams, eq(teamMembers.teamId, teams.id))
+          .where(
+            and(
+              eq(teamMembers.userId, userId),
+              eq(teams.isArchived, false),
+              lte(teamMembers.joinedAt, oneWeekAgo)
+            )
+          ),
+
         // Month ago stats
         db
           .select({ count: count() })
@@ -155,13 +170,14 @@ export class DashboardService {
         totalProjects: totalProjectsResult[0]?.count || 0,
         activeCards: activeCardsResult[0]?.count || 0,
         completedTasks: completedTasksResult[0]?.count || 0,
-        teamMembers: teamMembersResult?.length || 0,
+        teamMembers: userTeamsResult[0]?.count || 0, // Now represents teams user is in
       };
 
       const weekAgoStats = {
         projects: projectsWeekAgoResult[0]?.count || 0,
         cards: cardsWeekAgoResult[0]?.count || 0,
         tasks: tasksWeekAgoResult[0]?.count || 0,
+        teams: teamsWeekAgoResult[0]?.count || 0,
       };
 
       const monthAgoStats = {
@@ -172,6 +188,7 @@ export class DashboardService {
       const projectChange = currentStats.totalProjects - monthAgoStats.projects;
       const cardChange = currentStats.activeCards - weekAgoStats.cards;
       const taskChange = currentStats.completedTasks - weekAgoStats.tasks;
+      const teamChange = currentStats.teamMembers - weekAgoStats.teams;
 
       return {
         ...currentStats,
@@ -194,7 +211,12 @@ export class DashboardService {
               : taskChange < 0
                 ? `${taskChange} this week`
                 : "No change",
-          teamMembers: null, // Team member changes are complex to track
+          teamMembers:
+            teamChange > 0
+              ? `+${teamChange} this week`
+              : teamChange < 0
+                ? `${teamChange} this week`
+                : "No change",
         },
       };
     } catch (error) {

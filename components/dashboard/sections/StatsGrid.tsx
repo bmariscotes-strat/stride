@@ -26,7 +26,7 @@ export function StatsGrid({ stats }: StatsGridProps) {
       change: stats.changes?.projects,
     },
     {
-      name: "Teammates",
+      name: "Teams Joined",
       value: stats.teamMembers.toString(),
       icon: Users,
       change: stats.changes?.teamMembers,
