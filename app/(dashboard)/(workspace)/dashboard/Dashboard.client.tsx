@@ -30,7 +30,7 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
 
       <StatsGrid stats={initialData?.stats} />
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-[70%_30%] gap-6">
         <UpcomingDeadlines deadlines={initialData?.upcomingDeadlines} />
         <QuickActions />
       </div>
