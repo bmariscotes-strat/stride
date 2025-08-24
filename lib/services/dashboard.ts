@@ -18,8 +18,8 @@ export class DashboardService {
       const [stats, recentProjects, recentActivity, upcomingDeadlines] =
         await Promise.all([
           this.getUserStats(userId),
-          this.getUserRecentProjects(userId, 5),
-          this.getUserRecentActivity(userId, 10),
+          this.getUserRecentProjects(userId, 4),
+          this.getUserRecentActivity(userId, 5),
           this.getUpcomingDeadlines(userId, 5),
         ]);
 
