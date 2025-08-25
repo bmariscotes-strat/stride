@@ -1,5 +1,5 @@
 /*
- * Webhook for Clerk & Neon DB
+ * Webhook for Clerk & Neon DB - Fixed Version
  */
 
 import { Webhook } from "svix";
@@ -45,12 +45,11 @@ interface ClerkEmailData {
 /**
  * POST Webhook Handler - Verifies and Processes Clerk Webhook Events
  */
-
 export async function POST(req: Request) {
   console.log("🔵 Webhook received");
 
   try {
-    // Get the headers - await the promise
+    // Get the headers - await the promise and extract header values properly
     const headerPayload = await headers();
     const svix_id = headerPayload.get("svix-id");
     const svix_timestamp = headerPayload.get("svix-timestamp");
@@ -59,12 +58,19 @@ export async function POST(req: Request) {
     console.log("🔵 Headers extracted:", {
       svix_id,
       svix_timestamp,
-      svix_signature: !!svix_signature,
+      svix_signature: svix_signature
+        ? `${svix_signature.substring(0, 20)}...`
+        : null, // Log partial signature for debugging
+      svix_signature_length: svix_signature?.length,
     });
 
     // If there are no headers, error out
     if (!svix_id || !svix_timestamp || !svix_signature) {
-      console.log("❌ Missing svix headers");
+      console.log("❌ Missing svix headers", {
+        missing_id: !svix_id,
+        missing_timestamp: !svix_timestamp,
+        missing_signature: !svix_signature,
+      });
       return new Response("Error occurred -- no svix headers", {
         status: 400,
       });
@@ -79,12 +85,15 @@ export async function POST(req: Request) {
 
     if (!WEBHOOK_SECRET) {
       console.log("❌ Missing CLERK_WEBHOOK_SECRET");
-      throw new Error(
-        "Please add CLERK_WEBHOOK_SECRET to your environment variable"
+      return new Response(
+        "Please add CLERK_WEBHOOK_SECRET to your environment variable",
+        {
+          status: 500,
+        }
       );
     }
 
-    console.log("🔵 Webhook secret found");
+    console.log("🔵 Webhook secret found, length:", WEBHOOK_SECRET.length);
 
     // Create a new Svix instance with your secret.
     const wh = new Webhook(WEBHOOK_SECRET);
@@ -94,14 +103,41 @@ export async function POST(req: Request) {
     // Verify the payload with the headers
     try {
       console.log("🔵 Attempting to verify webhook...");
+
+      // Log the raw payload for debugging (first 200 chars)
+      console.log("🔵 Raw payload preview:", payload.substring(0, 200) + "...");
+
       evt = wh.verify(payload, {
         "svix-id": svix_id,
         "svix-timestamp": svix_timestamp,
         "svix-signature": svix_signature,
       }) as WebhookEvent;
+
       console.log("✅ Webhook verified successfully");
-    } catch (err) {
-      console.error("❌ Error verifying webhook:", err);
+    } catch (err: any) {
+      console.error("❌ Error verifying webhook:", {
+        error: err.message,
+        name: err.name,
+        // Log headers again for debugging
+        headers: {
+          svix_id,
+          svix_timestamp,
+          svix_signature_exists: !!svix_signature,
+          svix_signature_type: typeof svix_signature,
+        },
+      });
+
+      // More detailed error logging for ngrok issues
+      if (err.message?.includes("signature")) {
+        console.log(
+          "🔍 Signature verification failed - this might be an ngrok issue"
+        );
+        console.log(
+          "🔍 Try regenerating your webhook secret in Clerk dashboard"
+        );
+        console.log("🔍 Ensure ngrok is forwarding headers correctly");
+      }
+
       return new Response("Error occurred during verification", {
         status: 400,
       });
@@ -161,16 +197,17 @@ export async function POST(req: Request) {
  */
 async function handleUserCreated(userData: ClerkUserData) {
   try {
-    console.log(
-      "🔵 Creating user with data:",
-      JSON.stringify(userData, null, 2)
-    );
+    console.log("🔵 Creating user with ID:", userData.id);
 
     // Get primary email
     const primaryEmail =
       userData.email_addresses.find(
         (email) => email.id === userData.primary_email_address_id
       ) || userData.email_addresses[0];
+
+    if (!primaryEmail) {
+      throw new Error("No email address found for user");
+    }
 
     const result = await db
       .insert(users)
@@ -179,11 +216,11 @@ async function handleUserCreated(userData: ClerkUserData) {
         username: userData.username || "",
         firstName: userData.first_name || "",
         lastName: userData.last_name || "",
-        email: primaryEmail?.email_address || "",
+        email: primaryEmail.email_address,
       })
       .returning();
 
-    console.log("✅ User created in database:", result[0]);
+    console.log("✅ User created in database:", result[0]?.clerkUserId);
   } catch (error) {
     console.error("❌ Database error creating user:", error);
     const errorMessage =
@@ -205,19 +242,24 @@ async function handleUserUpdated(userData: ClerkUserData) {
         (email) => email.id === userData.primary_email_address_id
       ) || userData.email_addresses[0];
 
+    if (!primaryEmail) {
+      console.log("⚠️ No email address found for user update");
+      return;
+    }
+
     const result = await db
       .update(users)
       .set({
-        username: userData.username,
-        firstName: userData.first_name,
-        lastName: userData.last_name,
-        email: primaryEmail?.email_address || "",
+        username: userData.username || "",
+        firstName: userData.first_name || "",
+        lastName: userData.last_name || "",
+        email: primaryEmail.email_address,
         updatedAt: new Date(),
       })
       .where(eq(users.clerkUserId, userData.id))
       .returning();
 
-    console.log(`✅ User updated in database:`, result[0]);
+    console.log(`✅ User updated in database:`, result[0]?.clerkUserId);
   } catch (error) {
     console.error("❌ Error updating user in database:", error);
     throw error;
@@ -236,7 +278,10 @@ async function handleUserDeleted(userData: ClerkDeletedUserData) {
       .where(eq(users.clerkUserId, userData.id))
       .returning();
 
-    console.log(`✅ User deleted from database:`, result[0]);
+    console.log(
+      `✅ User deleted from database:`,
+      result[0]?.clerkUserId || "User not found"
+    );
   } catch (error) {
     console.error("❌ Error deleting user from database:", error);
     throw error;

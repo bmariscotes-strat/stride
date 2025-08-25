@@ -8,6 +8,18 @@ import { clerkClient } from "@clerk/nextjs/server";
 import { auth } from "@clerk/nextjs/server";
 
 // =============================================================================
+// HELPERS
+// =============================================================================
+
+/** Ensure data is JSON-serializable (Dates -> ISO strings, strip non-plain). */
+function jsonSafe<T>(data: T): T {
+  return JSON.parse(JSON.stringify(data));
+}
+
+/** Standard success/error union so TS knows `error` exists on failures. */
+type Result<T> = ({ success: true } & T) | { success: false; error: string };
+
+// =============================================================================
 // PROFILE MANAGEMENT ACTIONS
 // =============================================================================
 
@@ -18,18 +30,15 @@ export interface UpdateProfileData {
   avatarUrl?: string;
 }
 
-export async function updateUserProfile(data: Partial<UpdateProfileData>) {
+export async function updateUserProfile(
+  data: Partial<UpdateProfileData>
+): Promise<Result<{ user: any }>> {
   try {
     const { userId } = await auth();
-    if (!userId) {
-      throw new Error("Unauthorized");
-    }
+    if (!userId) throw new Error("Unauthorized");
 
     // Only update fields that are provided
-    const updateData: any = {
-      updatedAt: new Date(),
-    };
-
+    const updateData: Record<string, unknown> = { updatedAt: new Date() };
     if (data.firstName !== undefined) updateData.firstName = data.firstName;
     if (data.lastName !== undefined) updateData.lastName = data.lastName;
     if (data.jobPosition !== undefined)
@@ -55,7 +64,11 @@ export async function updateUserProfile(data: Partial<UpdateProfileData>) {
     }
 
     revalidatePath("/settings");
-    return { success: true, user: updatedUser[0] };
+
+    return jsonSafe({
+      success: true,
+      user: updatedUser, // keep your original array shape
+    });
   } catch (error) {
     console.error("Failed to update profile:", error);
     return {
@@ -70,12 +83,12 @@ export interface UpdateEmailData {
   email: string;
 }
 
-export async function updateUserEmail(data: UpdateEmailData) {
+export async function updateUserEmail(
+  data: UpdateEmailData
+): Promise<Result<{ message: string }>> {
   try {
     const { userId } = await auth();
-    if (!userId) {
-      throw new Error("Unauthorized");
-    }
+    if (!userId) throw new Error("Unauthorized");
 
     const clerk = await clerkClient();
 
@@ -84,11 +97,11 @@ export async function updateUserEmail(data: UpdateEmailData) {
     const currentPrimaryEmailId = user.primaryEmailAddressId;
 
     // Create new email address as verified and primary
-    const newEmailAddress = await clerk.emailAddresses.createEmailAddress({
+    await clerk.emailAddresses.createEmailAddress({
       userId,
       emailAddress: data.email,
-      verified: true, // Skip verification - mark as verified
-      primary: true, // Make it primary immediately
+      verified: true, // you chose to skip verification
+      primary: true,
     });
 
     // Delete the old primary email if it exists
@@ -97,25 +110,22 @@ export async function updateUserEmail(data: UpdateEmailData) {
         await clerk.emailAddresses.deleteEmailAddress(currentPrimaryEmailId);
       } catch (deleteError) {
         console.warn("Failed to delete old email:", deleteError);
-        // Continue even if deletion fails
+        // continue anyway
       }
     }
 
     // Update your database immediately
     await db
       .update(users)
-      .set({
-        email: data.email,
-        updatedAt: new Date(),
-      })
+      .set({ email: data.email, updatedAt: new Date() })
       .where(eq(users.clerkUserId, userId));
 
     revalidatePath("/settings");
 
-    return {
+    return jsonSafe({
       success: true,
       message: "Email address updated successfully.",
-    };
+    });
   } catch (error) {
     console.error("Failed to update email:", error);
     return {
@@ -129,19 +139,19 @@ export async function updateUserEmail(data: UpdateEmailData) {
 // SECURITY ACTIONS
 // =============================================================================
 
-export async function getUserSessions() {
+export async function getUserSessions(): Promise<Result<{ sessions: any }>> {
   try {
     const { userId } = await auth();
-    if (!userId) {
-      throw new Error("Unauthorized");
-    }
+    if (!userId) throw new Error("Unauthorized");
 
     const clerk = await clerkClient();
-    const sessionsResponse = await clerk.sessions.getSessionList({
-      userId,
-    });
+    const sessionsResponse = await clerk.sessions.getSessionList({ userId });
 
-    return { success: true, sessions: sessionsResponse.data };
+    // Make the payload JSON-safe (dates -> strings, etc.)
+    return jsonSafe({
+      success: true,
+      sessions: sessionsResponse.data,
+    });
   } catch (error) {
     console.error("Failed to get sessions:", error);
     return {
@@ -151,17 +161,15 @@ export async function getUserSessions() {
   }
 }
 
-export async function revokeSession(sessionId: string) {
+export async function revokeSession(sessionId: string): Promise<Result<{}>> {
   try {
     const { userId } = await auth();
-    if (!userId) {
-      throw new Error("Unauthorized");
-    }
+    if (!userId) throw new Error("Unauthorized");
 
     const clerk = await clerkClient();
     await clerk.sessions.revokeSession(sessionId);
 
-    return { success: true };
+    return jsonSafe({ success: true });
   } catch (error) {
     console.error("Failed to revoke session:", error);
     return {
@@ -172,12 +180,12 @@ export async function revokeSession(sessionId: string) {
   }
 }
 
-export async function revokeAllSessions() {
+export async function revokeAllSessions(): Promise<
+  Result<{ revokedCount: number }>
+> {
   try {
     const { userId } = await auth();
-    if (!userId) {
-      throw new Error("Unauthorized");
-    }
+    if (!userId) throw new Error("Unauthorized");
 
     const clerk = await clerkClient();
     const sessionsResponse = await clerk.sessions.getSessionList({ userId });
@@ -187,17 +195,12 @@ export async function revokeAllSessions() {
     const { sessionId: currentSessionId } = await auth();
 
     // Revoke all sessions except the current one
-    const sessionsToRevoke = sessions.filter(
-      (session) => session.id !== currentSessionId
-    );
-
+    const sessionsToRevoke = sessions.filter((s) => s.id !== currentSessionId);
     await Promise.all(
-      sessionsToRevoke.map((session) =>
-        clerk.sessions.revokeSession(session.id)
-      )
+      sessionsToRevoke.map((s) => clerk.sessions.revokeSession(s.id))
     );
 
-    return { success: true, revokedCount: sessionsToRevoke.length };
+    return jsonSafe({ success: true, revokedCount: sessionsToRevoke.length });
   } catch (error) {
     console.error("Failed to revoke all sessions:", error);
     return {
@@ -216,23 +219,17 @@ export interface UpdateAppearanceData {
   theme: "light" | "dark" | "system";
 }
 
-export async function updateUserAppearance(data: UpdateAppearanceData) {
+export async function updateUserAppearance(
+  data: UpdateAppearanceData
+): Promise<Result<{ theme: "light" | "dark" | "system" }>> {
   try {
-    const { userId } = await auth(); // Added await here
-    if (!userId) {
-      throw new Error("Unauthorized");
-    }
+    const { userId } = await auth();
+    if (!userId) throw new Error("Unauthorized");
 
-    // You could store theme preference in your database if needed
-    // await db
-    //   .update(users)
-    //   .set({
-    //     theme: data.theme,
-    //     updatedAt: new Date(),
-    //   })
-    //   .where(eq(users.clerkUserId, userId));
+    // Persist to DB if/when you want
+    // await db.update(users).set({ theme: data.theme, updatedAt: new Date() }).where(eq(users.clerkUserId, userId));
 
-    return { success: true, theme: data.theme };
+    return jsonSafe({ success: true, theme: data.theme });
   } catch (error) {
     console.error("Failed to update appearance:", error);
     return {

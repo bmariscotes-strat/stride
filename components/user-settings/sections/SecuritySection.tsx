@@ -26,6 +26,16 @@ interface SecuritySectionProps {
   sectionRef?: React.RefObject<HTMLDivElement | null>;
 }
 
+// Define the session type to avoid serialization issues
+interface UserSession {
+  id: string;
+  status: string;
+  lastActiveAt: string | null;
+  lastActiveSessionName?: string;
+  lastActiveIpAddress?: string;
+  lastActiveOrganizationId?: string;
+}
+
 export default function SecuritySection({
   clerkUserId,
   sectionRef,
@@ -43,9 +53,25 @@ export default function SecuritySection({
   });
   const [passwordLoading, setPasswordLoading] = useState(false);
 
-  const { data: sessions, isLoading } = useUserSessions();
+  const { data: sessionsData, isLoading } = useUserSessions();
   const revokeSession = useRevokeSession();
   const revokeAllSessions = useRevokeAllSessions();
+
+  // Convert sessions to plain objects to avoid serialization issues
+  const sessions: UserSession[] = React.useMemo(() => {
+    if (!sessionsData) return [];
+
+    return sessionsData.map((session: any) => ({
+      id: session.id,
+      status: session.status,
+      lastActiveAt: session.lastActiveAt
+        ? new Date(session.lastActiveAt).toISOString()
+        : null,
+      lastActiveSessionName: session.lastActiveSessionName,
+      lastActiveIpAddress: session.lastActiveIpAddress,
+      lastActiveOrganizationId: session.lastActiveOrganizationId,
+    }));
+  }, [sessionsData]);
 
   const validatePassword = (password: string) => {
     const minLength = password.length >= 8;
@@ -114,6 +140,7 @@ export default function SecuritySection({
         alert(result.error || "Failed to change password");
       }
     } catch (error) {
+      console.error("Password change error:", error);
       alert("Failed to change password. Please try again.");
     } finally {
       setPasswordLoading(false);
@@ -173,7 +200,7 @@ export default function SecuritySection({
 
   return (
     <div id="security" ref={sectionRef} className="scroll-mt-6">
-      {/* Password Management */}
+      {/* Password Management Section */}
       <section className="border-b border-gray-200 pb-8">
         <div className="pb-6">
           <h3 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
@@ -186,7 +213,6 @@ export default function SecuritySection({
         </div>
 
         <div className="space-y-4">
-          {/* Custom Password Change Form */}
           {!showPasswordForm ? (
             <div className="p-4 border border-blue-200 bg-blue-50 rounded-md">
               <div className="flex items-center gap-3">
@@ -427,33 +453,10 @@ export default function SecuritySection({
               </form>
             </div>
           )}
-
-          {/* Two-Factor Authentication */}
-          <div className="p-4 border border-green-200 bg-green-50 rounded-md">
-            <div className="flex items-center gap-3">
-              <Shield size={20} className="text-green-600" />
-              <div className="flex-1">
-                <h4 className="font-medium text-green-800">
-                  Two-Factor Authentication
-                </h4>
-                <p className="text-sm text-green-700 mt-1">
-                  Add an extra layer of security to your account with 2FA.
-                </p>
-              </div>
-              <button
-                onClick={() => {
-                  window.location.href = `/user-profile#/security/mfa`;
-                }}
-                className="px-4 py-2 text-sm font-medium text-green-800 bg-green-100 border border-green-300 rounded-md hover:bg-green-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-              >
-                Manage 2FA
-              </button>
-            </div>
-          </div>
         </div>
       </section>
 
-      {/* Active Sessions */}
+      {/* Active Sessions Section */}
       <section className="pt-8">
         <div className="pb-6">
           <h3 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
@@ -502,7 +505,7 @@ export default function SecuritySection({
             </div>
           ) : sessions?.length ? (
             <div className="space-y-4">
-              {sessions.map((session: any) => (
+              {sessions.map((session) => (
                 <div
                   key={session.id}
                   className="p-4 border border-gray-200 rounded-md hover:border-gray-300 transition-colors"
