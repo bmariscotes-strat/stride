@@ -18,7 +18,11 @@ interface ClerkUserData {
   email_addresses: Array<{
     email_address: string;
     id: string;
+    verification?: {
+      status: string;
+    };
   }>;
+  primary_email_address_id?: string;
 }
 
 // Type for deleted user data (has different structure)
@@ -26,6 +30,16 @@ interface ClerkDeletedUserData {
   id: string;
   object: "user";
   deleted: boolean;
+}
+
+// Type for email data
+interface ClerkEmailData {
+  id: string;
+  email_address: string;
+  verification?: {
+    status: string;
+  };
+  object: "email_address";
 }
 
 /**
@@ -112,7 +126,8 @@ export async function POST(req: Request) {
           await handleUserDeleted(evt.data as ClerkDeletedUserData);
           break;
         case "email.created":
-          console.log("🔵 Ignoring email.created event");
+          console.log("🔵 Handling email.created");
+          await handleEmailUpdated(evt.data as unknown as ClerkEmailData);
           break;
         default:
           console.log(`🔵 Unhandled event type: ${eventType}`);
@@ -144,13 +159,18 @@ export async function POST(req: Request) {
 /**
  * Create: Create user
  */
-
 async function handleUserCreated(userData: ClerkUserData) {
   try {
     console.log(
       "🔵 Creating user with data:",
       JSON.stringify(userData, null, 2)
     );
+
+    // Get primary email
+    const primaryEmail =
+      userData.email_addresses.find(
+        (email) => email.id === userData.primary_email_address_id
+      ) || userData.email_addresses[0];
 
     const result = await db
       .insert(users)
@@ -159,7 +179,7 @@ async function handleUserCreated(userData: ClerkUserData) {
         username: userData.username || "",
         firstName: userData.first_name || "",
         lastName: userData.last_name || "",
-        email: userData.email_addresses[0]?.email_address || "",
+        email: primaryEmail?.email_address || "",
       })
       .returning();
 
@@ -175,10 +195,15 @@ async function handleUserCreated(userData: ClerkUserData) {
 /**
  * Update: Update user data
  */
-
 async function handleUserUpdated(userData: ClerkUserData) {
   try {
-    console.log("Updating user:", userData);
+    console.log("🔵 Updating user:", userData.id);
+
+    // Get primary email
+    const primaryEmail =
+      userData.email_addresses.find(
+        (email) => email.id === userData.primary_email_address_id
+      ) || userData.email_addresses[0];
 
     const result = await db
       .update(users)
@@ -186,35 +211,55 @@ async function handleUserUpdated(userData: ClerkUserData) {
         username: userData.username,
         firstName: userData.first_name,
         lastName: userData.last_name,
-        email: userData.email_addresses[0]?.email_address || "",
+        email: primaryEmail?.email_address || "",
         updatedAt: new Date(),
       })
       .where(eq(users.clerkUserId, userData.id))
       .returning();
 
-    console.log(`User updated in database:`, result[0]);
+    console.log(`✅ User updated in database:`, result[0]);
   } catch (error) {
-    console.error("Error updating user in database:", error);
+    console.error("❌ Error updating user in database:", error);
     throw error;
   }
 }
 
 /**
- * Update: Delete user data
+ * Delete: Delete user data
  */
-
 async function handleUserDeleted(userData: ClerkDeletedUserData) {
   try {
-    console.log("Deleting user:", userData);
+    console.log("🔵 Deleting user:", userData.id);
 
     const result = await db
       .delete(users)
       .where(eq(users.clerkUserId, userData.id))
       .returning();
 
-    console.log(`User deleted from database:`, result[0]);
+    console.log(`✅ User deleted from database:`, result[0]);
   } catch (error) {
-    console.error("Error deleting user from database:", error);
+    console.error("❌ Error deleting user from database:", error);
+    throw error;
+  }
+}
+
+/**
+ * Handle email updates - sync primary email changes to database
+ */
+async function handleEmailUpdated(emailData: ClerkEmailData) {
+  try {
+    console.log("🔵 Handling email update:", emailData.id);
+
+    // We need to get the user ID from Clerk to update the correct user
+    // This requires making an API call to Clerk to find which user owns this email
+    // For now, we'll skip this as it would require additional Clerk API calls
+    // The user.updated event should handle email changes when the primary email changes
+
+    console.log(
+      "🔵 Email update handled (no action needed - will be handled by user.updated)"
+    );
+  } catch (error) {
+    console.error("❌ Error handling email update:", error);
     throw error;
   }
 }

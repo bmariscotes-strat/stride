@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useRef } from "react";
-import { User2, Camera, Upload, Mail } from "lucide-react";
+import { User2, Camera, Mail } from "lucide-react";
 import Image from "next/image";
 import type { User } from "@/types";
 import {
@@ -56,16 +56,6 @@ export default function ProfileSection({
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
-    // Validate file type
-    if (!file.type.startsWith("image/")) {
-      return;
-    }
-
-    // Validate file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      return;
-    }
 
     uploadImage.mutate(file, {
       onSuccess: (result) => {

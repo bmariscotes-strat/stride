@@ -1,5 +1,5 @@
 "use client";
-import React from "react";
+import React, { useState } from "react";
 import {
   Shield,
   Smartphone,
@@ -7,6 +7,12 @@ import {
   LogOut,
   AlertTriangle,
   Clock,
+  Key,
+  Lock,
+  Eye,
+  EyeOff,
+  CheckCircle,
+  XCircle,
 } from "lucide-react";
 import {
   useUserSessions,
@@ -24,9 +30,95 @@ export default function SecuritySection({
   clerkUserId,
   sectionRef,
 }: SecuritySectionProps) {
+  const [showPasswordForm, setShowPasswordForm] = useState(false);
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
+  const [showPasswords, setShowPasswords] = useState({
+    current: false,
+    new: false,
+    confirm: false,
+  });
+  const [passwordLoading, setPasswordLoading] = useState(false);
+
   const { data: sessions, isLoading } = useUserSessions();
   const revokeSession = useRevokeSession();
   const revokeAllSessions = useRevokeAllSessions();
+
+  const validatePassword = (password: string) => {
+    const minLength = password.length >= 8;
+    const hasUppercase = /[A-Z]/.test(password);
+    const hasLowercase = /[a-z]/.test(password);
+    const hasNumber = /\d/.test(password);
+    const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+
+    return {
+      minLength,
+      hasUppercase,
+      hasLowercase,
+      hasNumber,
+      hasSpecialChar,
+      isValid:
+        minLength &&
+        hasUppercase &&
+        hasLowercase &&
+        hasNumber &&
+        hasSpecialChar,
+    };
+  };
+
+  const passwordValidation = validatePassword(passwordData.newPassword);
+  const passwordsMatch =
+    passwordData.newPassword === passwordData.confirmPassword;
+
+  const handlePasswordChange = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!passwordValidation.isValid) {
+      alert("Password doesn't meet security requirements!");
+      return;
+    }
+
+    if (!passwordsMatch) {
+      alert("New passwords don't match!");
+      return;
+    }
+
+    setPasswordLoading(true);
+
+    try {
+      const response = await fetch("/api/auth/change-password", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          currentPassword: passwordData.currentPassword,
+          newPassword: passwordData.newPassword,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        alert("Password changed successfully!");
+        setPasswordData({
+          currentPassword: "",
+          newPassword: "",
+          confirmPassword: "",
+        });
+        setShowPasswordForm(false);
+      } else {
+        alert(result.error || "Failed to change password");
+      }
+    } catch (error) {
+      alert("Failed to change password. Please try again.");
+    } finally {
+      setPasswordLoading(false);
+    }
+  };
 
   const handleRevokeSession = (sessionId: string) => {
     if (
@@ -72,6 +164,13 @@ export default function SecuritySection({
     return "Location unknown";
   };
 
+  const togglePasswordVisibility = (field: "current" | "new" | "confirm") => {
+    setShowPasswords((prev) => ({
+      ...prev,
+      [field]: !prev[field],
+    }));
+  };
+
   return (
     <div id="security" ref={sectionRef} className="scroll-mt-6">
       {/* Password Management */}
@@ -87,50 +186,268 @@ export default function SecuritySection({
         </div>
 
         <div className="space-y-4">
-          <div className="p-4 border border-amber-200 bg-amber-50 rounded-md">
-            <div className="flex items-center gap-3">
-              <AlertTriangle size={20} className="text-amber-600" />
-              <div>
-                <h4 className="font-medium text-amber-800">
-                  Password Management
-                </h4>
-                <p className="text-sm text-amber-700 mt-1">
-                  Password changes are managed through Clerk. Click the button
-                  below to update your password.
-                </p>
+          {/* Custom Password Change Form */}
+          {!showPasswordForm ? (
+            <div className="p-4 border border-blue-200 bg-blue-50 rounded-md">
+              <div className="flex items-center gap-3">
+                <Key size={20} className="text-blue-600" />
+                <div className="flex-1">
+                  <h4 className="font-medium text-blue-800">Change Password</h4>
+                  <p className="text-sm text-blue-700 mt-1">
+                    Update your password to keep your account secure.
+                  </p>
+                </div>
                 <button
-                  onClick={() => {
-                    // This will open Clerk's password change modal
-                    window.location.href = `/user-profile#/security/password`;
-                  }}
-                  className="mt-3 px-4 py-2 text-sm font-medium text-amber-800 bg-amber-100 border border-amber-300 rounded-md hover:bg-amber-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500"
+                  onClick={() => setShowPasswordForm(true)}
+                  className="px-4 py-2 text-sm font-medium text-blue-800 bg-blue-100 border border-blue-300 rounded-md hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                 >
                   Change Password
                 </button>
               </div>
             </div>
-          </div>
-
-          <div className="p-4 border border-blue-200 bg-blue-50 rounded-md">
-            <div className="flex items-center gap-3">
-              <Shield size={20} className="text-blue-600" />
-              <div>
-                <h4 className="font-medium text-blue-800">
-                  Two-Factor Authentication
+          ) : (
+            <div className="p-6 border border-gray-200 rounded-md bg-white">
+              <div className="flex items-center justify-between mb-4">
+                <h4 className="font-medium text-gray-900 flex items-center gap-2">
+                  <Lock size={18} />
+                  Change Your Password
                 </h4>
-                <p className="text-sm text-blue-700 mt-1">
-                  Add an extra layer of security to your account with 2FA.
-                </p>
                 <button
                   onClick={() => {
-                    // This will open Clerk's 2FA setup
-                    window.location.href = `/user-profile#/security/mfa`;
+                    setShowPasswordForm(false);
+                    setPasswordData({
+                      currentPassword: "",
+                      newPassword: "",
+                      confirmPassword: "",
+                    });
                   }}
-                  className="mt-3 px-4 py-2 text-sm font-medium text-blue-800 bg-blue-100 border border-blue-300 rounded-md hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  className="text-gray-400 hover:text-gray-600"
                 >
-                  Manage 2FA
+                  <XCircle size={20} />
                 </button>
               </div>
+
+              <form onSubmit={handlePasswordChange} className="space-y-4">
+                {/* Current Password */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Current Password
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showPasswords.current ? "text" : "password"}
+                      value={passwordData.currentPassword}
+                      onChange={(e) =>
+                        setPasswordData((prev) => ({
+                          ...prev,
+                          currentPassword: e.target.value,
+                        }))
+                      }
+                      className="block w-full px-3 py-2 pr-10 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => togglePasswordVisibility("current")}
+                      className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                    >
+                      {showPasswords.current ? (
+                        <EyeOff size={16} />
+                      ) : (
+                        <Eye size={16} />
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                {/* New Password */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    New Password
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showPasswords.new ? "text" : "password"}
+                      value={passwordData.newPassword}
+                      onChange={(e) =>
+                        setPasswordData((prev) => ({
+                          ...prev,
+                          newPassword: e.target.value,
+                        }))
+                      }
+                      className="block w-full px-3 py-2 pr-10 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => togglePasswordVisibility("new")}
+                      className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                    >
+                      {showPasswords.new ? (
+                        <EyeOff size={16} />
+                      ) : (
+                        <Eye size={16} />
+                      )}
+                    </button>
+                  </div>
+
+                  {/* Password Requirements */}
+                  {passwordData.newPassword && (
+                    <div className="mt-2 space-y-1 text-xs">
+                      <div
+                        className={`flex items-center gap-1 ${passwordValidation.minLength ? "text-green-600" : "text-red-600"}`}
+                      >
+                        {passwordValidation.minLength ? (
+                          <CheckCircle size={12} />
+                        ) : (
+                          <XCircle size={12} />
+                        )}
+                        At least 8 characters
+                      </div>
+                      <div
+                        className={`flex items-center gap-1 ${passwordValidation.hasUppercase ? "text-green-600" : "text-red-600"}`}
+                      >
+                        {passwordValidation.hasUppercase ? (
+                          <CheckCircle size={12} />
+                        ) : (
+                          <XCircle size={12} />
+                        )}
+                        One uppercase letter
+                      </div>
+                      <div
+                        className={`flex items-center gap-1 ${passwordValidation.hasLowercase ? "text-green-600" : "text-red-600"}`}
+                      >
+                        {passwordValidation.hasLowercase ? (
+                          <CheckCircle size={12} />
+                        ) : (
+                          <XCircle size={12} />
+                        )}
+                        One lowercase letter
+                      </div>
+                      <div
+                        className={`flex items-center gap-1 ${passwordValidation.hasNumber ? "text-green-600" : "text-red-600"}`}
+                      >
+                        {passwordValidation.hasNumber ? (
+                          <CheckCircle size={12} />
+                        ) : (
+                          <XCircle size={12} />
+                        )}
+                        One number
+                      </div>
+                      <div
+                        className={`flex items-center gap-1 ${passwordValidation.hasSpecialChar ? "text-green-600" : "text-red-600"}`}
+                      >
+                        {passwordValidation.hasSpecialChar ? (
+                          <CheckCircle size={12} />
+                        ) : (
+                          <XCircle size={12} />
+                        )}
+                        One special character
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Confirm Password */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Confirm New Password
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showPasswords.confirm ? "text" : "password"}
+                      value={passwordData.confirmPassword}
+                      onChange={(e) =>
+                        setPasswordData((prev) => ({
+                          ...prev,
+                          confirmPassword: e.target.value,
+                        }))
+                      }
+                      className="block w-full px-3 py-2 pr-10 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => togglePasswordVisibility("confirm")}
+                      className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                    >
+                      {showPasswords.confirm ? (
+                        <EyeOff size={16} />
+                      ) : (
+                        <Eye size={16} />
+                      )}
+                    </button>
+                  </div>
+                  {passwordData.confirmPassword && (
+                    <div
+                      className={`mt-1 text-xs flex items-center gap-1 ${passwordsMatch ? "text-green-600" : "text-red-600"}`}
+                    >
+                      {passwordsMatch ? (
+                        <CheckCircle size={12} />
+                      ) : (
+                        <XCircle size={12} />
+                      )}
+                      {passwordsMatch
+                        ? "Passwords match"
+                        : "Passwords don't match"}
+                    </div>
+                  )}
+                </div>
+
+                {/* Form Actions */}
+                <div className="flex gap-3 pt-4">
+                  <button
+                    type="submit"
+                    disabled={
+                      passwordLoading ||
+                      !passwordValidation.isValid ||
+                      !passwordsMatch
+                    }
+                    className="flex-1 px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {passwordLoading
+                      ? "Changing Password..."
+                      : "Change Password"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowPasswordForm(false);
+                      setPasswordData({
+                        currentPassword: "",
+                        newPassword: "",
+                        confirmPassword: "",
+                      });
+                    }}
+                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
+
+          {/* Two-Factor Authentication */}
+          <div className="p-4 border border-green-200 bg-green-50 rounded-md">
+            <div className="flex items-center gap-3">
+              <Shield size={20} className="text-green-600" />
+              <div className="flex-1">
+                <h4 className="font-medium text-green-800">
+                  Two-Factor Authentication
+                </h4>
+                <p className="text-sm text-green-700 mt-1">
+                  Add an extra layer of security to your account with 2FA.
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  window.location.href = `/user-profile#/security/mfa`;
+                }}
+                className="px-4 py-2 text-sm font-medium text-green-800 bg-green-100 border border-green-300 rounded-md hover:bg-green-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+              >
+                Manage 2FA
+              </button>
             </div>
           </div>
         </div>

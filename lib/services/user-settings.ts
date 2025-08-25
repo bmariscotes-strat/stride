@@ -48,6 +48,9 @@ export async function updateUserProfile(data: Partial<UpdateProfileData>) {
       await clerk.users.updateUser(userId, {
         ...(data.firstName !== undefined && { firstName: data.firstName }),
         ...(data.lastName !== undefined && { lastName: data.lastName }),
+        ...(data.avatarUrl !== undefined && {
+          publicMetadata: { avatarUrl: data.avatarUrl },
+        }),
       });
     }
 
@@ -69,24 +72,50 @@ export interface UpdateEmailData {
 
 export async function updateUserEmail(data: UpdateEmailData) {
   try {
-    const { userId } = await auth(); // Added await here
+    const { userId } = await auth();
     if (!userId) {
       throw new Error("Unauthorized");
     }
 
-    // Update in Clerk (this will trigger email verification)
     const clerk = await clerkClient();
-    await clerk.users.updateUser(userId, {
-      primaryEmailAddressID: undefined, // Let Clerk handle email verification
-    });
 
-    // Create new email address in Clerk
-    await clerk.emailAddresses.createEmailAddress({
+    // Get current user and primary email
+    const user = await clerk.users.getUser(userId);
+    const currentPrimaryEmailId = user.primaryEmailAddressId;
+
+    // Create new email address as verified and primary
+    const newEmailAddress = await clerk.emailAddresses.createEmailAddress({
       userId,
       emailAddress: data.email,
+      verified: true, // Skip verification - mark as verified
+      primary: true, // Make it primary immediately
     });
 
-    return { success: true, message: "Verification email sent" };
+    // Delete the old primary email if it exists
+    if (currentPrimaryEmailId) {
+      try {
+        await clerk.emailAddresses.deleteEmailAddress(currentPrimaryEmailId);
+      } catch (deleteError) {
+        console.warn("Failed to delete old email:", deleteError);
+        // Continue even if deletion fails
+      }
+    }
+
+    // Update your database immediately
+    await db
+      .update(users)
+      .set({
+        email: data.email,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.clerkUserId, userId));
+
+    revalidatePath("/settings");
+
+    return {
+      success: true,
+      message: "Email address updated successfully.",
+    };
   } catch (error) {
     console.error("Failed to update email:", error);
     return {
@@ -102,7 +131,7 @@ export async function updateUserEmail(data: UpdateEmailData) {
 
 export async function getUserSessions() {
   try {
-    const { userId } = await auth(); // Added await here
+    const { userId } = await auth();
     if (!userId) {
       throw new Error("Unauthorized");
     }
@@ -124,7 +153,7 @@ export async function getUserSessions() {
 
 export async function revokeSession(sessionId: string) {
   try {
-    const { userId } = await auth(); // Added await here
+    const { userId } = await auth();
     if (!userId) {
       throw new Error("Unauthorized");
     }
@@ -145,7 +174,7 @@ export async function revokeSession(sessionId: string) {
 
 export async function revokeAllSessions() {
   try {
-    const { userId } = await auth(); // Added await here
+    const { userId } = await auth();
     if (!userId) {
       throw new Error("Unauthorized");
     }
@@ -154,12 +183,12 @@ export async function revokeAllSessions() {
     const sessionsResponse = await clerk.sessions.getSessionList({ userId });
     const sessions = sessionsResponse.data;
 
+    // Get current session
+    const { sessionId: currentSessionId } = await auth();
+
     // Revoke all sessions except the current one
-    const currentSession = sessions.find(
-      (session) => session.status === "active"
-    );
     const sessionsToRevoke = sessions.filter(
-      (session) => session.id !== currentSession?.id
+      (session) => session.id !== currentSessionId
     );
 
     await Promise.all(
