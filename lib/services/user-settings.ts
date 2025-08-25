@@ -147,10 +147,14 @@ export async function getUserSessions(): Promise<Result<{ sessions: any }>> {
     const clerk = await clerkClient();
     const sessionsResponse = await clerk.sessions.getSessionList({ userId });
 
-    // Make the payload JSON-safe (dates -> strings, etc.)
+    // Only keep active sessions
+    const activeSessions = sessionsResponse.data.filter(
+      (s) => s.status === "active"
+    );
+
     return jsonSafe({
       success: true,
-      sessions: sessionsResponse.data,
+      sessions: activeSessions,
     });
   } catch (error) {
     console.error("Failed to get sessions:", error);
@@ -194,7 +198,6 @@ export async function revokeAllSessions(): Promise<
     // Get current session
     const { sessionId: currentSessionId } = await auth();
 
-    // Revoke all sessions except the current one
     const sessionsToRevoke = sessions.filter((s) => s.id !== currentSessionId);
     await Promise.all(
       sessionsToRevoke.map((s) => clerk.sessions.revokeSession(s.id))
