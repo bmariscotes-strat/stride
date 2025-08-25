@@ -155,11 +155,13 @@ export function useUploadImage() {
 
       const formData = new FormData();
       formData.append("file", file);
-      formData.append("upload_preset", "user_avatars"); // You'll need to set this up in Cloudinary
-      formData.append("folder", "user-avatars");
+      formData.append(
+        "upload_preset",
+        process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET!
+      );
 
       const response = await fetch(
-        "https://api.cloudinary.com/v1_1/dphcpekk1/image/upload",
+        `https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload`,
         {
           method: "POST",
           body: formData,

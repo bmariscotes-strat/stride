@@ -69,7 +69,16 @@ export default function ProfileSection({
 
     uploadImage.mutate(file, {
       onSuccess: (result) => {
-        setAvatarUrl(result.secure_url);
+        const newAvatarUrl = result.secure_url;
+        setAvatarUrl(newAvatarUrl);
+
+        // Automatically update the profile with new avatar
+        updateProfile.mutate({
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          jobPosition: formData.jobPosition,
+          avatarUrl: newAvatarUrl,
+        });
       },
     });
   };

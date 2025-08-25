@@ -18,32 +18,38 @@ export interface UpdateProfileData {
   avatarUrl?: string;
 }
 
-export async function updateUserProfile(data: UpdateProfileData) {
+export async function updateUserProfile(data: Partial<UpdateProfileData>) {
   try {
-    const { userId } = await auth(); // Added await here
+    const { userId } = await auth();
     if (!userId) {
       throw new Error("Unauthorized");
     }
 
-    // Update in our database
+    // Only update fields that are provided
+    const updateData: any = {
+      updatedAt: new Date(),
+    };
+
+    if (data.firstName !== undefined) updateData.firstName = data.firstName;
+    if (data.lastName !== undefined) updateData.lastName = data.lastName;
+    if (data.jobPosition !== undefined)
+      updateData.jobPosition = data.jobPosition;
+    if (data.avatarUrl !== undefined) updateData.avatarUrl = data.avatarUrl;
+
     const updatedUser = await db
       .update(users)
-      .set({
-        firstName: data.firstName,
-        lastName: data.lastName,
-        jobPosition: data.jobPosition,
-        avatarUrl: data.avatarUrl,
-        updatedAt: new Date(),
-      })
+      .set(updateData)
       .where(eq(users.clerkUserId, userId))
       .returning();
 
-    // Update in Clerk
-    const clerk = await clerkClient();
-    await clerk.users.updateUser(userId, {
-      firstName: data.firstName,
-      lastName: data.lastName,
-    });
+    // Only update Clerk if name fields are provided
+    if (data.firstName !== undefined || data.lastName !== undefined) {
+      const clerk = await clerkClient();
+      await clerk.users.updateUser(userId, {
+        ...(data.firstName !== undefined && { firstName: data.firstName }),
+        ...(data.lastName !== undefined && { lastName: data.lastName }),
+      });
+    }
 
     revalidatePath("/settings");
     return { success: true, user: updatedUser[0] };
