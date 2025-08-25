@@ -67,6 +67,7 @@ export const users = pgTable(
     username: varchar("username", { length: 255 }).notNull(),
     firstName: varchar("first_name", { length: 255 }).notNull(),
     lastName: varchar("last_name", { length: 255 }).notNull(),
+    jobPosition: varchar("job_position", { length: 50 }),
     avatarUrl: text("avatar_url"),
     personalTeamId: uuid("personal_team_id"), // No foreign key constraint here to avoid circular dependency
     schemaVersion: integer("schema_version").default(1).notNull(),

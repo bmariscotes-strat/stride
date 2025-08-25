@@ -13,6 +13,7 @@ export interface User {
   username: string;
   firstName: string;
   lastName: string;
+  jobPosition?: string;
   avatarUrl: string | null;
   personalTeamId: string | null;
   schemaVersion: number;

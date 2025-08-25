@@ -34,12 +34,13 @@ export default function UserDropdown() {
   }, []);
 
   const handleSettings = () => {
-    console.log("⚙️ Settings clicked");
+    router.push("/settings");
     setIsOpen(false);
   };
 
   const handleActivity = () => {
     router.push("/activity");
+    setIsOpen(false);
   };
 
   // Handle error state
