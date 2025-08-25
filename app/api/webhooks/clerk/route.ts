@@ -104,7 +104,6 @@ export async function POST(req: Request) {
     try {
       console.log("🔵 Attempting to verify webhook...");
 
-      // Log the raw payload for debugging (first 200 chars)
       console.log("🔵 Raw payload preview:", payload.substring(0, 200) + "...");
 
       evt = wh.verify(payload, {
