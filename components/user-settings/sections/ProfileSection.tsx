@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useRef } from "react";
-import { User2, Camera, Mail } from "lucide-react";
+import { User2, Camera, Mail, Briefcase, AtSign } from "lucide-react";
 import Image from "next/image";
 import type { User } from "@/types";
 import {
@@ -21,6 +21,7 @@ export default function ProfileSection({
   const [formData, setFormData] = useState({
     firstName: user.firstName,
     lastName: user.lastName,
+    username: user.username || "",
     jobPosition: user.jobPosition || "",
     email: user.email,
   });
@@ -41,6 +42,7 @@ export default function ProfileSection({
     updateProfile.mutate({
       firstName: formData.firstName,
       lastName: formData.lastName,
+      username: formData.username,
       jobPosition: formData.jobPosition,
       avatarUrl: avatarUrl || undefined,
     });
@@ -66,6 +68,7 @@ export default function ProfileSection({
         updateProfile.mutate({
           firstName: formData.firstName,
           lastName: formData.lastName,
+          username: formData.username,
           jobPosition: formData.jobPosition,
           avatarUrl: newAvatarUrl,
         });
@@ -180,22 +183,54 @@ export default function ProfileSection({
             </div>
           </div>
 
-          <div>
-            <label
-              htmlFor="jobPosition"
-              className="block text-sm font-medium text-gray-700"
-            >
-              Job Position
-            </label>
-            <input
-              type="text"
-              id="jobPosition"
-              value={formData.jobPosition}
-              onChange={(e) => handleInputChange("jobPosition", e.target.value)}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2 border"
-              placeholder="e.g. Software Engineer"
-              maxLength={50}
-            />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Username */}
+            <div>
+              <label
+                htmlFor="username"
+                className="block text-sm font-medium text-gray-700"
+              >
+                Username *
+              </label>
+              <div className="relative mt-1">
+                <AtSign className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <input
+                  type="text"
+                  id="username"
+                  value={formData.username}
+                  onChange={(e) =>
+                    handleInputChange("username", e.target.value)
+                  }
+                  className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 pl-10 pr-3 py-2 border"
+                  required
+                  maxLength={50}
+                />
+              </div>
+            </div>
+
+            {/* Job Position */}
+            <div>
+              <label
+                htmlFor="jobPosition"
+                className="block text-sm font-medium text-gray-700"
+              >
+                Job Position
+              </label>
+              <div className="relative mt-1">
+                <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <input
+                  type="text"
+                  id="jobPosition"
+                  value={formData.jobPosition}
+                  onChange={(e) =>
+                    handleInputChange("jobPosition", e.target.value)
+                  }
+                  className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 pl-10 pr-3 py-2 border"
+                  placeholder="e.g. Software Engineer"
+                  maxLength={50}
+                />
+              </div>
+            </div>
           </div>
 
           <div className="flex justify-end">

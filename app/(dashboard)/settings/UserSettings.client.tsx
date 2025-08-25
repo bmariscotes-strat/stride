@@ -63,7 +63,7 @@ export default function UserSettings({ user, clerkUserId }: UserSettingsProps) {
           activeSection={activeSection}
           navigationItems={navigationItems}
           onScrollToSection={scrollToSection}
-          title="Settings"
+          title="User Settings"
           subtitle="Manage your account"
         />
       }

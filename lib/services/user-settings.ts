@@ -26,6 +26,7 @@ type Result<T> = ({ success: true } & T) | { success: false; error: string };
 export interface UpdateProfileData {
   firstName: string;
   lastName: string;
+  username?: string;
   jobPosition?: string;
   avatarUrl?: string;
 }
@@ -41,6 +42,7 @@ export async function updateUserProfile(
     const updateData: Record<string, unknown> = { updatedAt: new Date() };
     if (data.firstName !== undefined) updateData.firstName = data.firstName;
     if (data.lastName !== undefined) updateData.lastName = data.lastName;
+    if (data.username !== undefined) updateData.username = data.username;
     if (data.jobPosition !== undefined)
       updateData.jobPosition = data.jobPosition;
     if (data.avatarUrl !== undefined) updateData.avatarUrl = data.avatarUrl;
@@ -57,6 +59,7 @@ export async function updateUserProfile(
       await clerk.users.updateUser(userId, {
         ...(data.firstName !== undefined && { firstName: data.firstName }),
         ...(data.lastName !== undefined && { lastName: data.lastName }),
+        ...(data.username !== undefined && { username: data.username }),
         ...(data.avatarUrl !== undefined && {
           publicMetadata: { avatarUrl: data.avatarUrl },
         }),
