@@ -544,15 +544,13 @@ export default function SecuritySection({
                       </div>
                     </div>
 
-                    {session.status !== "active" && (
-                      <button
-                        onClick={() => handleRevokeSession(session.id)}
-                        disabled={revokeSession.isPending}
-                        className="px-3 py-1 text-sm font-medium text-red-700 bg-red-50 border border-red-300 rounded-md hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {revokeSession.isPending ? "Revoking..." : "Revoke"}
-                      </button>
-                    )}
+                    <button
+                      onClick={() => handleRevokeSession(session.id)}
+                      disabled={revokeSession.isPending}
+                      className="px-3 py-1 text-sm font-medium text-red-700 bg-red-50 border border-red-300 rounded-md hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {revokeSession.isPending ? "Revoking..." : "End Session"}
+                    </button>
                   </div>
                 </div>
               ))}

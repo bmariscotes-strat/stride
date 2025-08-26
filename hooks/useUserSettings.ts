@@ -76,14 +76,16 @@ export function useRevokeSession() {
     mutationFn: revokeSession,
     onSuccess: (result) => {
       if (result.success) {
-        toast.success("Session revoked successfully");
+        toast.success("Session ended successfully");
+        // Immediately refetch to update the list
         queryClient.invalidateQueries({ queryKey: ["user-sessions"] });
+        queryClient.refetchQueries({ queryKey: ["user-sessions"] });
       } else {
-        toast.error(result.error || "Failed to revoke session");
+        toast.error(result.error || "Failed to end session");
       }
     },
     onError: (error: Error) => {
-      toast.error(error.message || "Failed to revoke session");
+      toast.error(error.message || "Failed to end session");
     },
   });
 }

@@ -150,16 +150,18 @@ export async function getUserSessions(): Promise<Result<{ sessions: any }>> {
     const clerk = await clerkClient();
     const sessionsResponse = await clerk.sessions.getSessionList({ userId });
 
-    const allSessions = sessionsResponse.data;
+    // Only get active sessions
+    const activeSessions = sessionsResponse.data.filter(
+      (session) => session.status === "active"
+    );
 
-    // Map sessions with latestActivity data
-    const enhancedSessions = allSessions.map((session: any) => ({
+    const enhancedSessions = activeSessions.map((session: any) => ({
       id: session.id,
       status: session.status,
       lastActiveAt: session.lastActiveAt,
       createdAt: session.createdAt,
       updatedAt: session.updatedAt,
-      latestActivity: session.latestActivity, // This contains the device info
+      latestActivity: session.latestActivity,
     }));
 
     return jsonSafe({
