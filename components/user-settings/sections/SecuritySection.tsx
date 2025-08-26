@@ -31,10 +31,40 @@ interface UserSession {
   id: string;
   status: string;
   lastActiveAt: string | null;
-  lastActiveSessionName?: string;
-  lastActiveIpAddress?: string;
-  lastActiveOrganizationId?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  latestActivity?: {
+    isMobile: boolean;
+    ipAddress: string;
+    city: string;
+    country: string;
+    browserVersion: string;
+    browserName: string;
+    deviceType: string;
+  };
 }
+
+// Enhanced device detection
+const getDeviceIcon = (session: UserSession) => {
+  if (session.latestActivity?.isMobile) {
+    return <Smartphone size={16} />;
+  }
+  return <Monitor size={16} />;
+};
+
+const getDeviceName = (session: UserSession) => {
+  if (!session.latestActivity) return "Unknown Device";
+
+  const { deviceType, browserName, browserVersion } = session.latestActivity;
+  return `${deviceType} ${browserName} ${browserVersion}`;
+};
+
+const getLocationInfo = (session: UserSession) => {
+  if (!session.latestActivity) return "Location unknown";
+
+  const { ipAddress, city, country } = session.latestActivity;
+  return `${city}, ${country} (${ipAddress})`;
+};
 
 export default function SecuritySection({
   clerkUserId,
@@ -67,12 +97,11 @@ export default function SecuritySection({
       lastActiveAt: session.lastActiveAt
         ? new Date(session.lastActiveAt).toISOString()
         : null,
-      lastActiveSessionName: session.lastActiveSessionName,
-      lastActiveIpAddress: session.lastActiveIpAddress,
-      lastActiveOrganizationId: session.lastActiveOrganizationId,
+      createdAt: session.createdAt,
+      updatedAt: session.updatedAt,
+      latestActivity: session.latestActivity,
     }));
   }, [sessionsData]);
-
   const validatePassword = (password: string) => {
     const minLength = password.length >= 8;
     const hasUppercase = /[A-Z]/.test(password);
@@ -165,30 +194,6 @@ export default function SecuritySection({
     ) {
       revokeAllSessions.mutate();
     }
-  };
-
-  const getDeviceIcon = (lastActiveSessionName?: string) => {
-    if (!lastActiveSessionName) return <Monitor size={16} />;
-
-    const name = lastActiveSessionName.toLowerCase();
-    if (
-      name.includes("mobile") ||
-      name.includes("android") ||
-      name.includes("ios")
-    ) {
-      return <Smartphone size={16} />;
-    }
-    return <Monitor size={16} />;
-  };
-
-  const getLocationInfo = (
-    lastActiveIpAddress?: string,
-    lastActiveOrganizationId?: string
-  ) => {
-    if (lastActiveIpAddress) {
-      return `IP: ${lastActiveIpAddress}`;
-    }
-    return "Location unknown";
   };
 
   const togglePasswordVisibility = (field: "current" | "new" | "confirm") => {
@@ -513,12 +518,12 @@ export default function SecuritySection({
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <div className="p-2 bg-gray-100 rounded-full">
-                        {getDeviceIcon(session.lastActiveSessionName)}
+                        {getDeviceIcon(session)}
                       </div>
                       <div>
                         <div className="flex items-center gap-2">
                           <h4 className="font-medium text-gray-900">
-                            {session.lastActiveSessionName || "Unknown Device"}
+                            {getDeviceName(session)}
                           </h4>
                           {session.status === "active" && (
                             <span className="px-2 py-1 text-xs font-medium text-green-700 bg-green-100 rounded-full">
@@ -533,13 +538,9 @@ export default function SecuritySection({
                               ? `Active ${formatDistanceToNow(new Date(session.lastActiveAt))} ago`
                               : "Activity unknown"}
                           </span>
-                          <span>
-                            {getLocationInfo(
-                              session.lastActiveIpAddress,
-                              session.lastActiveOrganizationId
-                            )}
-                          </span>
+                          <span>{getLocationInfo(session)}</span>
                         </div>
+                        {/* Debug info - remove this after testing */}
                       </div>
                     </div>
 

@@ -150,14 +150,21 @@ export async function getUserSessions(): Promise<Result<{ sessions: any }>> {
     const clerk = await clerkClient();
     const sessionsResponse = await clerk.sessions.getSessionList({ userId });
 
-    // Only keep active sessions
-    const activeSessions = sessionsResponse.data.filter(
-      (s) => s.status === "active"
-    );
+    const allSessions = sessionsResponse.data;
+
+    // Map sessions with latestActivity data
+    const enhancedSessions = allSessions.map((session: any) => ({
+      id: session.id,
+      status: session.status,
+      lastActiveAt: session.lastActiveAt,
+      createdAt: session.createdAt,
+      updatedAt: session.updatedAt,
+      latestActivity: session.latestActivity, // This contains the device info
+    }));
 
     return jsonSafe({
       success: true,
-      sessions: activeSessions,
+      sessions: enhancedSessions,
     });
   } catch (error) {
     console.error("Failed to get sessions:", error);
