@@ -62,6 +62,10 @@ const getDeviceName = (session: UserSession) => {
   return `${deviceType} ${browserName} ${browserVersion}`;
 };
 
+const isCurrentSession = (session: UserSession) => {
+  return session.status === "active";
+};
+
 const getLocationInfo = (session: UserSession) => {
   if (!session.latestActivity) return "Location unknown";
 
@@ -489,16 +493,18 @@ export default function SecuritySection({
 
           <div className="space-y-4">
             {/* Revoke All Sessions Button */}
-            <div className="flex justify-end">
-              <button
-                onClick={handleRevokeAllSessions}
-                disabled={revokeAllSessions.isPending || !sessions?.length}
-                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-red-700 bg-red-50 border border-red-300 rounded-md hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <LogOut size={16} />
-                Log Out All Devices
-              </button>
-            </div>
+            {sessions && sessions.length > 1 && (
+              <div className="flex justify-end">
+                <button
+                  onClick={handleRevokeAllSessions}
+                  disabled={revokeAllSessions.isPending}
+                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-red-700 bg-red-50 border border-red-300 rounded-md hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <LogOut size={16} />
+                  Log Out All Devices
+                </button>
+              </div>
+            )}
 
             {/* Sessions List */}
             {isLoading ? (
@@ -522,49 +528,59 @@ export default function SecuritySection({
               </div>
             ) : sessions?.length ? (
               <div className="space-y-4">
-                {sessions.map((session) => (
-                  <div
-                    key={session.id}
-                    className="p-4 border border-gray-200 rounded-md hover:border-gray-300 transition-colors"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 bg-gray-100 rounded-full">
-                          {getDeviceIcon(session)}
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <h4 className="font-medium text-gray-900">
-                              {getDeviceName(session)}
-                            </h4>
-                            {session.status === "active" && (
-                              <span className="px-2 py-1 text-xs font-medium text-green-700 bg-green-100 rounded-full">
-                                Current
-                              </span>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-4 mt-1 text-sm text-gray-600">
-                            <span className="flex items-center gap-1">
-                              <Clock size={14} />
-                              {session.lastActiveAt
-                                ? `Active ${formatDistanceToNow(new Date(session.lastActiveAt))} ago`
-                                : "Activity unknown"}
-                            </span>
-                            <span>{getLocationInfo(session)}</span>
-                          </div>
-                        </div>
-                      </div>
+                {sessions.map((session) => {
+                  const isCurrentDevice = isCurrentSession(session);
 
-                      <button
-                        onClick={() => handleRevokeSession(session)}
-                        disabled={revokeSession.isPending}
-                        className="px-3 py-1 text-sm font-medium text-red-700 bg-red-50 border border-red-300 rounded-md hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        End Session
-                      </button>
+                  return (
+                    <div
+                      key={session.id}
+                      className="p-4 border border-gray-200 rounded-md hover:border-gray-300 transition-colors"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 bg-gray-100 rounded-full">
+                            {getDeviceIcon(session)}
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h4 className="font-medium text-gray-900">
+                                {getDeviceName(session)}
+                              </h4>
+                              {isCurrentDevice && (
+                                <span className="px-2 py-1 text-xs font-medium text-green-700 bg-green-100 rounded-full">
+                                  Current
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-4 mt-1 text-sm text-gray-600">
+                              <span className="flex items-center gap-1">
+                                <Clock size={14} />
+                                {session.lastActiveAt
+                                  ? `Active ${formatDistanceToNow(new Date(session.lastActiveAt))} ago`
+                                  : "Activity unknown"}
+                              </span>
+                              <span>{getLocationInfo(session)}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {isCurrentDevice ? (
+                          <div className="px-3 py-1 text-sm font-medium text-gray-500 bg-gray-100 border border-gray-200 rounded-md cursor-not-allowed">
+                            Current Device
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => handleRevokeSession(session)}
+                            disabled={revokeSession.isPending}
+                            className="px-3 py-1 text-sm font-medium text-red-700 bg-red-50 border border-red-300 rounded-md hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            End Session
+                          </button>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <div className="text-center py-8">
