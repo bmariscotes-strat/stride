@@ -2,9 +2,18 @@
 
 import React, { useState, lazy, Suspense, useCallback, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import DualPanelLayout from "@/components/layout/shared/DualPanelLayout";
 import AppBreadcrumb from "@/components/shared/AppBreadcrumb";
-import { Settings, Calendar, Users, Crown, Kanban, Table } from "lucide-react";
+import {
+  Settings,
+  Calendar,
+  Users,
+  Crown,
+  Kanban,
+  Table,
+  BarChart3,
+} from "lucide-react";
 import KanbanBoard from "@/components/views/KanbanBoard";
 import CalendarView from "@/components/views/CalendarView";
 import type { ProjectPageClientProps } from "@/types";
@@ -15,8 +24,8 @@ const CreateTaskDialog = lazy(
   () => import("@/components/tasks/CreateTaskDialog")
 );
 
-// View type definition
-type ViewType = "kanban" | "calendar" | "table";
+// View type definition - Add analytics
+type ViewType = "kanban" | "calendar" | "table" | "analytics";
 
 // Icon mapping to ensure correct icons are shown
 const getViewIcon = (iconName: string) => {
@@ -24,6 +33,8 @@ const getViewIcon = (iconName: string) => {
     Kanban: Kanban,
     Calendar: Calendar,
     Table: Table,
+    BarChart3: BarChart3,
+    Analytics: BarChart3,
   };
 
   return iconMap[iconName as keyof typeof iconMap] || getIcon(iconName);
@@ -39,7 +50,9 @@ export default function ProjectPageClient({
   isProjectOwner,
   defaultColumnId,
   views,
-}: ProjectPageClientProps) {
+  canViewAnalytics = true, // Add this prop to your interface
+}: ProjectPageClientProps & { canViewAnalytics?: boolean }) {
+  const router = useRouter();
   const [createTaskOpen, setCreateTaskOpen] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [activeView, setActiveView] = useState<ViewType>("kanban");
@@ -85,16 +98,42 @@ export default function ProjectPageClient({
     [triggerRefresh]
   );
 
-  // Handle view change
-  const handleViewChange = useCallback((viewId: ViewType) => {
-    console.log("Changing view to:", viewId);
-    setActiveView(viewId);
-  }, []);
+  // Handle view change - Updated to handle analytics navigation
+  const handleViewChange = useCallback(
+    (viewId: ViewType) => {
+      console.log("Changing view to:", viewId);
+
+      if (viewId === "analytics") {
+        // Navigate to analytics page instead of changing local view
+        router.push(`/projects/${project.slug}/analytics`);
+        return;
+      }
+
+      setActiveView(viewId);
+    },
+    [project.slug, router]
+  );
+
+  // Add analytics to views if user has permission
+  const allViews = [
+    ...views,
+    // Add analytics view if user has permission
+    ...(canViewAnalytics
+      ? [
+          {
+            id: "analytics",
+            label: "Analytics",
+            icon: "BarChart3",
+            isActive: false, // Analytics is never active in this component since it navigates away
+          },
+        ]
+      : []),
+  ];
 
   // Updated views with active state management
-  const updatedViews = views.map((view) => ({
+  const updatedViews = allViews.map((view) => ({
     ...view,
-    isActive: view.id === activeView,
+    isActive: view.id === activeView && view.id !== "analytics", // Analytics is never active here
   }));
 
   console.log("Current active view:", activeView);
@@ -269,19 +308,29 @@ export default function ProjectPageClient({
               <div className="space-y-1">
                 {updatedViews.map(({ id, label, icon, isActive }) => {
                   const Icon = getViewIcon(icon);
+                  const isAnalytics = id === "analytics";
+
                   return (
                     <button
                       key={id}
                       type="button"
                       onClick={() => handleViewChange(id as ViewType)}
                       className={`w-full text-left px-3 py-2 rounded-md text-sm flex items-center gap-2 transition-colors ${
-                        isActive
+                        isActive && !isAnalytics
                           ? "bg-blue-100 text-blue-700 font-medium"
                           : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
-                      }`}
+                      } ${isAnalytics ? "border-t border-gray-200 mt-2 pt-4" : ""}`}
+                      title={
+                        isAnalytics
+                          ? "View project analytics and performance metrics"
+                          : undefined
+                      }
                     >
                       <Icon size={16} />
                       {label}
+                      {isAnalytics && (
+                        <span className="ml-auto text-xs text-gray-400">→</span>
+                      )}
                     </button>
                   );
                 })}

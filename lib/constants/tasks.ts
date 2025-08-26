@@ -1,3 +1,7 @@
+/**
+ * Constants data for tasks UI
+ */
+
 import type { Priority } from "@/types/enums/notif";
 
 export const PRIORITY_OPTIONS: {
