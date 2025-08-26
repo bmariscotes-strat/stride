@@ -1,47 +1,28 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useEffect } from "react";
 import { Palette, Sun, Moon, Monitor } from "lucide-react";
+import { useTheme } from "next-themes";
 import { useUpdateAppearance } from "@/hooks/useUserSettings";
+import { useThemeStore, type Theme } from "@/stores/ui/theme-store";
 
 interface AppearanceSectionProps {
   sectionRef?: React.RefObject<HTMLDivElement | null>;
 }
 
-type Theme = "light" | "dark" | "system";
-
 export default function AppearanceSection({
   sectionRef,
 }: AppearanceSectionProps) {
-  const [selectedTheme, setSelectedTheme] = useState<Theme>("system");
+  const { theme, setTheme: nextThemesSetTheme } = useTheme();
+  const { selectedTheme, setTheme, initializeFromNextThemes } = useThemeStore();
   const updateAppearance = useUpdateAppearance();
 
-  // Load theme from localStorage on mount
+  // Sync with next-themes on mount and when theme changes
   useEffect(() => {
-    const savedTheme = localStorage.getItem("theme") as Theme;
-    if (savedTheme && ["light", "dark", "system"].includes(savedTheme)) {
-      setSelectedTheme(savedTheme);
-    }
-  }, []);
-
-  // Apply theme changes
-  useEffect(() => {
-    const root = window.document.documentElement;
-
-    if (selectedTheme === "system") {
-      const systemTheme = window.matchMedia("(prefers-color-scheme: dark)")
-        .matches
-        ? "dark"
-        : "light";
-      root.classList.toggle("dark", systemTheme === "dark");
-    } else {
-      root.classList.toggle("dark", selectedTheme === "dark");
-    }
-
-    localStorage.setItem("theme", selectedTheme);
-  }, [selectedTheme]);
+    initializeFromNextThemes(theme);
+  }, [theme, initializeFromNextThemes]);
 
   const handleThemeChange = (theme: Theme) => {
-    setSelectedTheme(theme);
+    setTheme(theme, nextThemesSetTheme);
     updateAppearance.mutate({ theme });
   };
 

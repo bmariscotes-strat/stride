@@ -7,7 +7,7 @@ import { UserProvider } from "@/contexts/UserContext";
 import { Toaster } from "sonner";
 import "@/styles/globals.css";
 import { Providers } from "@/components/theme/ThemeProvider";
-import { ReactQueryProvider } from "@/components/providers/ReactQueryProvider"; // You'll need to create this
+import { ReactQueryProvider } from "@/components/providers/ReactQueryProvider";
 
 console.log("Logging enabled?", process.env.NODE_ENV === "development");
 
