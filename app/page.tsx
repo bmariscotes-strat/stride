@@ -205,7 +205,7 @@ export default function HomePage() {
             {/* Left Side - Content */}
             <div className="text-left lg:text-left">
               <h1 className="text-md text-gray-900 sm:text-5xl font-medium mb-4 lg:mb-6">
-                Take control of your projects and move forward with{" "}
+                Take control of your projects and{" "}
                 <span
                   ref={strideRef}
                   className="font-bold text-primary inline-flex font-sen"
@@ -215,7 +215,8 @@ export default function HomePage() {
                       {char}
                     </span>
                   ))}
-                </span>
+                </span>{" "}
+                forward with ease.
               </h1>
 
               <div className="flex flex-col sm:flex-row gap-4 w-full">
