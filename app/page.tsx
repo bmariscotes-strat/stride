@@ -11,6 +11,9 @@ import { EffectCoverflow, Autoplay } from "swiper/modules";
 import type { Swiper as SwiperType } from "swiper";
 import "swiper/css";
 import "swiper/css/effect-coverflow";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
+
+gsap.registerPlugin(ScrollTrigger);
 
 interface Slide {
   image: string;
@@ -28,6 +31,46 @@ export default function HomePage() {
   const navRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const [activeIndex, setActiveIndex] = useState(0);
   const [isAutoplay, setIsAutoplay] = useState(true);
+  const footerRef = useRef<HTMLElement | null>(null);
+  const carouselRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (carouselRef.current) {
+      gsap.fromTo(
+        carouselRef.current,
+        { autoAlpha: 0, y: 100 },
+        {
+          autoAlpha: 1,
+          y: 0,
+          duration: 1.2,
+          ease: "power3.out",
+          scrollTrigger: {
+            trigger: carouselRef.current,
+            start: "top 80%",
+            toggleActions: "play none none reverse",
+          },
+        }
+      );
+    }
+
+    if (footerRef.current) {
+      gsap.fromTo(
+        footerRef.current,
+        { autoAlpha: 0, y: 100 },
+        {
+          autoAlpha: 1,
+          y: 0,
+          duration: 1.2,
+          ease: "power3.out",
+          scrollTrigger: {
+            trigger: footerRef.current,
+            start: "top 90%",
+            toggleActions: "play none none reverse",
+          },
+        }
+      );
+    }
+  }, []);
 
   useEffect(() => {
     if (strideRef.current) {
@@ -143,7 +186,10 @@ export default function HomePage() {
       </section>
 
       {/* Enhanced Carousel Section */}
-      <section className="relative py-20 bg-gradient-to-br from-gray-50 via-white to-blue-50/30 overflow-hidden">
+      <section
+        ref={carouselRef}
+        className="relative py-20 bg-gradient-to-br from-gray-50 via-white to-blue-50/30 overflow-hidden"
+      >
         {/* Background decorative elements */}
         <div className="absolute inset-0">
           <div className="absolute top-10 left-10 w-32 h-32 bg-gradient-to-r from-blue-200 to-purple-200 rounded-full opacity-20 blur-xl" />
@@ -351,7 +397,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <Footer />
+      <Footer ref={footerRef} />
     </div>
   );
 }

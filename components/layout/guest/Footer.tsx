@@ -1,27 +1,42 @@
-import { Github, Twitter, Linkedin, Facebook } from "lucide-react";
+import { Instagram, Linkedin, Facebook } from "lucide-react";
+import { forwardRef } from "react";
 
-export default function Footer() {
+const Footer = forwardRef<HTMLElement>((props, ref) => {
   const companyLinks1 = [
-    { name: "About Us", href: "#about" },
-    { name: "Careers", href: "#careers" },
-    { name: "Press", href: "#press" },
+    { name: "Website", href: "https://stratpoint.com/" },
+    { name: "About Us", href: "https://stratpoint.com/about-us/" },
+    { name: "Careers", href: "https://stratpoint.com/careers/" },
   ];
 
   const companyLinks2 = [
-    { name: "Blog", href: "#blog" },
-    { name: "Partners", href: "#partners" },
-    { name: "Contact", href: "#contact" },
+    { name: "Portfolio", href: "https://stratpoint.com/portfolio/" },
+    { name: "Partners", href: "https://stratpoint.com/aws-data/" },
+    { name: "Contact", href: "https://stratpoint.com/contact-us/" },
   ];
 
   const socialLinks = [
-    { name: "Twitter", href: "#", icon: Twitter },
-    { name: "Facebook", href: "#", icon: Facebook },
-    { name: "LinkedIn", href: "#", icon: Linkedin },
-    { name: "GitHub", href: "#", icon: Github },
+    {
+      name: "LinkedIn",
+      href: "https://www.linkedin.com/company/108225",
+      icon: Linkedin,
+    },
+    {
+      name: "Facebook",
+      href: "https://www.facebook.com/Stratpoint",
+      icon: Facebook,
+    },
+    {
+      name: "Instagram",
+      href: "https://www.instagram.com/stratpoint/",
+      icon: Instagram,
+    },
   ];
 
   return (
-    <footer className="bg-white text-gray-700 border-t border-gray-200">
+    <footer
+      ref={ref}
+      className="bg-white text-gray-700 border-t border-gray-200"
+    >
       <div className="max-w-7xl mx-auto px-6 lg:px-8 py-12">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
           {/* Logos & Short About */}
@@ -39,9 +54,9 @@ export default function Footer() {
               />
             </div>
             <p className="text-gray-500 text-sm leading-relaxed max-w-sm">
-              Empowering teams to achieve more with intelligent project
-              management tools. Take control, stay organized, and stride forward
-              with confidence.
+              Accelerating digital transformation with intelligent project
+              management tools. Fuel progress, stay organized, and stride
+              forward with confidence.
             </p>
           </div>
 
@@ -56,7 +71,8 @@ export default function Footer() {
                   <li key={index}>
                     <a
                       href={link.href}
-                      className="text-gray-600 hover:text-gray-900 transition-colors"
+                      target="_blank"
+                      className="text-gray-600 hover:text-primary hover:font-semibold transition-colors"
                     >
                       {link.name}
                     </a>
@@ -68,7 +84,8 @@ export default function Footer() {
                   <li key={index}>
                     <a
                       href={link.href}
-                      className="text-gray-600 hover:text-gray-900 transition-colors"
+                      target="_blank"
+                      className="text-gray-600 hover:text-primary hover:font-semibold transition-colors"
                     >
                       {link.name}
                     </a>
@@ -88,7 +105,8 @@ export default function Footer() {
                 <li key={index}>
                   <a
                     href={social.href}
-                    className="text-gray-600 hover:text-gray-900 transition-colors flex items-center space-x-2"
+                    target="_blank"
+                    className="text-gray-600 hover:text-primary hover:font-semibold transition-colors flex items-center space-x-2"
                   >
                     <social.icon className="w-4 h-4" />
                     <span>{social.name}</span>
@@ -102,7 +120,8 @@ export default function Footer() {
         {/* Bottom Bar */}
         <div className="mt-12 border-t border-gray-200 pt-6 flex flex-col md:flex-row justify-between items-center text-sm text-gray-500 space-y-4 md:space-y-0">
           <span>
-            © {new Date().getFullYear()} Company Name. All rights reserved.
+            © Copyright 1998-2025 Stratpoint Technologies, Inc. All rights
+            reserved.
           </span>
           <div className="flex items-center space-x-4">
             <a href="#privacy" className="hover:text-gray-900">
@@ -121,4 +140,8 @@ export default function Footer() {
       </div>
     </footer>
   );
-}
+});
+
+Footer.displayName = "Footer"; // required for forwardRef
+
+export default Footer;
