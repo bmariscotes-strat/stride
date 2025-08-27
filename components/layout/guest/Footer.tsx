@@ -124,16 +124,25 @@ const Footer = forwardRef<HTMLElement>((props, ref) => {
             reserved.
           </span>
           <div className="flex items-center space-x-4">
-            <a href="#privacy" className="hover:text-gray-900">
+            <a
+              href="https://stratpoint.com/privacy-notice/"
+              className="hover:text-gray-900"
+            >
               Privacy
             </a>
             <span>•</span>
-            <a href="#terms" className="hover:text-gray-900">
-              Terms
+            <a
+              href="https://stratpoint.com/security-disclosure-policy/"
+              className="hover:text-gray-900"
+            >
+              Services
             </a>
             <span>•</span>
-            <a href="#cookies" className="hover:text-gray-900">
-              Cookies
+            <a
+              href="https://stratpoint.com/stratpoint-software-services/"
+              className="hover:text-gray-900"
+            >
+              Blogs
             </a>
           </div>
         </div>
