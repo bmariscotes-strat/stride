@@ -18,7 +18,7 @@
   --color-secondary-foreground: oklch(9% 0 0);
   --color-muted: oklch(96.1% 0 0);
   --color-muted-foreground: oklch(45.1% 0 0);
-  --color-accent: oklch(96.1% 0 0);
+  --color-accent: oklab(71.141% -0.09999 -0.081);
   --color-accent-foreground: oklch(9% 0 0);
   --color-destructive: oklch(62.8% 0.257 29.6);
   --color-destructive-foreground: oklch(98% 0 0);
