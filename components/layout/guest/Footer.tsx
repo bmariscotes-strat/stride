@@ -135,14 +135,14 @@ const Footer = forwardRef<HTMLElement>((props, ref) => {
               href="https://stratpoint.com/security-disclosure-policy/"
               className="hover:text-gray-900"
             >
-              Services
+              Security
             </a>
             <span>•</span>
             <a
               href="https://stratpoint.com/stratpoint-software-services/"
               className="hover:text-gray-900"
             >
-              Blogs
+              Services
             </a>
           </div>
         </div>
