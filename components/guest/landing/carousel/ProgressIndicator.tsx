@@ -1,4 +1,3 @@
-// components/guest/landing/ProgressIndicator.tsx
 import type { Swiper as SwiperType } from "swiper";
 import { Slide } from "@/lib/data/slides";
 

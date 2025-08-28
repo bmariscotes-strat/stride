@@ -1,4 +1,3 @@
-// components/guest/landing/FeaturesCarousel.tsx
 "use client";
 
 import { forwardRef, useRef, useState } from "react";

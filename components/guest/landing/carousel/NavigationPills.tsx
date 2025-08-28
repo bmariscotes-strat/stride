@@ -1,4 +1,3 @@
-// components/guest/landing/NavigationPills.tsx
 "use client";
 
 import { useRef, useEffect } from "react";

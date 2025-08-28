@@ -1,5 +1,3 @@
-// components/guest/landing/BackgroundElements.tsx
-
 export default function BackgroundElements() {
   return (
     <div className="absolute inset-0 -z-10">

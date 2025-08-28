@@ -1,4 +1,3 @@
-// components/guest/landing/SlideContent.tsx
 import { Slide } from "@/lib/data/slides";
 
 interface SlideContentProps {
