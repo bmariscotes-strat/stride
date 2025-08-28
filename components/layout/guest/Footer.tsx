@@ -45,7 +45,12 @@ const Footer = forwardRef<HTMLElement>((props, ref) => {
               <img
                 src="/branding/company-logo.png"
                 alt="Company Logo"
-                className="h-10 w-auto"
+                className="h-10 w-auto dark:hidden"
+              />
+              <img
+                src="/branding/company-logo-dark.png"
+                alt="Company Logo"
+                className="h-10 w-auto hidden dark:block"
               />
               <img
                 src="/branding/logo.png"
