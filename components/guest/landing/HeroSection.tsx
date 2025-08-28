@@ -14,7 +14,7 @@ export default function HeroSection() {
       gsap.fromTo(
         letters,
         { opacity: 0, y: 50 },
-        { opacity: 1, y: 0, duration: 1.5, stagger: 0.1, ease: "back.out(1.7)" }
+        { opacity: 1, y: 0, duration: 1.8, stagger: 0.1, ease: "back.out(1.7)" }
       );
     }
   }, []);
