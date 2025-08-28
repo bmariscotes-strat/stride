@@ -25,7 +25,7 @@ export default function HeroSection() {
         <div className="grid grid-cols-1 lg:grid-cols-2 items-center h-full">
           {/* Left Side */}
           <div className="text-left">
-            <h1 className="text-4xl text-gray-900 sm:text-5xl font-medium mb-6">
+            <h1 className="text-4xl  sm:text-5xl font-medium mb-6">
               Take control of your projects and{" "}
               <span
                 ref={strideRef}

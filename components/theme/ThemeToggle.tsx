@@ -28,15 +28,15 @@ export function ThemeToggle() {
     <div className="relative">
       <button
         onClick={handleThemeToggle}
-        className="group relative flex items-center justify-between w-16 h-8 rounded-full border-2 transition-all duration-700 ease-out hover:scale-105 focus:outline-none focus:ring-4 focus:ring-opacity-20 p-0.5"
+        className="group relative flex hover:cursor-pointer items-center justify-between w-16 h-8 rounded-full border-2 transition-all duration-700 ease-out hover:scale-105 focus:outline-none focus:ring-4 focus:ring-opacity-20 p-0.5"
         style={{
           background: isDark
             ? "linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%)"
-            : "linear-gradient(135deg, #fef3c7 0%, #fde047 50%, #f59e0b 100%)",
-          borderColor: isDark ? "#64748b" : "#f59e0b",
+            : "linear-gradient(135deg, #e0f2fe 0%, #87ceeb 50%, #4a90e2 100%)",
+          borderColor: isDark ? "#64748b" : "#4a90e2",
           boxShadow: isDark
             ? "0 8px 32px rgba(15, 23, 42, 0.4), inset 0 1px 0 rgba(148, 163, 184, 0.1)"
-            : "0 8px 32px rgba(245, 158, 11, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)",
+            : "0 8px 32px rgba(74, 144, 226, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)",
         }}
         aria-label={`Switch to ${isDark ? "light" : "dark"} mode`}
       >
@@ -46,7 +46,7 @@ export function ThemeToggle() {
           style={{
             background: isDark
               ? "radial-gradient(circle at 30% 20%, rgba(147, 197, 253, 0.3) 0%, rgba(59, 130, 246, 0.1) 50%, transparent 100%)"
-              : "radial-gradient(circle at 70% 20%, rgba(254, 240, 138, 0.8) 0%, rgba(251, 191, 36, 0.3) 60%, transparent 100%)",
+              : "radial-gradient(circle at 70% 20%, rgba(147, 197, 253, 0.4) 0%, rgba(59, 130, 246, 0.2) 60%, transparent 100%)",
           }}
         />
 
@@ -58,15 +58,15 @@ export function ThemeToggle() {
           style={{
             background: isDark
               ? "linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 50%, #94a3b8 100%)"
-              : "linear-gradient(135deg, #ffffff 0%, #fef3c7 50%, #fde047 100%)",
+              : "linear-gradient(135deg, #ffffff 0%, #f0f9ff 50%, #e0f2fe 100%)",
             boxShadow: isDark
               ? "0 6px 20px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)"
-              : "0 6px 20px rgba(251, 191, 36, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.7)",
+              : "0 6px 20px rgba(74, 144, 226, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.7)",
           }}
         >
           {/* Sun Icon */}
           <svg
-            className={`w-3.5 h-3.5 transition-all duration-500 ease-out ${
+            className={`w-3.5 h-3.5 transition-all duration-1000 ease-out ${
               isDark
                 ? "opacity-0 scale-0 rotate-180"
                 : "opacity-100 scale-100 rotate-0"
@@ -80,7 +80,7 @@ export function ThemeToggle() {
 
           {/* Moon Icon */}
           <svg
-            className={`absolute w-3.5 h-3.5 transition-all duration-500 ease-out ${
+            className={`absolute w-3.5 h-3.5 transition-all duration-1000 ease-out ${
               isDark
                 ? "opacity-100 scale-100 rotate-0"
                 : "opacity-0 scale-0 -rotate-180"
@@ -128,25 +128,25 @@ export function ThemeToggle() {
           }`}
         >
           <div
-            className="absolute top-1 left-1/2 w-0.5 h-2 bg-gradient-to-t from-amber-300 to-transparent rounded-full transform -translate-x-0.5"
+            className="absolute top-1 left-1/2 w-0.5 h-2 bg-gradient-to-t from-blue-300 to-transparent rounded-full transform -translate-x-0.5"
             style={{ animation: "pulse 2s ease-in-out infinite" }}
           />
           <div
-            className="absolute bottom-1 left-1/2 w-0.5 h-2 bg-gradient-to-b from-amber-300 to-transparent rounded-full transform -translate-x-0.5"
+            className="absolute bottom-1 left-1/2 w-0.5 h-2 bg-gradient-to-b from-blue-300 to-transparent rounded-full transform -translate-x-0.5"
             style={{
               animation: "pulse 2s ease-in-out infinite",
               animationDelay: "0.5s",
             }}
           />
           <div
-            className="absolute left-1 top-1/2 w-2 h-0.5 bg-gradient-to-l from-amber-300 to-transparent rounded-full transform -translate-y-0.5"
+            className="absolute left-1 top-1/2 w-2 h-0.5 bg-gradient-to-l from-blue-300 to-transparent rounded-full transform -translate-y-0.5"
             style={{
               animation: "pulse 2s ease-in-out infinite",
               animationDelay: "1s",
             }}
           />
           <div
-            className="absolute right-1 top-1/2 w-2 h-0.5 bg-gradient-to-r from-amber-300 to-transparent rounded-full transform -translate-y-0.5"
+            className="absolute right-1 top-1/2 w-2 h-0.5 bg-gradient-to-r from-blue-300 to-transparent rounded-full transform -translate-y-0.5"
             style={{
               animation: "pulse 2s ease-in-out infinite",
               animationDelay: "1.5s",
@@ -161,54 +161,42 @@ export function ThemeToggle() {
           }`}
         >
           <div
-            className="absolute top-1 left-2 transition-transform duration-[8s] ease-linear"
+            className="absolute top-0.5 left-1 transition-transform duration-[8s] ease-linear"
             style={{
               animation: "float 8s ease-in-out infinite",
               background:
-                "radial-gradient(ellipse 4px 2px, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0.4) 60%, transparent 100%)",
-              width: "8px",
-              height: "4px",
+                "radial-gradient(ellipse 12px 6px, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.6) 40%, rgba(255, 255, 255, 0.2) 80%, transparent 100%)",
+              width: "16px",
+              height: "8px",
               borderRadius: "50%",
+              filter: "blur(0.5px)",
             }}
           />
           <div
-            className="absolute bottom-1.5 right-3 transition-transform duration-[10s] ease-linear"
+            className="absolute bottom-0.5 right-1 transition-transform duration-[10s] ease-linear"
             style={{
               animation: "float 10s ease-in-out infinite 2s",
               background:
-                "radial-gradient(ellipse 6px 3px, rgba(255, 255, 255, 0.7) 0%, rgba(255, 255, 255, 0.3) 60%, transparent 100%)",
-              width: "6px",
-              height: "3px",
+                "radial-gradient(ellipse 14px 7px, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0.5) 40%, rgba(255, 255, 255, 0.2) 80%, transparent 100%)",
+              width: "18px",
+              height: "9px",
               borderRadius: "50%",
+              filter: "blur(0.3px)",
             }}
           />
           <div
-            className="absolute top-2 right-2 transition-transform duration-[12s] ease-linear"
+            className="absolute top-1.5 right-2 transition-transform duration-[12s] ease-linear"
             style={{
               animation: "float 12s ease-in-out infinite 4s",
               background:
-                "radial-gradient(ellipse 3px 2px, rgba(255, 255, 255, 0.6) 0%, rgba(255, 255, 255, 0.2) 60%, transparent 100%)",
-              width: "5px",
-              height: "2px",
+                "radial-gradient(ellipse 10px 5px, rgba(255, 255, 255, 0.7) 0%, rgba(255, 255, 255, 0.4) 40%, rgba(255, 255, 255, 0.1) 80%, transparent 100%)",
+              width: "14px",
+              height: "7px",
               borderRadius: "50%",
+              filter: "blur(0.4px)",
             }}
           />
         </div>
-
-        <style jsx>{`
-          @keyframes float {
-            0%,
-            100% {
-              transform: translateX(0px) translateY(0px);
-            }
-            33% {
-              transform: translateX(2px) translateY(-1px);
-            }
-            66% {
-              transform: translateX(-1px) translateY(1px);
-            }
-          }
-        `}</style>
       </button>
     </div>
   );

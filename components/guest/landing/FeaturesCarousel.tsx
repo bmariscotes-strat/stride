@@ -78,21 +78,21 @@ const FeaturesCarousel = forwardRef<HTMLDivElement>((_, ref) => {
   return (
     <section
       ref={ref}
-      className="relative py-20 bg-gradient-to-br from-gray-50 via-white to-blue-50/30 overflow-hidden"
+      className="relative py-20 bg-gradient-to-br from-gray-50 via-white to-blue-50/30 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800/50 overflow-hidden"
     >
       {/* Background decorative elements */}
       <div className="absolute inset-0">
-        <div className="absolute top-10 left-10 w-32 h-32 bg-gradient-to-r from-blue-200 to-purple-200 rounded-full opacity-20 blur-xl" />
-        <div className="absolute bottom-10 right-10 w-40 h-40 bg-gradient-to-r from-green-200 to-cyan-200 rounded-full opacity-20 blur-xl" />
+        <div className="absolute top-10 left-10 w-32 h-32 bg-gradient-to-r from-blue-200 to-purple-200 dark:from-blue-800 dark:to-purple-800 rounded-full opacity-20 dark:opacity-10 blur-xl" />
+        <div className="absolute bottom-10 right-10 w-40 h-40 bg-gradient-to-r from-green-200 to-cyan-200 dark:from-green-800 dark:to-cyan-800 rounded-full opacity-20 dark:opacity-10 blur-xl" />
       </div>
 
       <div className="max-w-7xl mx-auto px-6 lg:px-8 relative">
         {/* Section Header */}
         <div className="text-center mb-16">
-          <h2 className="text-4xl font-bold text-primary mb-4">
+          <h2 className="text-4xl font-bold text-primary dark:text-white mb-4">
             Experience the Power
           </h2>
-          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+          <p className="text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
             Discover how our platform transforms the way you work with intuitive
             features designed for modern teams
           </p>

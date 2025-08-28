@@ -56,13 +56,13 @@ export default function NavigationPills({
         {/* Blur glow effect */}
         <div
           ref={indicatorBlurRef}
-          className={`absolute top-0 h-14 rounded-full bg-gradient-to-r ${slides[activeIndex]?.color} blur-sm opacity-60`}
+          className={`absolute top-0 h-14 rounded-full bg-gradient-to-r ${slides[activeIndex]?.color} blur-sm opacity-60 dark:opacity-40`}
           style={{ width: 0, transform: "translateX(0px)" }}
         />
         {/* Solid background pill */}
         <div
           ref={indicatorRef}
-          className={`absolute top-0 h-14 rounded-full bg-gradient-to-r ${slides[activeIndex]?.color}`}
+          className={`absolute top-0 h-14 rounded-full bg-gradient-to-r ${slides[activeIndex]?.color} dark:opacity-90`}
           style={{ width: 0, transform: "translateX(0px)" }}
         />
       </div>
@@ -79,8 +79,8 @@ export default function NavigationPills({
             onClick={() => handleSlideClick(index)}
             className={`relative text-lg px-8 py-4 transition-all duration-700 rounded-full flex items-center gap-3 group ${
               activeIndex === index
-                ? "text-white font-bold scale-110"
-                : "text-gray-600 hover:text-gray-800 hover:scale-105"
+                ? "text-white dark:text-white font-bold scale-110"
+                : "text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100 hover:scale-105 hover:cursor-pointer"
             }`}
           >
             <IconComponent className="w-5 h-5 group-hover:scale-110 transition-transform duration-500" />

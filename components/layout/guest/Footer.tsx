@@ -35,7 +35,7 @@ const Footer = forwardRef<HTMLElement>((props, ref) => {
   return (
     <footer
       ref={ref}
-      className="bg-white text-gray-700 border-t border-gray-200"
+      className="bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 border-t border-gray-200 dark:border-gray-700"
     >
       <div className="max-w-7xl mx-auto px-6 lg:px-8 py-12">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
@@ -53,7 +53,7 @@ const Footer = forwardRef<HTMLElement>((props, ref) => {
                 className="h-6 w-auto"
               />
             </div>
-            <p className="text-gray-500 text-sm leading-relaxed max-w-sm">
+            <p className="text-gray-500 dark:text-gray-400 text-sm leading-relaxed max-w-sm">
               Accelerating digital transformation with intelligent project
               management tools. Fuel progress, stay organized, and stride
               forward with confidence.
@@ -62,7 +62,7 @@ const Footer = forwardRef<HTMLElement>((props, ref) => {
 
           {/* Company Links (split into 2 smaller columns) */}
           <div>
-            <h3 className="text-lg font-semibold text-gray-900 border-b border-gray-200 pb-2">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 border-b border-gray-200 dark:border-gray-700 pb-2">
               Company
             </h3>
             <div className="mt-4 grid grid-cols-2 gap-6">
@@ -72,7 +72,7 @@ const Footer = forwardRef<HTMLElement>((props, ref) => {
                     <a
                       href={link.href}
                       target="_blank"
-                      className="text-gray-600 hover:text-primary hover:font-semibold transition-colors"
+                      className="text-gray-600 dark:text-gray-300 hover:text-primary dark:hover:text-primary hover:font-semibold transition-colors"
                     >
                       {link.name}
                     </a>
@@ -85,7 +85,7 @@ const Footer = forwardRef<HTMLElement>((props, ref) => {
                     <a
                       href={link.href}
                       target="_blank"
-                      className="text-gray-600 hover:text-primary hover:font-semibold transition-colors"
+                      className="text-gray-600 dark:text-gray-300 hover:text-primary dark:hover:text-primary hover:font-semibold transition-colors"
                     >
                       {link.name}
                     </a>
@@ -97,7 +97,7 @@ const Footer = forwardRef<HTMLElement>((props, ref) => {
 
           {/* Social Text Links */}
           <div>
-            <h3 className="text-lg font-semibold text-gray-900 border-b border-gray-200 pb-2">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 border-b border-gray-200 dark:border-gray-700 pb-2">
               Follow Us
             </h3>
             <ul className="mt-4 space-y-3">
@@ -106,7 +106,7 @@ const Footer = forwardRef<HTMLElement>((props, ref) => {
                   <a
                     href={social.href}
                     target="_blank"
-                    className="text-gray-600 hover:text-primary hover:font-semibold transition-colors flex items-center space-x-2"
+                    className="text-gray-600 dark:text-gray-300 hover:text-primary dark:hover:text-primary hover:font-semibold transition-colors flex items-center space-x-2"
                   >
                     <social.icon className="w-4 h-4" />
                     <span>{social.name}</span>
@@ -118,7 +118,7 @@ const Footer = forwardRef<HTMLElement>((props, ref) => {
         </div>
 
         {/* Bottom Bar */}
-        <div className="mt-12 border-t border-gray-200 pt-6 flex flex-col md:flex-row justify-between items-center text-sm text-gray-500 space-y-4 md:space-y-0">
+        <div className="mt-12 border-t border-gray-200 dark:border-gray-700 pt-6 flex flex-col md:flex-row justify-between items-center text-sm text-gray-500 dark:text-gray-400 space-y-4 md:space-y-0">
           <span>
             © Copyright 1998-2025 Stratpoint Technologies, Inc. All rights
             reserved.
@@ -126,21 +126,21 @@ const Footer = forwardRef<HTMLElement>((props, ref) => {
           <div className="flex items-center space-x-4">
             <a
               href="https://stratpoint.com/privacy-notice/"
-              className="hover:text-gray-900"
+              className="hover:text-gray-900 dark:hover:text-gray-100"
             >
               Privacy
             </a>
             <span>•</span>
             <a
               href="https://stratpoint.com/security-disclosure-policy/"
-              className="hover:text-gray-900"
+              className="hover:text-gray-900 dark:hover:text-gray-100"
             >
               Security
             </a>
             <span>•</span>
             <a
               href="https://stratpoint.com/stratpoint-software-services/"
-              className="hover:text-gray-900"
+              className="hover:text-gray-900 dark:hover:text-gray-100"
             >
               Services
             </a>
