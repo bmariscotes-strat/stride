@@ -17,6 +17,7 @@ import {
 import type { CardWithRelations } from "@/types";
 import { ActivityService } from "@/lib/services/activity";
 import { NotificationService } from "@/lib/services/notification";
+import { pusher } from "@/lib/websocket/pusher";
 
 export class TaskCRUDService extends BaseTaskService {
   /**
@@ -85,6 +86,24 @@ export class TaskCRUDService extends BaseTaskService {
         schemaVersion: 1,
       })
       .returning();
+
+    const cardWithRelations = await TaskCRUDService.getCardById(newCard.id);
+
+    // Trigger Pusher event for real-time updates
+    try {
+      await pusher.trigger(
+        `project-${column.project.id}`, // Channel: project-specific
+        "card-created", // Event
+        {
+          card: cardWithRelations,
+          columnId: input.columnId,
+          userId: userId,
+          timestamp: new Date().toISOString(),
+        }
+      );
+    } catch (error) {
+      console.error("Failed to trigger Pusher event:", error);
+    }
 
     // Log activity and send notifications
     try {
@@ -325,6 +344,24 @@ export class TaskCRUDService extends BaseTaskService {
     // Update the card
     await db.update(cards).set(updateData).where(eq(cards.id, input.id));
 
+    // Get updated card data
+    const updatedCard = await TaskCRUDService.getCardById(input.id);
+
+    // Trigger Pusher event for real-time updates
+    try {
+      const projectId = currentCard.column?.projectId;
+      if (projectId) {
+        await pusher.trigger(`project-${projectId}`, "card-updated", {
+          card: updatedCard,
+          changes: changes,
+          userId: userId,
+          timestamp: new Date().toISOString(),
+        });
+      }
+    } catch (error) {
+      console.error("Failed to trigger Pusher event:", error);
+    }
+
     // Log activities and send notifications for significant changes
     try {
       const projectId = currentCard.column?.projectId;
@@ -532,6 +569,23 @@ export class TaskCRUDService extends BaseTaskService {
       }
     }
 
+    const movedCard = await TaskCRUDService.getCardById(input.cardId);
+
+    // Trigger Pusher event for real-time updates
+    try {
+      await pusher.trigger(`project-${newColumn.projectId}`, "card-moved", {
+        card: movedCard,
+        fromColumnId: oldColumnId,
+        toColumnId: input.newColumnId,
+        fromPosition: oldPosition,
+        toPosition: input.newPosition,
+        userId: userId,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error("Failed to trigger Pusher event:", error);
+    }
+
     return TaskCRUDService.getCardById(input.cardId);
   }
 
@@ -682,6 +736,21 @@ export class TaskCRUDService extends BaseTaskService {
 
     // Delete the card (cascade will handle related records)
     await db.delete(cards).where(eq(cards.id, cardId));
+
+    try {
+      const projectId = card.column?.projectId;
+      if (projectId) {
+        await pusher.trigger(`project-${projectId}`, "card-deleted", {
+          cardId: cardId,
+          columnId: card.columnId,
+          title: card.title,
+          userId: userId,
+          timestamp: new Date().toISOString(),
+        });
+      }
+    } catch (error) {
+      console.error("Failed to trigger Pusher event:", error);
+    }
 
     // Update positions of remaining cards if it wasn't archived
     if (!card.isArchived) {

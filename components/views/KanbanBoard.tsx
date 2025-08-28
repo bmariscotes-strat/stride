@@ -23,7 +23,17 @@ import { MIN_FETCH_INTERVAL } from "@/lib/constants/limits";
 import { useKanbanStore } from "@/stores/views/board-store";
 import { ColumnHeader } from "@/components/views/kanban/ColumnHeader";
 import { useCreateColumn, useProjectColumns } from "@/hooks/useColumns";
+import { useProjectRealtime } from "@/hooks/websocket/useProjectRealTime";
+import type { CardWithRelations } from "@/types";
 
+interface RealtimeEventData {
+  card: CardWithRelations;
+  columnId?: string;
+  fromColumnId?: string;
+  toColumnId?: string;
+  userId: string;
+  timestamp: string;
+}
 interface Column {
   id: string;
   name: string;
@@ -511,8 +521,12 @@ export default function KanbanBoard({
     manualRefresh,
   } = useKanbanRefetch(projectSlug, onDataChange);
 
-  const { moveCard, reorderCardsInColumn } = useKanbanStore();
+  const { moveCard, reorderCardsInColumn, addCard, removeCard, updateCard } =
+    useKanbanStore();
   const [activeCard, setActiveCard] = useState<Card | null>(null);
+  const [realtimeStatus, setRealtimeStatus] = useState<
+    "connected" | "connecting" | "error"
+  >("connecting");
 
   const sensors = useSensors(
     useSensor(MouseSensor, {
@@ -527,6 +541,108 @@ export default function KanbanBoard({
       },
     })
   );
+
+  // Real-time event handlers
+  const handleCardCreated = useCallback(
+    (event: RealtimeEventData) => {
+      const { card, columnId } = event;
+
+      // Add the new card to the Zustand store
+      if (columnId && card) {
+        addCard(projectSlug, columnId, card as Card);
+
+        // Show a subtle notification
+        console.log(`New card created: ${card.title}`);
+        // You could add a toast notification here
+      }
+    },
+    [projectSlug, addCard]
+  );
+
+  const handleCardUpdated = useCallback(
+    (event: RealtimeEventData) => {
+      const { card } = event;
+
+      if (card) {
+        updateCard(projectSlug, card.id, card as Card);
+        console.log(`Card updated: ${card.title}`);
+      }
+    },
+    [projectSlug, updateCard]
+  );
+
+  const handleCardMoved = useCallback(
+    (event: any) => {
+      const { card, fromColumnId, toColumnId, toPosition } = event;
+
+      if (card && fromColumnId && toColumnId) {
+        // Update the store with the moved card
+        moveCard(projectSlug, card.id, toColumnId, toPosition || 0);
+        console.log(`Card moved: ${card.title}`);
+      }
+    },
+    [projectSlug, moveCard]
+  );
+
+  const handleCardArchived = useCallback(
+    (event: any) => {
+      const { cardId, columnId } = event;
+
+      if (cardId && columnId) {
+        removeCard(projectSlug, columnId, cardId);
+        console.log("Card archived");
+      }
+    },
+    [projectSlug, removeCard]
+  );
+
+  const handleCardDeleted = useCallback(
+    (event: any) => {
+      const { cardId, columnId, title } = event;
+
+      if (cardId && columnId) {
+        removeCard(projectSlug, columnId, cardId);
+        console.log(`Card deleted: ${title}`);
+      }
+    },
+    [projectSlug, removeCard]
+  );
+
+  const handleRealtimeError = useCallback(
+    (error: any) => {
+      console.error("Real-time connection error:", error);
+      setRealtimeStatus("error");
+
+      // Optionally refresh data when connection fails
+      setTimeout(() => {
+        debouncedRefresh();
+        setRealtimeStatus("connecting");
+      }, 5000);
+    },
+    [debouncedRefresh]
+  );
+
+  // Subscribe to real-time updates
+  useProjectRealtime(
+    projectId,
+    {
+      onCardCreated: handleCardCreated,
+      onCardUpdated: handleCardUpdated,
+      onCardMoved: handleCardMoved,
+      onCardArchived: handleCardArchived,
+      onCardDeleted: handleCardDeleted,
+      onError: handleRealtimeError,
+    },
+    userId
+  );
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setRealtimeStatus("connected");
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, []);
 
   // Handle external refresh triggers
   useEffect(() => {
@@ -581,17 +697,15 @@ export default function KanbanBoard({
       );
       const newIndex =
         over.id === overColumn.id
-          ? columnCards.length - 1 // Drop at end if dropped on column
+          ? columnCards.length - 1
           : columnCards.findIndex((card) => card.id === over.id);
 
       if (oldIndex === newIndex) return;
 
-      // Create new order for cards in the column
       const newCards = [...columnCards];
       const [movedCard] = newCards.splice(oldIndex, 1);
       newCards.splice(newIndex, 0, movedCard);
 
-      // Update positions in Zustand store
       const cardOrders = newCards.map((card, index) => ({
         id: card.id,
         position: index,
@@ -612,8 +726,8 @@ export default function KanbanBoard({
           throw new Error("Failed to move card");
         }
 
-        // Refresh to sync positions with server
-        debouncedRefresh();
+        // Don't refresh immediately since real-time will handle updates
+        // debouncedRefresh();
       } catch (error) {
         console.error("Failed to update card position:", error);
         debouncedRefresh();
@@ -642,7 +756,8 @@ export default function KanbanBoard({
           throw new Error("Failed to move card");
         }
 
-        debouncedRefresh();
+        // Real-time will handle the update
+        // debouncedRefresh();
       } catch (error) {
         console.error("Failed to move card:", error);
         debouncedRefresh();
@@ -688,9 +803,37 @@ export default function KanbanBoard({
   }
 
   return (
-    <div className="h-full overflow-x-auto custom-scrollbar">
+    <div className="h-full overflow-x-auto custom-scrollbar relative">
+      {/* Real-time status indicator */}
+      <div className="absolute top-4 left-4 z-50">
+        <div
+          className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm ${
+            realtimeStatus === "connected"
+              ? "bg-green-100 text-green-800"
+              : realtimeStatus === "error"
+                ? "bg-red-100 text-red-800"
+                : "bg-yellow-100 text-yellow-800"
+          }`}
+        >
+          <div
+            className={`w-2 h-2 rounded-full ${
+              realtimeStatus === "connected"
+                ? "bg-green-500"
+                : realtimeStatus === "error"
+                  ? "bg-red-500"
+                  : "bg-yellow-500 animate-pulse"
+            }`}
+          ></div>
+          {realtimeStatus === "connected"
+            ? "Live"
+            : realtimeStatus === "error"
+              ? "Offline"
+              : "Connecting..."}
+        </div>
+      </div>
+
       {isRefetching && (
-        <div className="absolute top-4 right-4 z-50">
+        <div className="absolute top-4 right-16 z-50">
           <div className="inline-flex items-center gap-2 bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm">
             <RefreshCw size={14} className="animate-spin" />
             Syncing...
