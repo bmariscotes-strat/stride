@@ -44,12 +44,12 @@ export default function HeroSection() {
               The workspace that works for you.
             </p>
             {/* CTAs */}
-            <Link href="/signup">
+            <Link href="/sign-up">
               <button className="bg-primary dark:bg-white dark:text-gray-950 text-white px-8 py-3 rounded-lg font-medium hover:bg-primary/90 transition-colors">
                 Sign Up
               </button>
             </Link>
-            <Link href="/signin">
+            <Link href="/sign-in">
               <button className="border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 px-8 py-3 rounded-lg font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
                 Sign In
               </button>
