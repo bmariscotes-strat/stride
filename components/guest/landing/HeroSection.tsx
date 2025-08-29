@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import gsap from "gsap";
+import Link from "next/link";
 import TypingToVideo from "@/components/guest/landing/TransitionVideo";
 
 export default function HeroSection() {
@@ -42,13 +43,18 @@ export default function HeroSection() {
             <p className="text-xl text-gray-600 dark:text-gray-300 mb-8 leading-relaxed">
               The workspace that works for you.
             </p>
+            {/* CTAs */}
             <div className="flex gap-4 mb-12">
-              <button className="bg-primary dark:bg-white dark:text-gray-950 text-white px-8 py-3 rounded-lg font-medium hover:bg-primary/90 transition-colors">
-                Sign Up
-              </button>
-              <button className="border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 px-8 py-3 rounded-lg font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-                Sign In
-              </button>
+              <Link href="/sign-up">
+                <button className="bg-primary dark:bg-white hover:cursor-pointer dark:text-gray-950 text-white px-8 py-3 rounded-lg font-medium hover:bg-primary/90 transition-colors">
+                  Sign Up
+                </button>
+              </Link>
+              <Link href="/sign-in">
+                <button className="border border-gray-300 hover:cursor-pointer dark:border-gray-600 text-gray-700 dark:text-gray-300 px-8 py-3 rounded-lg font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                  Sign In
+                </button>
+              </Link>
             </div>
             {/* Bottom Features - Simplified */}
             {/* <div className="grid grid-cols-3 gap-8">
