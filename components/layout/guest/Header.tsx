@@ -12,13 +12,8 @@ export default function Header() {
 
   const isActive = (path: string) => pathname === path;
 
-  const navLinks = [
-    { href: "/", label: "About" },
-    { href: "/sign-up", label: "Register" },
-  ];
-
   return (
-    <header className="w-full px-6 py-3 bg-background sm:px-6 lg:px-60 sticky top-0 z-50 border-b border-border">
+    <header className="w-full px-6 py-3 bg-background sm:px-6 lg:px-37 sticky top-0 z-50 border-b border-border">
       <nav className="flex items-center justify-between max-w-10xl mx-auto">
         {/* Logo */}
         <Link href="/" className="flex items-center space-x-3 group">
@@ -33,20 +28,6 @@ export default function Header() {
         {/* Navigation Links - Desktop */}
         <div className="hidden md:flex items-center space-x-8">
           <ThemeToggle />
-          {navLinks.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className={`transition-colors geist text-foreground font-semibold ${
-                isActive(link.href)
-                  ? "text-primary font-semibold"
-                  : "hover:text-primary"
-              }`}
-              scroll={false}
-            >
-              {link.label}
-            </Link>
-          ))}
           <Link
             href="/sign-in"
             className="px-4 py-2 geist border-2 border-primary text-primary rounded-lg font-medium hover:bg-primary hover:text-primary-foreground transition-all duration-200"
@@ -89,21 +70,6 @@ export default function Header() {
       {isMobileMenuOpen && (
         <div className="md:hidden absolute left-0 right-0 bg-background border-b-2 pb-1 border-t-2 mt-2 border-border">
           <div className="flex flex-col space-y-4 p-4">
-            {navLinks.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={`transition-colors font-medium px-4 py-2 rounded-lg ${
-                  isActive(link.href)
-                    ? "text-primary bg-accent font-semibold"
-                    : "text-muted-foreground hover:text-primary hover:bg-accent"
-                }`}
-                onClick={() => setIsMobileMenuOpen(false)}
-                scroll={false}
-              >
-                {link.label}
-              </Link>
-            ))}
             <Link
               href="/sign-in"
               className="mx-4 px-4 py-2 border border-primary text-primary rounded-lg hover:bg-accent hover:border-primary/80 transition-all duration-200 font-medium text-center"

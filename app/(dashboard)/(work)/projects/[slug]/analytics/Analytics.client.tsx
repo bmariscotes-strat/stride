@@ -286,13 +286,8 @@ export default function AnalyticsClient({
   if (!hasData) {
     return (
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold text-outer_space-500 dark:text-platinum-500">
-            Analytics
-          </h1>
-          <p className="text-payne's_gray-500 dark:text-french_gray-500 mt-2">
-            Track {project.name} performance and team productivity
-          </p>
+        <div className="p-5">
+          <AppBreadcrumb />
         </div>
 
         <EmptyState

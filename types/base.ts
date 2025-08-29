@@ -82,6 +82,7 @@ export interface Card {
   title: string;
   description: string | null;
   assigneeId: string | null;
+  ownerId?: string;
   priority: Priority | null;
   startDate: Date | null;
   dueDate: Date | null;

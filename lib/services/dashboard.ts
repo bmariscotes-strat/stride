@@ -20,7 +20,7 @@ export class DashboardService {
           this.getUserStats(userId),
           this.getUserRecentProjects(userId, 4),
           this.getUserRecentActivity(userId, 5),
-          this.getUpcomingDeadlines(userId, 5),
+          this.getUpcomingDeadlines(userId, 2),
         ]);
 
       return {
