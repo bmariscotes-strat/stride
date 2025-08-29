@@ -1,5 +1,5 @@
 // types/forms/tasks.ts -
-import type { Priority, User } from "@/types";
+import type { Priority, User, CardWithRelations } from "@/types";
 
 // =============================================================================
 // TASK/CARD INPUT TYPES - For service layer operations
@@ -334,7 +334,7 @@ export interface Card {
   updatedAt: Date;
   columnId: string;
   assigneeId?: string | null;
-  archived: boolean;
+  archived?: boolean;
   position: number;
 
   // Relations
@@ -483,4 +483,22 @@ export interface CalendarEvent {
     labels: Label[];
     assignee: User | null;
   };
+}
+
+export interface RealtimeEventData {
+  card: CardWithRelations;
+  columnId?: string;
+  fromColumnId?: string;
+  toColumnId?: string;
+  userId: string;
+  timestamp: string;
+}
+
+export interface KanbanBoardProps {
+  projectId: string;
+  projectSlug: string;
+  userId: string;
+  canEditCards?: boolean;
+  onDataChange?: () => void;
+  refreshTrigger?: number;
 }

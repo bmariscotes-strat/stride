@@ -124,7 +124,8 @@ export default function CardPageClient({
     setConfirmationText("");
   };
 
-  const canEdit = canEditProject || card?.assigneeId === userId;
+  const canEdit =
+    canEditProject || card?.assigneeId === userId || card?.ownerId === userId;
   const canDelete = canEditProject || isProjectOwner;
 
   if (isLoading) {
@@ -147,6 +148,13 @@ export default function CardPageClient({
         }
       />
     );
+  }
+
+  if (card) {
+    console.log("Card owner ID:", card.ownerId);
+    console.log("Current user ID:", userId);
+    console.log("Owner match:", card.ownerId === userId);
+    console.log("Can edit result:", canEdit);
   }
 
   return (

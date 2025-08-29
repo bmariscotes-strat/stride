@@ -181,4 +181,5 @@ export interface ProjectPageClientProps {
     icon: string;
     isActive: boolean;
   }>;
+  canViewAnalytics?: boolean;
 }

@@ -5,6 +5,7 @@ import { ProjectPermissionChecker } from "@/lib/permissions/checkers/project-per
 import { getProjectBySlugForUser } from "@/lib/services/projects";
 import type { ProjectWithPartialRelations } from "@/types";
 import ProjectPageClient from "@/app/(dashboard)/(work)/projects/[slug]/ProjectPage.client";
+import { AnalyticsPermissionChecker } from "@/lib/permissions/checkers/analytics-permission-checker";
 
 // Extended interface to include columns
 interface ProjectPageData extends ProjectWithPartialRelations {
@@ -45,7 +46,9 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
   const canManageTeams = permissionChecker.canManageTeams();
   const canCreateCards = permissionChecker.canCreateCards();
   const showSettings = canEditProject || canManageTeams;
-
+  const permissions = permissionChecker.getAllPermissions();
+  const canViewAnalytics =
+    AnalyticsPermissionChecker.canViewAnalytics(permissions);
   const isProjectOwner = project.ownerId === userId;
 
   const defaultColumnId = project.columns?.[0]?.id;
@@ -69,6 +72,7 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
       isProjectOwner={isProjectOwner}
       defaultColumnId={defaultColumnId}
       views={views}
+      canViewAnalytics={canViewAnalytics}
     />
   );
 }

@@ -2,6 +2,7 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { Card } from "@/types/forms/tasks";
+
 interface Column {
   id: string;
   name: string;
@@ -17,6 +18,8 @@ interface KanbanState {
   lastFetch: Record<string, number>;
 
   // Actions
+  addCard: (projectSlug: string, columnId: string, card: Card) => void;
+  removeCard: (projectSlug: string, columnId: string, cardId: string) => void;
   setColumns: (projectSlug: string, columns: Column[]) => void;
   setLoading: (projectSlug: string, loading: boolean) => void;
   updateCard: (
@@ -38,8 +41,6 @@ interface KanbanState {
   ) => void;
   removeColumn: (projectSlug: string, columnId: string) => void;
   clearProject: (projectSlug: string) => void;
-
-  // Added missing reorderCardsInColumn method
   reorderCardsInColumn: (
     projectSlug: string,
     columnId: string,
@@ -58,6 +59,56 @@ export const useKanbanStore = create<KanbanState>()(
       columns: {},
       isLoading: {},
       lastFetch: {},
+
+      // Add a new card to a column
+      addCard: (projectSlug: string, columnId: string, card: Card) => {
+        set((state) => {
+          const projectColumns = state.columns[projectSlug] || [];
+
+          const updatedColumns = projectColumns.map((column) => {
+            if (column.id === columnId) {
+              return {
+                ...column,
+                cards: [...column.cards, card].sort(
+                  (a, b) => a.position - b.position
+                ),
+              };
+            }
+            return column;
+          });
+
+          return {
+            columns: {
+              ...state.columns,
+              [projectSlug]: updatedColumns,
+            },
+          };
+        });
+      },
+
+      // Remove a card from a column
+      removeCard: (projectSlug: string, columnId: string, cardId: string) => {
+        set((state) => {
+          const projectColumns = state.columns[projectSlug] || [];
+
+          const updatedColumns = projectColumns.map((column) => {
+            if (column.id === columnId) {
+              return {
+                ...column,
+                cards: column.cards.filter((card) => card.id !== cardId),
+              };
+            }
+            return column;
+          });
+
+          return {
+            columns: {
+              ...state.columns,
+              [projectSlug]: updatedColumns,
+            },
+          };
+        });
+      },
 
       setColumns: (projectSlug, columns) =>
         set((state) => ({
@@ -93,54 +144,74 @@ export const useKanbanStore = create<KanbanState>()(
           },
         })),
 
-      moveCard: (projectSlug, cardId, newColumnId, newPosition) =>
+      moveCard: (
+        projectSlug: string,
+        cardId: string,
+        newColumnId: string,
+        newPosition: number
+      ) => {
         set((state) => {
-          const columns = state.columns[projectSlug] || [];
-          const sourceColumn = columns.find((col) =>
-            col.cards.some((card) => card.id === cardId)
-          );
-          const targetColumn = columns.find((col) => col.id === newColumnId);
+          const projectColumns = state.columns[projectSlug] || [];
+          let cardToMove: Card | null = null;
+          let sourceColumnId: string | null = null;
 
-          if (!sourceColumn || !targetColumn) return state;
+          // Find the card and its source column
+          for (const column of projectColumns) {
+            const cardIndex = column.cards.findIndex(
+              (card) => card.id === cardId
+            );
+            if (cardIndex !== -1) {
+              cardToMove = { ...column.cards[cardIndex] };
+              sourceColumnId = column.id;
+              break;
+            }
+          }
 
-          const card = sourceColumn.cards.find((c) => c.id === cardId);
-          if (!card) return state;
+          if (!cardToMove || !sourceColumnId) return state;
 
-          // Remove card from source
-          const sourceCards = sourceColumn.cards.filter((c) => c.id !== cardId);
+          // Update the card's column and position
+          cardToMove.columnId = newColumnId;
+          cardToMove.position = newPosition;
 
-          // Add card to target
-          const targetCards = [...targetColumn.cards];
-          const updatedCard = {
-            ...card,
-            columnId: newColumnId,
-            position: newPosition,
-          };
-          targetCards.splice(newPosition, 0, updatedCard);
+          const updatedColumns = projectColumns.map((column) => {
+            if (
+              column.id === sourceColumnId &&
+              sourceColumnId !== newColumnId
+            ) {
+              // Remove from source column if moving to different column
+              return {
+                ...column,
+                cards: column.cards
+                  .filter((card) => card.id !== cardId)
+                  .map((card, index) => ({ ...card, position: index })),
+              };
+            } else if (column.id === newColumnId) {
+              // Add to target column
+              const otherCards = column.cards.filter(
+                (card) => card.id !== cardId
+              );
+              const newCards = [...otherCards];
+              newCards.splice(newPosition, 0, cardToMove);
 
-          // Update positions
-          sourceCards.forEach((card, index) => {
-            card.position = index;
-          });
-          targetCards.forEach((card, index) => {
-            card.position = index;
+              return {
+                ...column,
+                cards: newCards.map((card, index) => ({
+                  ...card,
+                  position: index,
+                })),
+              };
+            }
+            return column;
           });
 
           return {
             columns: {
               ...state.columns,
-              [projectSlug]: columns.map((col) => {
-                if (col.id === sourceColumn.id) {
-                  return { ...col, cards: sourceCards };
-                }
-                if (col.id === targetColumn.id) {
-                  return { ...col, cards: targetCards };
-                }
-                return col;
-              }),
+              [projectSlug]: updatedColumns,
             },
           };
-        }),
+        });
+      },
 
       addColumn: (projectSlug, column) =>
         set((state) => ({
@@ -187,7 +258,6 @@ export const useKanbanStore = create<KanbanState>()(
           };
         }),
 
-      // Added missing reorderCardsInColumn implementation
       reorderCardsInColumn: (projectSlug, columnId, cardOrders) =>
         set((state) => {
           const columns = state.columns[projectSlug] || [];

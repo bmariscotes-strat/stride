@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "./ui/scrollbar.css";
 @import "./utils/calendar-view.css";
+@import "./animation/keyframes.css";
 
 @custom-variant dark (&:is(.dark *));
 

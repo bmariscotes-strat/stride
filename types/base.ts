@@ -13,6 +13,7 @@ export interface User {
   username: string;
   firstName: string;
   lastName: string;
+  jobPosition?: string | null;
   avatarUrl: string | null;
   personalTeamId: string | null;
   schemaVersion: number;
@@ -81,6 +82,7 @@ export interface Card {
   title: string;
   description: string | null;
   assigneeId: string | null;
+  ownerId?: string;
   priority: Priority | null;
   startDate: Date | null;
   dueDate: Date | null;

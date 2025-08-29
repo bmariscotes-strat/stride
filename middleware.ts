@@ -7,8 +7,12 @@ import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 // Define routes that require authentication
 const isProtectedRoute = createRouteMatcher([
   "/dashboard",
+  "/activity",
+  "/settings",
   "/projects(.*)",
+  "/team(.*)",
   "/profile(.*)",
+  "/settings(.*)",
 ]);
 
 export default clerkMiddleware(async (auth, req) => {

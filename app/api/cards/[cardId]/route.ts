@@ -65,6 +65,7 @@ export async function GET(request: NextRequest, context: any) {
       updatedAt: card.updatedAt,
       columnId: card.columnId,
       assigneeId: card.assigneeId,
+      ownerId: card.ownerId,
       column: {
         id: column.id,
         name: column.name,
@@ -126,7 +127,8 @@ export async function PATCH(request: NextRequest, context: any) {
 
     if (
       !permissionChecker.canEditCards() &&
-      existingCard.assigneeId !== currentUser.id
+      existingCard.assigneeId !== currentUser.id &&
+      existingCard.ownerId !== currentUser.id // Add this line
     ) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
@@ -202,6 +204,7 @@ export async function PATCH(request: NextRequest, context: any) {
       updatedAt: cardWithRelations.updatedAt,
       columnId: cardWithRelations.columnId,
       assigneeId: cardWithRelations.assigneeId,
+      ownerId: cardWithRelations.ownerId,
       column: {
         id: updatedColumn.id,
         name: updatedColumn.name,
