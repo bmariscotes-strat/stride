@@ -196,17 +196,10 @@ export async function POST(req: Request) {
  */
 async function handleUserCreated(userData: ClerkUserData) {
   try {
-    console.log("🔵 Creating user with ID:", userData.id);
-
-    // Get primary email
-    const primaryEmail =
-      userData.email_addresses.find(
-        (email) => email.id === userData.primary_email_address_id
-      ) || userData.email_addresses[0];
-
-    if (!primaryEmail) {
-      throw new Error("No email address found for user");
-    }
+    console.log(
+      "🔵 Creating user with data:",
+      JSON.stringify(userData, null, 2)
+    );
 
     const result = await db
       .insert(users)
@@ -215,11 +208,11 @@ async function handleUserCreated(userData: ClerkUserData) {
         username: userData.username || "",
         firstName: userData.first_name || "",
         lastName: userData.last_name || "",
-        email: primaryEmail.email_address,
+        email: userData.email_addresses[0]?.email_address || "",
       })
       .returning();
 
-    console.log("✅ User created in database:", result[0]?.clerkUserId);
+    console.log("✅ User created in database:", result[0]);
   } catch (error) {
     console.error("❌ Database error creating user:", error);
     const errorMessage =
@@ -227,7 +220,6 @@ async function handleUserCreated(userData: ClerkUserData) {
     throw new Error(`Failed to create user: ${errorMessage}`);
   }
 }
-
 /**
  * Update: Update user data
  */
