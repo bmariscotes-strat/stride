@@ -5,7 +5,8 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest, context: any) {
   try {
-    const columnId = context.params.columnId;
+    const params = await context.params;
+    const columnId = params.columnId;
     const { searchParams } = new URL(request.url);
     const includeArchived = searchParams.get("includeArchived") === "true";
 
