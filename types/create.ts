@@ -13,6 +13,7 @@ export interface CreateUser {
   firstName: string;
   lastName: string;
   avatarUrl?: string | null;
+  jobPosition?: string | null;
   personalTeamId?: string | null;
 }
 
