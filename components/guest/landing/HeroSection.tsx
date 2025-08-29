@@ -44,16 +44,18 @@ export default function HeroSection() {
               The workspace that works for you.
             </p>
             {/* CTAs */}
-            <Link href="/sign-up">
-              <button className="bg-primary dark:bg-white dark:text-gray-950 text-white px-8 py-3 rounded-lg font-medium hover:bg-primary/90 transition-colors">
-                Sign Up
-              </button>
-            </Link>
-            <Link href="/sign-in">
-              <button className="border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 px-8 py-3 rounded-lg font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-                Sign In
-              </button>
-            </Link>
+            <div className="flex gap-4 mb-12">
+              <Link href="/sign-up">
+                <button className="bg-primary dark:bg-white dark:text-gray-950 text-white px-8 py-3 rounded-lg font-medium hover:bg-primary/90 transition-colors">
+                  Sign Up
+                </button>
+              </Link>
+              <Link href="/sign-in">
+                <button className="border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 px-8 py-3 rounded-lg font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                  Sign In
+                </button>
+              </Link>
+            </div>
             {/* Bottom Features - Simplified */}
             {/* <div className="grid grid-cols-3 gap-8">
               <div className="text-center">
