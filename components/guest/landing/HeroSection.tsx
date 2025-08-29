@@ -46,12 +46,12 @@ export default function HeroSection() {
             {/* CTAs */}
             <div className="flex gap-4 mb-12">
               <Link href="/sign-up">
-                <button className="bg-primary dark:bg-white dark:text-gray-950 text-white px-8 py-3 rounded-lg font-medium hover:bg-primary/90 transition-colors">
+                <button className="bg-primary dark:bg-white hover:cursor-pointer dark:text-gray-950 text-white px-8 py-3 rounded-lg font-medium hover:bg-primary/90 transition-colors">
                   Sign Up
                 </button>
               </Link>
               <Link href="/sign-in">
-                <button className="border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 px-8 py-3 rounded-lg font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                <button className="border border-gray-300 hover:cursor-pointer dark:border-gray-600 text-gray-700 dark:text-gray-300 px-8 py-3 rounded-lg font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
                   Sign In
                 </button>
               </Link>
