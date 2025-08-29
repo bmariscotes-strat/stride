@@ -1,5 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
-import { useRouter } from "next/navigation";
+import React, { useState, useEffect } from "react";
 import {
   DndContext,
   DragEndEvent,
@@ -11,489 +10,16 @@ import {
   useSensors,
   closestCorners,
 } from "@dnd-kit/core";
-import {
-  SortableContext,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
-import { useSortable } from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
-import { User, Calendar, RefreshCw, Plus, X, Check } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 import { Card } from "@/types/forms/tasks";
-import { MIN_FETCH_INTERVAL } from "@/lib/constants/limits";
 import { useKanbanStore } from "@/stores/views/board-store";
-import { ColumnHeader } from "@/components/views/kanban/ColumnHeader";
-import { useCreateColumn, useProjectColumns } from "@/hooks/useColumns";
+import { AddColumnCard } from "@/components/views/kanban/AddColumnCard";
+import { DraggableCard } from "@/components/views/kanban/DraggableCard";
+import { DroppableColumn } from "@/components/views/kanban/DroppableColumn";
+import { useKanbanRefetch } from "@/hooks/kanban/useKanbanRefetch";
+import { useKanbanRealtime } from "@/hooks/kanban/useKanbanRealtime";
+import type { KanbanBoardProps } from "@/types/forms/tasks";
 
-interface Column {
-  id: string;
-  name: string;
-  position: number;
-  color: string | null;
-  projectId: string;
-  cards: Card[];
-}
-
-interface KanbanBoardProps {
-  projectId: string;
-  projectSlug: string;
-  userId: string;
-  canEditCards?: boolean;
-  onDataChange?: () => void;
-  refreshTrigger?: number;
-}
-
-function AddColumnCard({
-  projectSlug,
-  onColumnAdded,
-  position,
-}: {
-  projectSlug: string;
-  onColumnAdded: () => void;
-  position: number;
-}) {
-  const [isAdding, setIsAdding] = useState(false);
-  const [columnName, setColumnName] = useState("");
-  const [columnColor, setColumnColor] = useState("#3B82F6");
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  const createColumnMutation = useCreateColumn();
-
-  const predefinedColors = [
-    "#3B82F6",
-    "#10B981",
-    "#F59E0B",
-    "#EF4444",
-    "#8B5CF6",
-    "#06B6D4",
-    "#84CC16",
-    "#F97316",
-  ];
-
-  useEffect(() => {
-    if (isAdding && inputRef.current) {
-      inputRef.current.focus();
-    }
-  }, [isAdding]);
-
-  const handleStartAdding = () => {
-    setIsAdding(true);
-    setColumnName("");
-  };
-
-  const handleCancel = () => {
-    setIsAdding(false);
-    setColumnName("");
-    setColumnColor("#3B82F6");
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!columnName.trim() || createColumnMutation.isPending) return;
-
-    try {
-      await createColumnMutation.mutateAsync({
-        projectSlug,
-        name: columnName.trim(),
-        color: columnColor,
-        position: position,
-      });
-
-      setIsAdding(false);
-      setColumnName("");
-      setColumnColor("#3B82F6");
-      onColumnAdded();
-    } catch (error) {
-      // Error is already handled by the mutation's onError callback
-      console.error("Error creating column:", error);
-    }
-  };
-
-  if (!isAdding) {
-    return (
-      <div className="min-w-80 max-w-80">
-        <button
-          onClick={handleStartAdding}
-          className="w-full h-20 bg-gray-100 hover:bg-gray-200 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center text-gray-600 hover:text-gray-800 transition-colors group"
-        >
-          <Plus size={20} className="mr-2" />
-          <span className="font-medium">Add Column</span>
-        </button>
-      </div>
-    );
-  }
-
-  return (
-    <div className="min-w-80 max-w-80">
-      <div className="bg-white rounded-lg border-2 border-blue-300 p-4 shadow-sm">
-        <form onSubmit={handleSubmit}>
-          <div className="mb-3">
-            <input
-              ref={inputRef}
-              type="text"
-              value={columnName}
-              onChange={(e) => setColumnName(e.target.value)}
-              placeholder="Column name"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              maxLength={50}
-              disabled={createColumnMutation.isPending}
-            />
-          </div>
-
-          <div className="mb-4">
-            <label className="block text-xs font-medium text-gray-700 mb-2">
-              Color
-            </label>
-            <div className="flex flex-wrap gap-2">
-              {predefinedColors.map((color) => (
-                <button
-                  key={color}
-                  type="button"
-                  onClick={() => setColumnColor(color)}
-                  className={`w-6 h-6 rounded-full border-2 ${
-                    columnColor === color
-                      ? "border-gray-800 scale-110"
-                      : "border-gray-300 hover:border-gray-400"
-                  } transition-all duration-150`}
-                  style={{ backgroundColor: color }}
-                  disabled={createColumnMutation.isPending}
-                />
-              ))}
-            </div>
-          </div>
-
-          <div className="flex gap-2">
-            <button
-              type="submit"
-              disabled={!columnName.trim() || createColumnMutation.isPending}
-              className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white text-sm font-medium py-2 px-3 rounded-md transition-colors flex items-center justify-center"
-            >
-              {createColumnMutation.isPending ? (
-                <RefreshCw size={14} className="animate-spin" />
-              ) : (
-                <>
-                  <Check size={14} className="mr-1" />
-                  Add
-                </>
-              )}
-            </button>
-            <button
-              type="button"
-              onClick={handleCancel}
-              disabled={createColumnMutation.isPending}
-              className="bg-gray-200 hover:bg-gray-300 disabled:bg-gray-100 text-gray-700 text-sm font-medium py-2 px-3 rounded-md transition-colors flex items-center justify-center"
-            >
-              <X size={14} />
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
-
-// Custom hook for managing refetch logic with React Query
-function useKanbanRefetch(projectSlug: string, onDataChange?: () => void) {
-  const { setColumns, getColumns, getIsLoading, setLoading } = useKanbanStore();
-
-  // Use the useProjectColumns hook
-  const {
-    data: columnsData,
-    isLoading: queryLoading,
-    error: queryError,
-    refetch,
-    isRefetching,
-  } = useProjectColumns(projectSlug);
-
-  const [error, setError] = useState<string | null>(null);
-  const [isLoadingCards, setIsLoadingCards] = useState(false);
-  const lastFetchTime = useRef<number>(0);
-  const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  // Get columns with cards from Zustand store
-  const columns = getColumns(projectSlug);
-
-  const fetchCardsForColumns = useCallback(
-    async (columns: any[]) => {
-      setIsLoadingCards(true);
-      try {
-        const columnsWithCards = await Promise.all(
-          columns.map(async (column: any) => {
-            const cardsResponse = await fetch(
-              `/api/columns/${column.id}/cards`,
-              {
-                headers: {
-                  "Cache-Control": "no-cache",
-                },
-              }
-            );
-            const cardsData = cardsResponse.ok
-              ? await cardsResponse.json()
-              : [];
-
-            return {
-              ...column,
-              cards: cardsData.sort(
-                (a: Card, b: Card) => a.position - b.position
-              ),
-            };
-          })
-        );
-
-        const sortedColumns = columnsWithCards.sort(
-          (a, b) => a.position - b.position
-        );
-
-        setColumns(projectSlug, sortedColumns);
-        onDataChange?.();
-        setError(null);
-      } catch (err) {
-        console.error("Error fetching cards:", err);
-        setError(err instanceof Error ? err.message : "Failed to fetch cards");
-      } finally {
-        setIsLoadingCards(false);
-      }
-    },
-    [projectSlug, onDataChange, setColumns]
-  );
-
-  // Update columns when data changes
-  useEffect(() => {
-    if (columnsData) {
-      fetchCardsForColumns(columnsData);
-    }
-  }, [columnsData, fetchCardsForColumns]);
-
-  // Handle query error
-  useEffect(() => {
-    if (queryError) {
-      setError(
-        queryError instanceof Error ? queryError.message : "An error occurred"
-      );
-    }
-  }, [queryError]);
-
-  const debouncedRefresh = useCallback(() => {
-    if (refreshTimeoutRef.current) {
-      clearTimeout(refreshTimeoutRef.current);
-    }
-
-    refreshTimeoutRef.current = setTimeout(() => {
-      refetch();
-    }, 500);
-  }, [refetch]);
-
-  const manualRefresh = useCallback(() => {
-    refetch();
-  }, [refetch]);
-
-  useEffect(() => {
-    return () => {
-      if (refreshTimeoutRef.current) {
-        clearTimeout(refreshTimeoutRef.current);
-      }
-    };
-  }, []);
-
-  return {
-    columns,
-    loading: queryLoading || isLoadingCards,
-    error,
-    isRefetching: isRefetching || isLoadingCards,
-    fetchKanbanData: manualRefresh,
-    debouncedRefresh,
-    manualRefresh,
-  };
-}
-
-// Draggable Card Component (unchanged)
-function DraggableCard({
-  card,
-  projectSlug,
-}: {
-  card: Card;
-  projectSlug: string;
-}) {
-  const router = useRouter();
-  const [isDragging, setIsDragging] = useState(false);
-
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging: dndIsDragging,
-  } = useSortable({
-    id: card.id,
-  });
-
-  React.useEffect(() => {
-    setIsDragging(dndIsDragging);
-  }, [dndIsDragging]);
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-  };
-
-  const formatDate = (date: Date | null) => {
-    if (!date) return null;
-    return new Date(date).toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-    });
-  };
-
-  const getPriorityColor = (priority: Card["priority"]) => {
-    switch (priority) {
-      case "high":
-        return "border-l-red-400 bg-red-50";
-      case "medium":
-        return "border-l-yellow-400 bg-yellow-50";
-      case "low":
-        return "border-l-green-400 bg-green-50";
-      default:
-        return "border-l-gray-300 bg-white";
-    }
-  };
-
-  const handleCardClick = (e: React.MouseEvent) => {
-    if (isDragging) {
-      return;
-    }
-    e.preventDefault();
-    e.stopPropagation();
-    router.push(`/projects/${projectSlug}/cards/${card.id}`);
-  };
-
-  const dragHandlers = {
-    ...attributes,
-    ...listeners,
-    onMouseDown: (e: React.MouseEvent) => {
-      if (listeners?.onMouseDown) {
-        listeners.onMouseDown(e as any);
-      }
-    },
-    onTouchStart: (e: React.TouchEvent) => {
-      if (listeners?.onTouchStart) {
-        listeners.onTouchStart(e as any);
-      }
-    },
-  };
-
-  return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      {...dragHandlers}
-      onClick={handleCardClick}
-      className={`p-3 mb-3 rounded-lg border-l-4 shadow-sm cursor-pointer hover:shadow-md transition-all duration-200 ${getPriorityColor(card.priority)} ${
-        isDragging ? "cursor-grabbing" : "cursor-pointer hover:scale-[1.02]"
-      }`}
-    >
-      <div className="mb-3">
-        <h4 className="font-medium text-gray-900 line-clamp-2 text-left">
-          {card.title}
-        </h4>
-
-        {(card.labels ?? []).length > 0 && (
-          <div className="flex flex-wrap gap-1 mt-1">
-            {(card.labels ?? []).map((label) => (
-              <span
-                key={label.id}
-                className="px-2 py-0.5 text-xs rounded-full font-medium"
-                style={{
-                  backgroundColor: label.color + "20",
-                  color: label.color,
-                }}
-              >
-                {label.name}
-              </span>
-            ))}
-          </div>
-        )}
-      </div>
-
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-2">
-          {card.assignee && (
-            <div className="flex items-center space-x-1">
-              {card.assignee.avatarUrl ? (
-                <img
-                  src={card.assignee.avatarUrl}
-                  alt={`${card.assignee.firstName} ${card.assignee.lastName}`}
-                  className="w-6 h-6 rounded-full"
-                />
-              ) : (
-                <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center">
-                  <User size={14} className="text-blue-600" />
-                </div>
-              )}
-              <span className="text-xs text-gray-600">
-                {card.assignee.firstName} {card.assignee.lastName}
-              </span>
-            </div>
-          )}
-        </div>
-
-        {card.dueDate && (
-          <div className="flex items-center space-x-1 text-xs text-gray-500">
-            <Calendar size={12} />
-            <span>{formatDate(card.dueDate)}</span>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// Droppable Column Component
-function DroppableColumn({
-  column,
-  projectSlug,
-  onColumnUpdated,
-  children,
-}: {
-  column: Column;
-  projectSlug: string;
-  onColumnUpdated?: () => void;
-  children: React.ReactNode;
-}) {
-  const { setNodeRef, isOver } = useSortable({
-    id: column.id,
-    data: {
-      type: "column",
-      column,
-    },
-  });
-
-  return (
-    <div
-      ref={setNodeRef}
-      className={`bg-gray-50 rounded-lg p-4 min-w-80 max-w-80 flex flex-col ${
-        isOver ? "bg-blue-50 border-2 border-blue-300 border-dashed" : ""
-      }`}
-    >
-      <ColumnHeader
-        column={column}
-        projectSlug={projectSlug}
-        onColumnUpdated={onColumnUpdated}
-      />
-
-      <div className="flex-1 min-h-32">
-        <SortableContext
-          items={column.cards.map((card) => card.id)}
-          strategy={verticalListSortingStrategy}
-        >
-          {children}
-        </SortableContext>
-      </div>
-    </div>
-  );
-}
-
-// Main Kanban Board Component
 export default function KanbanBoard({
   projectId,
   projectSlug,
@@ -513,6 +39,9 @@ export default function KanbanBoard({
 
   const { moveCard, reorderCardsInColumn } = useKanbanStore();
   const [activeCard, setActiveCard] = useState<Card | null>(null);
+
+  // Setup real-time handlers
+  useKanbanRealtime(projectId, projectSlug, userId, debouncedRefresh);
 
   const sensors = useSensors(
     useSensor(MouseSensor, {
@@ -581,17 +110,15 @@ export default function KanbanBoard({
       );
       const newIndex =
         over.id === overColumn.id
-          ? columnCards.length - 1 // Drop at end if dropped on column
+          ? columnCards.length - 1
           : columnCards.findIndex((card) => card.id === over.id);
 
       if (oldIndex === newIndex) return;
 
-      // Create new order for cards in the column
       const newCards = [...columnCards];
       const [movedCard] = newCards.splice(oldIndex, 1);
       newCards.splice(newIndex, 0, movedCard);
 
-      // Update positions in Zustand store
       const cardOrders = newCards.map((card, index) => ({
         id: card.id,
         position: index,
@@ -611,9 +138,6 @@ export default function KanbanBoard({
         if (!response.ok) {
           throw new Error("Failed to move card");
         }
-
-        // Refresh to sync positions with server
-        debouncedRefresh();
       } catch (error) {
         console.error("Failed to update card position:", error);
         debouncedRefresh();
@@ -641,8 +165,6 @@ export default function KanbanBoard({
         if (!response.ok) {
           throw new Error("Failed to move card");
         }
-
-        debouncedRefresh();
       } catch (error) {
         console.error("Failed to move card:", error);
         debouncedRefresh();
@@ -688,15 +210,19 @@ export default function KanbanBoard({
   }
 
   return (
-    <div className="h-full overflow-x-auto custom-scrollbar">
-      {isRefetching && (
-        <div className="absolute top-4 right-4 z-50">
+    <div className="h-full overflow-x-auto custom-scrollbar relative">
+      {/*
+
+        tag: remove-once-final-comment
+
+       {isRefetching && (
+        <div className="absolute top-4 right-16 z-50">
           <div className="inline-flex items-center gap-2 bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm">
             <RefreshCw size={14} className="animate-spin" />
             Syncing...
           </div>
         </div>
-      )}
+      )} 
 
       <div className="absolute top-4 right-4 z-40">
         <button
@@ -708,6 +234,8 @@ export default function KanbanBoard({
           <RefreshCw size={16} className={isRefetching ? "animate-spin" : ""} />
         </button>
       </div>
+
+      */}
 
       <DndContext
         sensors={sensors}
