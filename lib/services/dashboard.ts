@@ -9,9 +9,41 @@ import {
   projectTeams,
   activityLog,
 } from "@/lib/db/schema";
-import { eq, and, desc, count, isNull, gte, lte } from "drizzle-orm";
+import { eq, and, desc, count, isNull, gte, lte, or } from "drizzle-orm";
 
 export class DashboardService {
+  // Helper method to get all project IDs a user has access to
+  static async getUserAccessibleProjectIds(userId: string): Promise<string[]> {
+    try {
+      // Get projects where user is owner
+      const ownedProjects = await db
+        .select({ projectId: projects.id })
+        .from(projects)
+        .where(eq(projects.ownerId, userId));
+
+      // Get projects where user is a team member
+      const teamProjects = await db
+        .select({ projectId: projectTeams.projectId })
+        .from(teamMembers)
+        .leftJoin(teams, eq(teamMembers.teamId, teams.id))
+        .leftJoin(projectTeams, eq(teams.id, projectTeams.teamId))
+        .where(
+          and(eq(teamMembers.userId, userId), eq(teams.isArchived, false))
+        );
+
+      // Combine both arrays and remove duplicates and nulls with proper type guard
+      const allProjectIds = [
+        ...ownedProjects.map((p) => p.projectId),
+        ...teamProjects.map((p) => p.projectId),
+      ].filter((id): id is string => id !== null && id !== undefined);
+
+      return [...new Set(allProjectIds)]; // Remove duplicates
+    } catch (error) {
+      console.error("Error fetching user accessible project IDs:", error);
+      return [];
+    }
+  }
+
   // Main dashboard data aggregation
   static async getDashboardData(userId: string) {
     try {
@@ -52,6 +84,31 @@ export class DashboardService {
       const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
       const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
+      // Get all accessible project IDs
+      const accessibleProjectIds =
+        await this.getUserAccessibleProjectIds(userId);
+
+      if (accessibleProjectIds.length === 0) {
+        return {
+          totalProjects: 0,
+          activeCards: 0,
+          completedTasks: 0,
+          teamMembers: 0,
+          changes: {
+            projects: "No change",
+            cards: "No change",
+            tasks: "No change",
+            teamMembers: "No change",
+          },
+        };
+      }
+
+      // Create proper OR conditions for accessible projects
+      const projectAccessCondition =
+        accessibleProjectIds.length === 1
+          ? eq(projects.id, accessibleProjectIds[0])
+          : or(...accessibleProjectIds.map((id) => eq(projects.id, id)));
+
       // Get current stats
       const [
         totalProjectsResult,
@@ -70,27 +127,21 @@ export class DashboardService {
         db
           .select({ count: count() })
           .from(projects)
-          .where(
-            and(eq(projects.ownerId, userId), eq(projects.isArchived, false))
-          ),
+          .where(and(projectAccessCondition, eq(projects.isArchived, false))),
 
         db
           .select({ count: count() })
           .from(cards)
           .leftJoin(columns, eq(cards.columnId, columns.id))
           .leftJoin(projects, eq(columns.projectId, projects.id))
-          .where(
-            and(eq(projects.ownerId, userId), eq(cards.isArchived, false))
-          ),
+          .where(and(projectAccessCondition, eq(cards.isArchived, false))),
 
         db
           .select({ count: count() })
           .from(cards)
           .leftJoin(columns, eq(cards.columnId, columns.id))
           .leftJoin(projects, eq(columns.projectId, projects.id))
-          .where(
-            and(eq(projects.ownerId, userId), eq(cards.status, "completed"))
-          ),
+          .where(and(projectAccessCondition, eq(cards.status, "completed"))),
 
         // Count teams the user is a member of (excluding archived teams)
         db
@@ -107,7 +158,7 @@ export class DashboardService {
           .from(projects)
           .where(
             and(
-              eq(projects.ownerId, userId),
+              projectAccessCondition,
               eq(projects.isArchived, false),
               lte(projects.createdAt, oneWeekAgo)
             )
@@ -120,7 +171,7 @@ export class DashboardService {
           .leftJoin(projects, eq(columns.projectId, projects.id))
           .where(
             and(
-              eq(projects.ownerId, userId),
+              projectAccessCondition,
               eq(cards.isArchived, false),
               lte(cards.createdAt, oneWeekAgo)
             )
@@ -133,7 +184,7 @@ export class DashboardService {
           .leftJoin(projects, eq(columns.projectId, projects.id))
           .where(
             and(
-              eq(projects.ownerId, userId),
+              projectAccessCondition,
               eq(cards.status, "completed"),
               lte(cards.updatedAt, oneWeekAgo)
             )
@@ -158,7 +209,7 @@ export class DashboardService {
           .from(projects)
           .where(
             and(
-              eq(projects.ownerId, userId),
+              projectAccessCondition,
               eq(projects.isArchived, false),
               lte(projects.createdAt, oneMonthAgo)
             )
@@ -170,7 +221,7 @@ export class DashboardService {
         totalProjects: totalProjectsResult[0]?.count || 0,
         activeCards: activeCardsResult[0]?.count || 0,
         completedTasks: completedTasksResult[0]?.count || 0,
-        teamMembers: userTeamsResult[0]?.count || 0, // Now represents teams user is in
+        teamMembers: userTeamsResult[0]?.count || 0,
       };
 
       const weekAgoStats = {
@@ -239,6 +290,19 @@ export class DashboardService {
   // Get user's recent projects
   static async getUserRecentProjects(userId: string, limit: number = 5) {
     try {
+      const accessibleProjectIds =
+        await this.getUserAccessibleProjectIds(userId);
+
+      if (accessibleProjectIds.length === 0) {
+        return [];
+      }
+
+      // Create proper OR conditions for accessible projects
+      const projectAccessCondition =
+        accessibleProjectIds.length === 1
+          ? eq(projects.id, accessibleProjectIds[0])
+          : or(...accessibleProjectIds.map((id) => eq(projects.id, id)));
+
       return await db
         .select({
           id: projects.id,
@@ -251,9 +315,7 @@ export class DashboardService {
           createdAt: projects.createdAt,
         })
         .from(projects)
-        .where(
-          and(eq(projects.ownerId, userId), eq(projects.isArchived, false))
-        )
+        .where(and(projectAccessCondition, eq(projects.isArchived, false)))
         .orderBy(desc(projects.updatedAt))
         .limit(limit);
     } catch (error) {
@@ -262,7 +324,6 @@ export class DashboardService {
     }
   }
 
-  // Get user's recent activity
   // Get user's recent activity
   static async getUserRecentActivity(userId: string, limit: number = 10) {
     try {
@@ -316,6 +377,19 @@ export class DashboardService {
         now.getTime() + 30 * 24 * 60 * 60 * 1000
       );
 
+      const accessibleProjectIds =
+        await this.getUserAccessibleProjectIds(userId);
+
+      if (accessibleProjectIds.length === 0) {
+        return [];
+      }
+
+      // Create proper OR conditions for accessible projects
+      const projectAccessCondition =
+        accessibleProjectIds.length === 1
+          ? eq(projects.id, accessibleProjectIds[0])
+          : or(...accessibleProjectIds.map((id) => eq(projects.id, id)));
+
       return await db
         .select({
           id: cards.id,
@@ -332,7 +406,7 @@ export class DashboardService {
         .leftJoin(projects, eq(columns.projectId, projects.id))
         .where(
           and(
-            eq(projects.ownerId, userId),
+            projectAccessCondition,
             eq(cards.isArchived, false),
             gte(cards.dueDate, now),
             lte(cards.dueDate, thirtyDaysFromNow)
@@ -372,10 +446,17 @@ export class DashboardService {
   // Get project information
   static async getProjectInfo(projectId: string, userId: string) {
     try {
+      const accessibleProjectIds =
+        await this.getUserAccessibleProjectIds(userId);
+
+      if (!accessibleProjectIds.includes(projectId)) {
+        return null;
+      }
+
       const [project] = await db
         .select()
         .from(projects)
-        .where(and(eq(projects.id, projectId), eq(projects.ownerId, userId)));
+        .where(eq(projects.id, projectId));
 
       return project || null;
     } catch (error) {
@@ -488,6 +569,18 @@ export class DashboardService {
   static async getOverdueTasks(userId: string) {
     try {
       const now = new Date();
+      const accessibleProjectIds =
+        await this.getUserAccessibleProjectIds(userId);
+
+      if (accessibleProjectIds.length === 0) {
+        return [];
+      }
+
+      // Create proper OR conditions for accessible projects
+      const projectAccessCondition =
+        accessibleProjectIds.length === 1
+          ? eq(projects.id, accessibleProjectIds[0])
+          : or(...accessibleProjectIds.map((id) => eq(projects.id, id)));
 
       return await db
         .select({
@@ -503,7 +596,7 @@ export class DashboardService {
         .leftJoin(projects, eq(columns.projectId, projects.id))
         .where(
           and(
-            eq(projects.ownerId, userId),
+            projectAccessCondition,
             eq(cards.isArchived, false),
             lte(cards.dueDate, now)
           )
