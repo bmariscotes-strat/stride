@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import DualPanelLayout from "@/components/layout/shared/DualPanelLayout";
 import { Badge } from "@/components/ui/shared/badge";
-import { Button } from "@/components/ui/shared/button";
 import {
   Settings,
   Calendar,
@@ -28,7 +27,7 @@ import { toast } from "sonner";
 import { PRIORITY_OPTIONS } from "@/lib/constants/tasks";
 import { getRoleIcon, getRoleBadgeClass, getIcon } from "@/lib/ui/icons-colors";
 import CommentSection from "@/components/comments/CommentSection";
-import type { CardPageData, CardPageClientProps } from "@/types";
+import type { CardPageClientProps } from "@/types";
 import Loading from "./loading"; // Adjust path as needed
 
 // Lazy load dialogs to avoid importing heavy dependencies on initial load

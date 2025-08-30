@@ -95,7 +95,6 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
   const views = [
     { id: "kanban", label: "Kanban", icon: "Kanban", isActive: true },
     { id: "calendar", label: "Calendar", icon: "Calendar", isActive: false },
-    { id: "table", label: "Table", icon: "Table", isActive: false },
   ];
 
   const serializedProject = JSON.parse(JSON.stringify(project));

@@ -135,9 +135,8 @@ export default async function CardPage({ params }: CardPageProps) {
   const defaultColumnId = project.columns?.[0]?.id;
 
   const views = [
-    { id: "kanban", label: "Kanban", icon: "Kanban", isActive: true },
-    { id: "list", label: "List", icon: "List", isActive: false },
-    { id: "table", label: "Table", icon: "Table", isActive: false },
+    { id: "kanban", label: "Kanban", icon: "Kanban", isActive: false },
+    { id: "calendar", label: "Calendar", icon: "Calendar", isActive: false },
   ];
 
   const serializedProject = JSON.parse(JSON.stringify(project));

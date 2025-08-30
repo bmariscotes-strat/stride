@@ -7,7 +7,7 @@ import { getRequiredUserId } from "@/lib/utils/get-current-user";
 
 export async function GET(request: NextRequest, context: any) {
   try {
-    const projectSlug = context.params.slug;
+    const projectSlug = await context.params.slug;
 
     // Find the project by slug
     const project = await db.query.projects.findFirst({
