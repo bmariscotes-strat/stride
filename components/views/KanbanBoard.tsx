@@ -19,6 +19,7 @@ import { DroppableColumn } from "@/components/views/kanban/DroppableColumn";
 import { useKanbanRefetch } from "@/hooks/kanban/useKanbanRefetch";
 import { useKanbanRealtime } from "@/hooks/kanban/useKanbanRealtime";
 import type { KanbanBoardProps } from "@/types/forms/tasks";
+import { toast } from "sonner";
 
 export default function KanbanBoard({
   projectId,
@@ -124,7 +125,6 @@ export default function KanbanBoard({
         position: index,
       }));
       reorderCardsInColumn(projectSlug, overColumn.id, cardOrders);
-
       try {
         const response = await fetch(`/api/cards/${activeCard.id}/move`, {
           method: "PATCH",
@@ -136,9 +136,12 @@ export default function KanbanBoard({
         });
 
         if (!response.ok) {
-          throw new Error("Failed to move card");
+          const data = await response.json();
+          toast.error(data.error || "Failed to move card");
+          return;
         }
       } catch (error) {
+        toast.error("Something went wrong");
         console.error("Failed to update card position:", error);
         debouncedRefresh();
       }
@@ -258,6 +261,8 @@ export default function KanbanBoard({
                   key={card.id}
                   card={card}
                   projectSlug={projectSlug}
+                  userId={userId}
+                  canUserEditCards={canEditCards}
                 />
               ))}
             </DroppableColumn>
@@ -274,7 +279,12 @@ export default function KanbanBoard({
 
         <DragOverlay>
           {activeCard && (
-            <DraggableCard card={activeCard} projectSlug={projectSlug} />
+            <DraggableCard
+              card={activeCard}
+              projectSlug={projectSlug}
+              userId={userId}
+              canUserEditCards={canEditCards}
+            />
           )}
         </DragOverlay>
       </DndContext>
