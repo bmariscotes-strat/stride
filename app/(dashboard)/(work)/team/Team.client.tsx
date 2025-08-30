@@ -94,9 +94,6 @@ export default function TeamsClient() {
                       <h3 className="text-lg font-semibold text-gray-900 truncate">
                         {team.name}
                       </h3>
-                      <p className="text-sm text-gray-500 capitalize">
-                        {team.role}
-                      </p>
                     </div>
                   </div>
 
@@ -129,7 +126,7 @@ export default function TeamsClient() {
                             : "bg-gray-100 text-gray-800"
                       }`}
                     >
-                      {team.role}
+                      {team.role.charAt(0).toUpperCase() + team.role.slice(1)}
                     </span>
                   </div>
                 </div>
