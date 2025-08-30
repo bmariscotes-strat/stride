@@ -12,7 +12,7 @@ import { ReactQueryProvider } from "@/components/providers/ReactQueryProvider";
 console.log("Logging enabled?", process.env.NODE_ENV === "development");
 
 export const metadata: Metadata = {
-  title: "Project Management Tool",
+  title: "Stride",
   icons: {
     icon: "/favicon.ico",
   },

@@ -6,6 +6,7 @@ import { getProjectBySlugForUser } from "@/lib/services/projects";
 import type { ProjectWithPartialRelations } from "@/types";
 import ProjectPageClient from "@/app/(dashboard)/(work)/projects/[slug]/ProjectPage.client";
 import { AnalyticsPermissionChecker } from "@/lib/permissions/checkers/analytics-permission-checker";
+import { createMetadata } from "@/lib/utils/metadata";
 
 // Extended interface to include columns
 interface ProjectPageData extends ProjectWithPartialRelations {
@@ -19,6 +20,44 @@ interface ProjectPageData extends ProjectWithPartialRelations {
 
 interface ProjectPageProps {
   params: Promise<{ slug: string }>;
+}
+
+// Generate metadata
+export async function generateMetadata({ params }: ProjectPageProps) {
+  const { slug } = await params;
+
+  try {
+    const currentUser = await getCurrentUser();
+    const userId = currentUser?.id;
+
+    if (!userId) {
+      return createMetadata({
+        title: "Project - Sign In Required",
+        description: "Sign in to view this project",
+      });
+    }
+
+    const project = await getProjectBySlugForUser(slug, userId);
+
+    if (!project) {
+      return createMetadata({
+        title: "Project Not Found",
+        description: "The requested project could not be found",
+      });
+    }
+
+    return createMetadata({
+      title: `${project.name}`,
+      description:
+        project.description ||
+        `Manage and collaborate on ${project.name} project`,
+    });
+  } catch (error) {
+    return createMetadata({
+      title: "Project",
+      description: "Project management and collaboration",
+    });
+  }
 }
 
 export default async function ProjectPage({ params }: ProjectPageProps) {

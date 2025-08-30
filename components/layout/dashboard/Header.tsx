@@ -17,11 +17,7 @@ interface HeaderProps {
   userId: string | null;
 }
 
-const workspaceItems = [
-  { href: "/dashboard", name: "Dashboard" },
-  { href: "/calendar", name: "Calendar" },
-  { href: "/analytics", name: "Analytics" },
-];
+const workspaceItems = [{ href: "/dashboard", name: "Dashboard" }];
 
 export default function Header({ teams, projects, userId }: HeaderProps) {
   const pathname = usePathname();

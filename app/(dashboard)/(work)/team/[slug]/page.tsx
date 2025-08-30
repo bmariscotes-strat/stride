@@ -24,6 +24,7 @@ import type {
   TeamMemberWithRelations,
 } from "@/types";
 import UserAvatar from "@/components/shared/UserAvatar";
+import { createMetadata } from "@/lib/utils/metadata";
 
 // Define the expected team type with members that include user data
 export interface TeamPageData
@@ -35,11 +36,46 @@ export interface TeamPageData
   currentUserRole?: string;
 }
 
-export default async function TeamPage({
-  params,
-}: {
+interface TeamPageProps {
   params: Promise<{ slug: string }>;
-}) {
+}
+
+// Generate metadata for the team page
+export async function generateMetadata({ params }: TeamPageProps) {
+  const { slug } = await params;
+
+  try {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
+      return createMetadata({
+        title: "Team - Sign In Required",
+        description: "Sign in to view this team",
+      });
+    }
+
+    const team = await getTeamBySlug(slug, currentUser.id);
+    if (!team) {
+      return createMetadata({
+        title: "Team Not Found",
+        description: "The requested team could not be found",
+      });
+    }
+
+    return createMetadata({
+      title: `${team.name} - Team`,
+      description:
+        team.description ||
+        `Collaborate with the ${team.name} team on projects and tasks`,
+    });
+  } catch (error) {
+    return createMetadata({
+      title: "Team",
+      description: "Team collaboration and project management",
+    });
+  }
+}
+
+export default async function TeamPage({ params }: TeamPageProps) {
   const currentUser = await getCurrentUser();
   const userId = currentUser?.id || null;
 
@@ -240,7 +276,7 @@ export default async function TeamPage({
                 <ProjectCard
                   key={project.id}
                   project={project}
-                  canEdit={permissions.canEditTeam} // Pass permission to ProjectCard
+                  canEdit={permissions.canEditTeam}
                 />
               ))}
             </div>
