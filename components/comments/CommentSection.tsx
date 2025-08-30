@@ -603,7 +603,7 @@ export default function CommentSection({
           <Button
             onClick={() => setShowNewComment(true)}
             size="sm"
-            className="flex items-center gap-2"
+            className="flex items-center gap-2 hover:cursor-pointer"
           >
             <Plus size={14} />
             Add Comment
