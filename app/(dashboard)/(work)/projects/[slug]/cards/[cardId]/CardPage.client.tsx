@@ -29,6 +29,7 @@ import { PRIORITY_OPTIONS } from "@/lib/constants/tasks";
 import { getRoleIcon, getRoleBadgeClass, getIcon } from "@/lib/ui/icons-colors";
 import CommentSection from "@/components/comments/CommentSection";
 import type { CardPageData, CardPageClientProps } from "@/types";
+import Loading from "./loading"; // Adjust path as needed
 
 // Lazy load dialogs to avoid importing heavy dependencies on initial load
 const EditTaskDialog = lazy(() => import("@/components/tasks/EditTaskDialog"));
@@ -124,6 +125,10 @@ export default function CardPageClient({
   const canEdit =
     canEditProject || card?.assigneeId === userId || card?.ownerId === userId;
   const canDelete = canEditProject || isProjectOwner;
+
+  if (isLoading) {
+    return <Loading />;
+  }
 
   if (error || !card) {
     return (
