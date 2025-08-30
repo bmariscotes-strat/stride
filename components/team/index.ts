@@ -9,5 +9,4 @@ export { default as TeamMembersSection } from "@/components/team/settings/sectio
 export { default as TeamSettingsSection } from "@/components/team/settings/sections/SettingsSection";
 
 // Main components
-export { default as AlertMessages } from "@/components/team/settings/AlertMessages";
 export { default as NavigationSidebar } from "@/components/team/settings/NavigationSidebar";

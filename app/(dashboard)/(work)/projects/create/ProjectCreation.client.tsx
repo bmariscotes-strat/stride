@@ -1,4 +1,3 @@
-// projects/create/ProjectCreation.client.tsx - Minor update to pass currentUserId
 "use client";
 import React, { useState, useEffect } from "react";
 import DualPanelLayout from "@/components/layout/shared/DualPanelLayout";

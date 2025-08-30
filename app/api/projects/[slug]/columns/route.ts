@@ -7,7 +7,8 @@ import { getRequiredUserId } from "@/lib/utils/get-current-user";
 
 export async function GET(request: NextRequest, context: any) {
   try {
-    const projectSlug = context.params.slug;
+    const params = await context.params;
+    const projectSlug = params.slug;
 
     // Find the project by slug
     const project = await db.query.projects.findFirst({
@@ -41,7 +42,9 @@ export async function POST(request: NextRequest, context: any) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const projectSlug = context.params.slug;
+    const params = await context.params;
+    const projectSlug = params.slug;
+
     const body = await request.json();
     const { name, color, position } = body;
 
@@ -68,10 +71,6 @@ export async function POST(request: NextRequest, context: any) {
     if (!project) {
       return NextResponse.json({ error: "Project not found" }, { status: 404 });
     }
-
-    // TODO: Add permission check here
-    // You should check if the current user has permission to create columns in this project
-    // This would depend on your project permissions system
 
     // Calculate position if not provided
     let finalPosition = position;

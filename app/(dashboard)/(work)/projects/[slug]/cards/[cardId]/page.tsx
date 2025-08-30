@@ -8,6 +8,7 @@ import { cards } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import type { ProjectWithPartialRelations } from "@/types";
 import CardPageClient from "./CardPage.client";
+import { createMetadata } from "@/lib/utils/metadata";
 
 // Extended interface to include columns
 interface ProjectPageData extends ProjectWithPartialRelations {
@@ -24,6 +25,59 @@ interface CardPageProps {
     slug: string;
     cardId: string;
   }>;
+}
+
+// Generate metadata for the card page
+export async function generateMetadata({ params }: CardPageProps) {
+  const { slug, cardId } = await params;
+
+  try {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
+      return createMetadata({
+        title: "Card - Sign In Required",
+        description: "Sign in to view this card",
+      });
+    }
+
+    const project = await getProjectBySlugForUser(slug, currentUser.id);
+    if (!project) {
+      return createMetadata({
+        title: "Card Not Found",
+        description: "The requested project could not be found",
+      });
+    }
+
+    const card = await db.query.cards.findFirst({
+      where: eq(cards.id, cardId),
+      with: {
+        column: {
+          with: {
+            project: true,
+          },
+        },
+      },
+    });
+
+    if (!card || card.column.project.id !== project.id) {
+      return createMetadata({
+        title: "Card Not Found",
+        description: "The requested card could not be found",
+      });
+    }
+
+    return createMetadata({
+      title: `${card.title} - ${project.name}`,
+      description: card.description
+        ? card.description.substring(0, 160)
+        : `Task in ${project.name}`,
+    });
+  } catch (error) {
+    return createMetadata({
+      title: "Card",
+      description: "Project task and card management",
+    });
+  }
 }
 
 export default async function CardPage({ params }: CardPageProps) {
@@ -81,9 +135,8 @@ export default async function CardPage({ params }: CardPageProps) {
   const defaultColumnId = project.columns?.[0]?.id;
 
   const views = [
-    { id: "kanban", label: "Kanban", icon: "Kanban", isActive: true },
-    { id: "list", label: "List", icon: "List", isActive: false },
-    { id: "table", label: "Table", icon: "Table", isActive: false },
+    { id: "kanban", label: "Kanban", icon: "Kanban", isActive: false },
+    { id: "calendar", label: "Calendar", icon: "Calendar", isActive: false },
   ];
 
   const serializedProject = JSON.parse(JSON.stringify(project));
@@ -101,53 +154,4 @@ export default async function CardPage({ params }: CardPageProps) {
       views={views}
     />
   );
-}
-
-// Generate metadata for the card page
-export async function generateMetadata({ params }: CardPageProps) {
-  const { slug, cardId } = await params;
-
-  try {
-    const currentUser = await getCurrentUser();
-    if (!currentUser) {
-      return {
-        title: "Card Not Found",
-      };
-    }
-
-    const project = await getProjectBySlugForUser(slug, currentUser.id);
-    if (!project) {
-      return {
-        title: "Project Not Found",
-      };
-    }
-
-    const card = await db.query.cards.findFirst({
-      where: eq(cards.id, cardId),
-      with: {
-        column: {
-          with: {
-            project: true,
-          },
-        },
-      },
-    });
-
-    if (!card || card.column.project.id !== project.id) {
-      return {
-        title: "Card Not Found",
-      };
-    }
-
-    return {
-      title: `${card.title} - ${project.name}`,
-      description: card.description
-        ? card.description.substring(0, 160)
-        : `Task in ${project.name}`,
-    };
-  } catch (error) {
-    return {
-      title: "Card Not Found",
-    };
-  }
 }

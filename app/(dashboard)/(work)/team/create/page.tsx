@@ -13,6 +13,7 @@ import type { UserSearchResult } from "@/lib/services/user-search";
 import { useRouter } from "next/navigation";
 import { useDebounce } from "@/hooks/useDebounce";
 import UserAvatar from "@/components/shared/UserAvatar";
+import { toast } from "sonner";
 
 // TypeScript interfaces
 interface TeamSettings {
@@ -113,6 +114,16 @@ export default function CreateTeamPage() {
 
     return () => observer.disconnect();
   }, []);
+
+  // Success toasts
+  useEffect(() => {
+    if (success) {
+      toast.success("Team created successfully. You will soon be redirected.");
+    }
+    if (error) {
+      toast.error(error);
+    }
+  }, [success, error]);
 
   // Auto-generate slug from name
   useEffect(() => {
@@ -448,73 +459,6 @@ export default function CreateTeamPage() {
       }
       right={
         <div className="p-6 max-w-2xl">
-          {/* Success Message */}
-          {success && (
-            <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-md">
-              <div className="flex">
-                <div className="flex-shrink-0">
-                  <svg
-                    className="h-5 w-5 text-green-400"
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                </div>
-                <div className="ml-3">
-                  <h3 className="text-sm font-medium text-green-800">
-                    Team created successfully!
-                  </h3>
-                  <div className="mt-2 text-sm text-green-700">
-                    <p>
-                      Your team has been created successfully. You'll be
-                      redirected to the team page shortly.
-                      {formData.members.length > 0 && (
-                        <span>
-                          {" "}
-                          Invitations will be sent to the specified members.
-                        </span>
-                      )}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Error Message */}
-          {error && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-md">
-              <div className="flex">
-                <div className="flex-shrink-0">
-                  <svg
-                    className="h-5 w-5 text-red-400"
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                </div>
-                <div className="ml-3">
-                  <h3 className="text-sm font-medium text-red-800">
-                    Error creating team
-                  </h3>
-                  <div className="mt-2 text-sm text-red-700">
-                    <p>{error}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
           <form onSubmit={handleSubmit} className="space-y-12">
             {/* Information Section */}
             <section
