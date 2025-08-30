@@ -153,11 +153,12 @@ function EditCommentDialog({
     setIsSubmitting(true);
     try {
       await updateCommentMutation.mutateAsync({
-        commentId: comment.id.toString(), // Convert to string
+        commentId: String(comment.id),
         content: content.trim(),
       });
       onClose();
     } catch (error) {
+      console.error("Failed to update comment:", error);
     } finally {
       setIsSubmitting(false);
     }
@@ -211,6 +212,7 @@ function DeleteCommentDialog({
       await deleteCommentMutation.mutateAsync(comment.id.toString());
       onClose();
     } catch (error) {
+      console.error("Failed to delete comment:", error);
     } finally {
       setIsDeleting(false);
     }
@@ -260,12 +262,6 @@ function CommentItem({
   onReply,
   level = 0,
 }: CommentItemProps) {
-  console.log("CommentItem ->", {
-    id: comment.id,
-    content: comment.content,
-    mentions: comment.mentions,
-    isReply: level > 0,
-  });
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
@@ -299,7 +295,8 @@ function CommentItem({
                   addSuffix: true,
                 })}
               </span>
-              {comment.createdAt !== comment.updatedAt && (
+              {new Date(comment.createdAt).getTime() !==
+                new Date(comment.updatedAt).getTime() && (
                 <span className="text-xs text-gray-400">(edited)</span>
               )}
             </div>
@@ -313,7 +310,7 @@ function CommentItem({
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => onReply(comment.id.toString())} // Convert to string
+                  onClick={() => onReply(comment.id.toString())}
                   className="text-xs text-gray-500 hover:text-gray-700 p-0 h-auto"
                 >
                   <Reply size={14} className="mr-1" />
@@ -460,11 +457,12 @@ function CommentForm({
       await createCommentMutation.mutateAsync({
         cardId,
         content: content.trim(),
-        parentId: parentId,
+        parentId,
       });
       setContent("");
       if (onCancel) onCancel();
     } catch (error) {
+      console.error("Failed to create comment:", error);
     } finally {
       setIsSubmitting(false);
     }
@@ -558,12 +556,13 @@ export default function CommentSection({
   availableUsers,
 }: CommentSectionProps) {
   const [showNewComment, setShowNewComment] = useState(false);
-  const [replyingTo, setReplyingTo] = useState<string | null>(null);
+  const [replyingTo, setReplyingTo] = useState<number | null>(null); // Changed to number
 
+  // Real-time comments hook automatically handles WebSocket connections
   const { data: comments, isLoading, error } = useComments(cardId);
 
   const handleReply = (commentId: string) => {
-    setReplyingTo(commentId);
+    setReplyingTo(parseInt(commentId, 10)); // Convert string to number
     setShowNewComment(false);
   };
 
@@ -634,11 +633,11 @@ export default function CommentSection({
               />
 
               {/* Reply form */}
-              {replyingTo === comment.id.toString() && ( // Convert for comparison
+              {replyingTo === comment.id && (
                 <div className="ml-8 mt-3 pl-4 border-l border-gray-200">
                   <CommentForm
                     cardId={cardId}
-                    parentId={comment.id.toString()} // Convert to string
+                    parentId={comment.id} // Keep as number
                     availableUsers={availableUsers}
                     onCancel={handleCancelReply}
                   />
