@@ -3,16 +3,31 @@ import { useRouter } from "next/navigation";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { User, Calendar } from "lucide-react";
+import { toast } from "sonner";
 import { Card } from "@/types/forms/tasks";
 
 interface DraggableCardProps {
   card: Card;
   projectSlug: string;
+  userId?: string; // Add userId prop
+  canUserEditCards?: boolean; // Add general permission prop
 }
 
-export function DraggableCard({ card, projectSlug }: DraggableCardProps) {
+export function DraggableCard({
+  card,
+  projectSlug,
+  userId,
+  canUserEditCards = true,
+}: DraggableCardProps) {
   const router = useRouter();
   const [isDragging, setIsDragging] = useState(false);
+  const [isWiggling, setIsWiggling] = useState(false);
+
+  // Check if current user can edit THIS specific card
+  const canEditThisCard =
+    canUserEditCards &&
+    userId &&
+    (card.assigneeId === userId || card.ownerId === userId);
 
   const {
     attributes,
@@ -23,6 +38,7 @@ export function DraggableCard({ card, projectSlug }: DraggableCardProps) {
     isDragging: dndIsDragging,
   } = useSortable({
     id: card.id,
+    disabled: !canEditThisCard, // Disable dragging if no permission
   });
 
   React.useEffect(() => {
@@ -65,20 +81,43 @@ export function DraggableCard({ card, projectSlug }: DraggableCardProps) {
     router.push(`/projects/${projectSlug}/cards/${card.id}`);
   };
 
-  const dragHandlers = {
-    ...attributes,
-    ...listeners,
-    onMouseDown: (e: React.MouseEvent) => {
-      if (listeners?.onMouseDown) {
-        listeners.onMouseDown(e as any);
-      }
-    },
-    onTouchStart: (e: React.TouchEvent) => {
-      if (listeners?.onTouchStart) {
-        listeners.onTouchStart(e as any);
-      }
-    },
+  const handleDragAttempt = (e: React.MouseEvent | React.TouchEvent) => {
+    if (!canEditThisCard) {
+      e.preventDefault();
+      e.stopPropagation();
+
+      // Show toast
+      toast.error("Only task assignee or owner can move this card");
+
+      // Trigger wiggle animation
+      setIsWiggling(true);
+      setTimeout(() => setIsWiggling(false), 500);
+
+      return false;
+    }
+    return true;
   };
+
+  // Only apply drag handlers if user can edit this card
+  const dragHandlers = canEditThisCard
+    ? {
+        ...attributes,
+        ...listeners,
+        onMouseDown: (e: React.MouseEvent) => {
+          if (handleDragAttempt(e) && listeners?.onMouseDown) {
+            listeners.onMouseDown(e as any);
+          }
+        },
+        onTouchStart: (e: React.TouchEvent) => {
+          if (handleDragAttempt(e) && listeners?.onTouchStart) {
+            listeners.onTouchStart(e as any);
+          }
+        },
+      }
+    : {
+        onMouseDown: handleDragAttempt,
+        onTouchStart: handleDragAttempt,
+      };
 
   return (
     <div
@@ -86,10 +125,38 @@ export function DraggableCard({ card, projectSlug }: DraggableCardProps) {
       style={style}
       {...dragHandlers}
       onClick={handleCardClick}
-      className={`p-3 mb-3 rounded-lg border-l-4 shadow-sm cursor-pointer hover:shadow-md transition-all duration-200 ${getPriorityColor(card.priority)} ${
-        isDragging ? "cursor-grabbing" : "cursor-pointer hover:scale-[1.02]"
-      }`}
+      className={`p-3 mb-3 rounded-lg border-l-4 shadow-sm transition-all duration-200 ${getPriorityColor(card.priority)} ${
+        isDragging
+          ? "cursor-grabbing"
+          : canEditThisCard
+            ? "cursor-pointer hover:scale-[1.02] hover:shadow-md"
+            : "cursor-pointer"
+      } ${isWiggling ? "animate-wiggle" : ""}`}
     >
+      <style jsx>{`
+        @keyframes wiggle {
+          0%,
+          7%,
+          14%,
+          21% {
+            transform: translateX(0px);
+          }
+          3.5% {
+            transform: translateX(-2px);
+          }
+          10.5% {
+            transform: translateX(2px);
+          }
+          17.5% {
+            transform: translateX(-2px);
+          }
+        }
+
+        .animate-wiggle {
+          animation: wiggle 0.5s ease-in-out;
+        }
+      `}</style>
+
       <div className="mb-3">
         <h4 className="font-medium text-gray-900 line-clamp-2 text-left">
           {card.title}

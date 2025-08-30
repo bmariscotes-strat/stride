@@ -10,7 +10,7 @@ import {
   useSensors,
   closestCorners,
 } from "@dnd-kit/core";
-import { RefreshCw } from "lucide-react";
+import { ListTodo, RefreshCw } from "lucide-react";
 import { Card } from "@/types/forms/tasks";
 import { useKanbanStore } from "@/stores/views/board-store";
 import { AddColumnCard } from "@/components/views/kanban/AddColumnCard";
@@ -19,6 +19,7 @@ import { DroppableColumn } from "@/components/views/kanban/DroppableColumn";
 import { useKanbanRefetch } from "@/hooks/kanban/useKanbanRefetch";
 import { useKanbanRealtime } from "@/hooks/kanban/useKanbanRealtime";
 import type { KanbanBoardProps } from "@/types/forms/tasks";
+import { toast } from "sonner";
 
 export default function KanbanBoard({
   projectId,
@@ -124,7 +125,6 @@ export default function KanbanBoard({
         position: index,
       }));
       reorderCardsInColumn(projectSlug, overColumn.id, cardOrders);
-
       try {
         const response = await fetch(`/api/cards/${activeCard.id}/move`, {
           method: "PATCH",
@@ -136,9 +136,12 @@ export default function KanbanBoard({
         });
 
         if (!response.ok) {
-          throw new Error("Failed to move card");
+          const data = await response.json();
+          toast.error(data.error || "Failed to move card");
+          return;
         }
       } catch (error) {
+        toast.error("Something went wrong");
         console.error("Failed to update card position:", error);
         debouncedRefresh();
       }
@@ -204,7 +207,9 @@ export default function KanbanBoard({
   if (columns.length > 0 && columns.every((col) => col.cards.length === 0)) {
     return (
       <div className="flex flex-col items-center justify-center h-64 text-gray-500">
-        <p className="mb-2">No tasks yet</p>
+        <ListTodo className="h-12 w-12 mx-auto mb-3 text-gray-400" />
+        <p className="text-lg font-medium mb-1">No tasks yet</p>
+        <p className="text-sm">Tasks will appear here once created</p>
       </div>
     );
   }
@@ -256,6 +261,8 @@ export default function KanbanBoard({
                   key={card.id}
                   card={card}
                   projectSlug={projectSlug}
+                  userId={userId}
+                  canUserEditCards={canEditCards}
                 />
               ))}
             </DroppableColumn>
@@ -272,7 +279,12 @@ export default function KanbanBoard({
 
         <DragOverlay>
           {activeCard && (
-            <DraggableCard card={activeCard} projectSlug={projectSlug} />
+            <DraggableCard
+              card={activeCard}
+              projectSlug={projectSlug}
+              userId={userId}
+              canUserEditCards={canEditCards}
+            />
           )}
         </DragOverlay>
       </DndContext>

@@ -15,13 +15,10 @@ import type {
   TeamWithRelations,
   TeamRole,
 } from "@/types";
-
 import { TeamPermissions } from "@/lib/permissions/checkers/team-permission-checker";
-
 // Import components
 import NavigationSidebar from "@/components/layout/shared/NavigationSidebar";
 import {
-  AlertMessages,
   TeamInformationSection,
   TeamMembersSection,
   TeamSettingsSection,
@@ -29,6 +26,7 @@ import {
   DeleteTeamModal,
   ArchiveTeamDialog,
 } from "@/components/team";
+import { toast } from "sonner";
 
 interface FormData {
   name: string;
@@ -105,7 +103,16 @@ export default function UpdateTeamPage({
   const settingsRef = useRef<HTMLDivElement>(null);
   const dangerZoneRef = useRef<HTMLDivElement>(null);
 
-  // Optional: Add scroll spy to automatically update active section based on scroll position
+  // Success toasts
+  useEffect(() => {
+    if (success) {
+      toast.success("Team updated successfully");
+    }
+    if (error) {
+      toast.error(error);
+    }
+  }, [success, error]);
+
   useEffect(() => {
     const handleScroll = () => {
       const sections = ["information", "members", "settings", "danger-zone"];
@@ -409,8 +416,6 @@ export default function UpdateTeamPage({
         }
         right={
           <div className="p-6 max-w-2xl">
-            <AlertMessages success={success} error={error} />
-
             <form onSubmit={handleUpdate} className="space-y-12">
               {/* Information Section - Only show if user can edit team */}
               {permissions.canEditTeam && (

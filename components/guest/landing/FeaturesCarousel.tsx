@@ -126,7 +126,7 @@ const FeaturesCarousel = forwardRef<HTMLDivElement>((_, ref) => {
           autoplay={
             isAutoplay
               ? {
-                  delay: 8000,
+                  delay: 5000,
                   disableOnInteraction: false,
                 }
               : false

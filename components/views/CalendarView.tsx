@@ -12,9 +12,9 @@ import {
   Archive,
 } from "lucide-react";
 import { Card } from "@/types/forms/tasks";
-import { MIN_FETCH_INTERVAL } from "@/lib/constants/limits";
 import "react-big-calendar/lib/css/react-big-calendar.css";
 import "react-big-calendar/lib/addons/dragAndDrop/styles.css";
+import { toast } from "sonner";
 
 const localizer = momentLocalizer(moment);
 const DragAndDropCalendar = withDragAndDrop<CalendarEvent, object>(Calendar);
@@ -380,6 +380,15 @@ export default function CalendarView({
     forceRefresh,
   } = useCalendarData(projectSlug, onDataChange);
 
+  // Check if user can edit a specific card
+  const canUserEditCard = useCallback(
+    (card: Card) => {
+      if (!canEditCards) return false;
+      return card.assigneeId === userId || card.ownerId === userId;
+    },
+    [canEditCards, userId]
+  );
+
   const [currentView, setCurrentView] = useState<View>("month");
   const [currentDate, setCurrentDate] = useState(new Date());
   const [bulkActions, setBulkActions] = useState<BulkActions>({
@@ -549,6 +558,11 @@ export default function CalendarView({
     async ({ event, start, end }: RBCEventInteractionArgs<CalendarEvent>) => {
       if (!canEditCards) return;
 
+      if (!canUserEditCard(event.card)) {
+        toast.error("Only task assignee or owner can resize this card");
+        return;
+      }
+
       const newStart = new Date(start);
       const newEnd = new Date(end);
 
@@ -606,6 +620,12 @@ export default function CalendarView({
   const handleEventDrop = useCallback(
     async ({ event, start, end }: RBCEventInteractionArgs<CalendarEvent>) => {
       if (!canEditCards) return;
+
+      // Check specific card permissions
+      if (!canUserEditCard(event.card)) {
+        toast.error("Only task assignee or owner can move this card");
+        return;
+      }
 
       const newStart = new Date(start);
       const newEnd = new Date(end);

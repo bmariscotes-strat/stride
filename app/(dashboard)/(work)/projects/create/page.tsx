@@ -1,6 +1,11 @@
 import { getRequiredUserId } from "@/lib/utils/get-current-user";
 import ProjectCreation from "@/app/(dashboard)/(work)/projects/create/ProjectCreation.client";
 import { getTeamsForUser } from "@/lib/services/teams";
+import { createMetadata } from "@/lib/utils/metadata";
+
+export const metadata = createMetadata({
+  title: "Create Project",
+});
 
 export default async function CreateProjectPage({
   searchParams,

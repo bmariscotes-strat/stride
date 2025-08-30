@@ -7,16 +7,13 @@ import { getRequiredUserId } from "@/lib/utils/get-current-user";
 import { revalidateTag } from "next/cache";
 import { ActivityService } from "@/lib/services/activity";
 import { NotificationService } from "@/lib/services/notification";
+import { pusher } from "@/lib/websocket/pusher";
+import { UpdateCommentData } from "@/types/forms/comment";
 
 interface CreateCommentData {
   cardId: string;
   content: string;
   parentId?: string; // For replies - changed to string to match input
-}
-
-interface UpdateCommentData {
-  commentId: string;
-  content: string;
 }
 
 type BaseComment = InferSelectModel<typeof cardComments> & {
@@ -112,6 +109,51 @@ export async function createComment({
       await db.insert(mentions).values(mentionsList);
     }
 
+    // Get the complete comment with user and mentions for real-time event
+    const [completeComment] = await db.query.cardComments.findMany({
+      where: (c, { eq }) => eq(c.id, comment.id),
+      with: {
+        user: {
+          columns: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            avatarUrl: true,
+            username: true,
+            email: true,
+          },
+        },
+        mentions: {
+          with: {
+            mentionedUser: {
+              columns: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                username: true,
+                avatarUrl: true,
+                email: true,
+              },
+            },
+          },
+        },
+      },
+      limit: 1,
+    });
+
+    // Emit real-time event
+    if (completeComment) {
+      const commentWithReplies: CommentWithReplies = {
+        ...completeComment,
+        replies: [],
+      };
+
+      await pusher.trigger(`card-${cardId}`, "comment-created", {
+        comment: commentWithReplies,
+        cardId,
+      });
+    }
+
     // Log activity and send notifications
     try {
       const projectId = card.column.project.id;
@@ -168,6 +210,7 @@ export async function updateComment({ commentId, content }: UpdateCommentData) {
     }
 
     const oldContent = existingComment.content;
+    const cardId = existingComment.cardId;
 
     const [updatedComment] = await db
       .update(cardComments)
@@ -177,6 +220,13 @@ export async function updateComment({ commentId, content }: UpdateCommentData) {
       })
       .where(eq(cardComments.id, commentIdInt))
       .returning();
+
+    // Emit real-time event
+    await pusher.trigger(`card-${cardId}`, "comment-updated", {
+      commentId: commentIdInt,
+      content,
+      cardId,
+    });
 
     // Log activity for comment update
     try {
@@ -194,7 +244,7 @@ export async function updateComment({ commentId, content }: UpdateCommentData) {
       // Don't fail the main operation
     }
 
-    revalidateTag(`card-comments-${existingComment.cardId}`);
+    revalidateTag(`card-comments-${cardId}`);
     return { success: true, comment: updatedComment };
   } catch (error) {
     console.error("Failed to update comment:", error);
@@ -233,6 +283,15 @@ export async function deleteComment(commentId: string) {
     const commentContent = existingComment.content;
     const cardId = existingComment.cardId;
 
+    // Delete the comment (this will cascade delete replies and mentions)
+    await db.delete(cardComments).where(eq(cardComments.id, commentIdInt));
+
+    // Emit real-time event
+    await pusher.trigger(`card-${cardId}`, "comment-deleted", {
+      commentId: commentIdInt,
+      cardId,
+    });
+
     // Log activity before deletion
     try {
       const projectId = existingComment.card.column.project.id;
@@ -247,9 +306,6 @@ export async function deleteComment(commentId: string) {
       console.error("Failed to log comment deletion activity:", error);
       // Don't fail the main operation
     }
-
-    // Delete the comment (this will cascade delete replies and mentions)
-    await db.delete(cardComments).where(eq(cardComments.id, commentIdInt));
 
     revalidateTag(`card-comments-${cardId}`);
     return { success: true };

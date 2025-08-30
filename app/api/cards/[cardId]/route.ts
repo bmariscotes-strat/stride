@@ -13,13 +13,22 @@ export async function GET(request: NextRequest, context: any) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { cardId } = context.params;
+    const { cardId } = await context.params;
 
-    // Fetch card with relations
+    // Fetch card with relations - ADD OWNER HERE
     const card = await db.query.cards.findFirst({
       where: eq(cards.id, cardId),
       with: {
         assignee: {
+          columns: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            avatarUrl: true,
+          },
+        },
+        owner: {
           columns: {
             id: true,
             firstName: true,
@@ -53,7 +62,7 @@ export async function GET(request: NextRequest, context: any) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    // Format response
+    // Format response - ADD OWNER TO RESPONSE
     const formattedCard = {
       id: card.id,
       title: card.title,
@@ -80,6 +89,15 @@ export async function GET(request: NextRequest, context: any) {
             avatarUrl: card.assignee.avatarUrl,
           }
         : null,
+      owner: card.owner // ADD THIS - include owner in response
+        ? {
+            id: card.owner.id,
+            firstName: card.owner.firstName,
+            lastName: card.owner.lastName,
+            email: card.owner.email,
+            avatarUrl: card.owner.avatarUrl,
+          }
+        : null,
       labels: card.labels.map((cl) => ({
         id: cl.label.id,
         name: cl.label.name,
@@ -104,7 +122,7 @@ export async function PATCH(request: NextRequest, context: any) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { cardId } = context.params;
+    const { cardId } = await context.params;
     const body = await request.json();
 
     const existingCard = await db.query.cards.findFirst({
@@ -243,7 +261,7 @@ export async function DELETE(request: NextRequest, context: any) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { cardId } = context.params;
+    const { cardId } = await context.params;
 
     const existingCard = await db.query.cards.findFirst({
       where: eq(cards.id, cardId),

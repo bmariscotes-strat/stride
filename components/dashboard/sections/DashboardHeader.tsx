@@ -3,6 +3,10 @@ interface DashboardHeaderProps {
 }
 
 export function DashboardHeader({ user }: DashboardHeaderProps) {
+  if (!user) {
+    return null;
+  }
+
   const currentTime = new Date().getHours();
   let greeting = "Good morning";
 

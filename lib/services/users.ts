@@ -124,66 +124,6 @@ async function generateUniqueUsername(
 }
 
 /**
- * Create or update user from Clerk data
- * @param clerkUser - Clerk user object
- * @returns user object or null if error
- */
-export async function createOrUpdateUser(
-  clerkUser: ClerkUser
-): Promise<User | null> {
-  try {
-    // Check if user already exists
-    const existingUser = await getUserByClerkId(clerkUser.id);
-
-    const email = clerkUser.emailAddresses[0]?.emailAddress || "";
-    const firstName = clerkUser.firstName || "";
-    const lastName = clerkUser.lastName || "";
-    const avatarUrl = clerkUser.imageUrl || null;
-
-    if (existingUser) {
-      // Update existing user
-      const updateData = {
-        email,
-        firstName,
-        lastName,
-        avatarUrl,
-      };
-
-      const [updatedUser] = await db
-        .update(users)
-        .set({
-          ...updateData,
-          updatedAt: new Date(),
-        })
-        .where(eq(users.clerkUserId, clerkUser.id))
-        .returning();
-
-      return updatedUser;
-    } else {
-      // Generate unique username
-      const username = await generateUniqueUsername(email, firstName, lastName);
-
-      // Create new user
-      const newUserData: CreateUser = {
-        clerkUserId: clerkUser.id,
-        email,
-        username,
-        firstName,
-        lastName,
-        avatarUrl,
-      };
-
-      const [newUser] = await db.insert(users).values(newUserData).returning();
-
-      return newUser;
-    }
-  } catch (error) {
-    console.error("Error creating/updating user:", error);
-    return null;
-  }
-}
-
-/**
  * Update user profile
  * @param userId string - user ID
  * @param updateData - partial user data to update
@@ -235,14 +175,6 @@ export async function getCurrentUser(): Promise<User | null> {
 
     let user = await getUserByClerkId(userId);
 
-    // If user doesn't exist in our database, create it
-    if (!user) {
-      const clerkUser = await currentUser();
-      if (clerkUser) {
-        user = await createOrUpdateUser(clerkUser);
-      }
-    }
-
     return user;
   } catch (error) {
     console.error("Error getting current user:", error);
@@ -263,25 +195,6 @@ export async function requireCurrentUser(): Promise<User> {
   }
 
   return user;
-}
-
-/**
- * Sync Clerk user with database
- * Called from webhooks or when user data changes
- */
-export async function syncUserWithClerk(): Promise<User | null> {
-  try {
-    const clerkUser = await currentUser();
-
-    if (!clerkUser) {
-      return null;
-    }
-
-    return await createOrUpdateUser(clerkUser);
-  } catch (error) {
-    console.error("Error syncing user with Clerk:", error);
-    return null;
-  }
 }
 
 /**

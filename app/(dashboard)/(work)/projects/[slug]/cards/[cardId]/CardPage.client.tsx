@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import DualPanelLayout from "@/components/layout/shared/DualPanelLayout";
 import { Badge } from "@/components/ui/shared/badge";
-import { Button } from "@/components/ui/shared/button";
 import {
   Settings,
   Calendar,
@@ -28,7 +27,8 @@ import { toast } from "sonner";
 import { PRIORITY_OPTIONS } from "@/lib/constants/tasks";
 import { getRoleIcon, getRoleBadgeClass, getIcon } from "@/lib/ui/icons-colors";
 import CommentSection from "@/components/comments/CommentSection";
-import type { CardPageData, CardPageClientProps } from "@/types";
+import type { CardPageClientProps } from "@/types";
+import Loading from "./loading"; // Adjust path as needed
 
 // Lazy load dialogs to avoid importing heavy dependencies on initial load
 const EditTaskDialog = lazy(() => import("@/components/tasks/EditTaskDialog"));
@@ -39,12 +39,9 @@ const DeleteTaskDialog = lazy(
 export default function CardPageClient({
   project,
   userId,
-  canCreateCards,
   canEditProject,
-  canManageTeams,
   showSettings,
   isProjectOwner,
-  defaultColumnId,
   views,
 }: CardPageClientProps) {
   const params = useParams();
@@ -129,12 +126,7 @@ export default function CardPageClient({
   const canDelete = canEditProject || isProjectOwner;
 
   if (isLoading) {
-    return (
-      <DualPanelLayout
-        left={<div className="p-6">Loading...</div>}
-        right={<div className="p-6">Loading card details...</div>}
-      />
-    );
+    return <Loading />;
   }
 
   if (error || !card) {
@@ -274,22 +266,29 @@ export default function CardPageClient({
             {/* Card Header */}
             <div className="flex items-start justify-between mb-6">
               <div className="flex-1">
-                <h1 className="text-2xl font-bold text-gray-900 mb-2">
+                <h1 className="text-2xl font-bold text-gray-900 mb-3">
                   {card.title}
                 </h1>
 
-                {/* Status Badge */}
+                {/* Status & Priority Badges */}
                 <div className="flex items-center gap-3 mb-4">
                   <Badge
                     variant="secondary"
-                    className="flex items-center gap-1"
+                    className={cn(
+                      "flex items-center gap-1.5",
+                      card.column?.name === "Done"
+                        ? "bg-green-50 text-green-700 border-green-200"
+                        : card.column?.name === "In Progress"
+                          ? "bg-blue-50 text-blue-700 border-blue-200"
+                          : "bg-gray-50 text-gray-700 border-gray-200"
+                    )}
                   >
                     {card.column?.name === "Done" ? (
-                      <CheckCircle2 size={12} className="text-green-600" />
+                      <CheckCircle2 size={12} />
                     ) : card.column?.name === "In Progress" ? (
-                      <PlayCircle size={12} className="text-blue-600" />
+                      <PlayCircle size={12} />
                     ) : (
-                      <Clock size={12} className="text-gray-500" />
+                      <Clock size={12} />
                     )}
                     {card.column?.name || "No Status"}
                   </Badge>
@@ -298,7 +297,7 @@ export default function CardPageClient({
                     <Badge
                       variant="outline"
                       className={cn(
-                        "flex items-center gap-1",
+                        "flex items-center gap-1.5",
                         getPriorityConfig(card.priority).color
                       )}
                     >
@@ -312,26 +311,41 @@ export default function CardPageClient({
               {/* Action Buttons */}
               <div className="flex items-center gap-2">
                 {canEdit && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setEditTaskOpen(true)}
-                    className="flex items-center gap-2"
-                  >
-                    <Edit size={16} />
-                    Edit
-                  </Button>
+                  <div className="relative group">
+                    <button
+                      onClick={() => setEditTaskOpen(true)}
+                      className="p-2 rounded-md hover:bg-gray-100 hover:cursor-pointer text-primary hover:text-primary/70"
+                    >
+                      <Edit size={16} />
+                    </button>
+                    {/* Tooltip */}
+                    <span
+                      className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2
+                   hidden group-hover:block rounded-md bg-gray-800 px-2 py-1
+                   text-xs text-white whitespace-nowrap z-50"
+                    >
+                      Edit
+                    </span>
+                  </div>
                 )}
+
                 {canDelete && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleDeleteClick}
-                    className="flex items-center gap-2 text-red-600 hover:text-red-700 hover:bg-red-50"
-                  >
-                    <Trash2 size={16} />
-                    Delete
-                  </Button>
+                  <div className="relative group">
+                    <button
+                      onClick={handleDeleteClick}
+                      className="p-2 hover:cursor-pointer rounded-md hover:bg-red-50 text-red-600 hover:text-red-700"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                    {/* Tooltip */}
+                    <span
+                      className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2
+                   hidden group-hover:block rounded-md bg-gray-800 px-2 py-1
+                   text-xs text-white whitespace-nowrap z-50"
+                    >
+                      Delete
+                    </span>
+                  </div>
                 )}
               </div>
             </div>
@@ -340,8 +354,8 @@ export default function CardPageClient({
             <div className="space-y-6">
               {/* Description */}
               {card.description && (
-                <div>
-                  <h3 className="font-medium text-gray-900 mb-2">
+                <div className=" bg-gray-50 rounded-lg p-4">
+                  <h3 className="font-medium text-gray-900 mb-3">
                     Description
                   </h3>
                   <div
@@ -351,14 +365,14 @@ export default function CardPageClient({
                 </div>
               )}
 
-              {/* Metadata Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Metadata - Jira Style */}
+              <div className="space-y-4">
                 {/* Assignee */}
-                <div>
-                  <h3 className="font-medium text-gray-900 mb-2 flex items-center gap-2">
-                    <User size={16} />
-                    Assignee
-                  </h3>
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2 text-sm text-gray-600 w-24">
+                    <User size={14} />
+                    <span>Assignee</span>
+                  </div>
                   {card.assignee ? (
                     <div className="flex items-center gap-2">
                       {card.assignee.avatarUrl ? (
@@ -373,7 +387,7 @@ export default function CardPageClient({
                           {card.assignee.lastName?.charAt(0)}
                         </div>
                       )}
-                      <span className="text-sm text-gray-700">
+                      <span className="text-sm text-gray-900">
                         {card.assignee.firstName} {card.assignee.lastName}
                       </span>
                     </div>
@@ -382,42 +396,74 @@ export default function CardPageClient({
                   )}
                 </div>
 
+                {/* Reporter/Creator */}
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2 text-sm text-gray-600 w-24">
+                    <User size={14} />
+                    <span>Created By</span>
+                  </div>
+                  {card.owner ? (
+                    <div className="flex items-center gap-2">
+                      {card.owner.avatarUrl ? (
+                        <img
+                          src={card.owner.avatarUrl}
+                          alt=""
+                          className="w-6 h-6 rounded-full"
+                        />
+                      ) : (
+                        <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-xs">
+                          {card.owner.firstName?.charAt(0)}
+                          {card.owner.lastName?.charAt(0)}
+                        </div>
+                      )}
+                      <span className="text-sm text-gray-900">
+                        {card.owner.firstName} {card.owner.lastName}
+                      </span>
+                    </div>
+                  ) : (
+                    <span className="text-sm text-gray-500">Unknown</span>
+                  )}
+                </div>
+
                 {/* Due Date */}
-                <div>
-                  <h3 className="font-medium text-gray-900 mb-2 flex items-center gap-2">
-                    <Calendar size={16} />
-                    Due Date
-                  </h3>
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2 text-sm text-gray-600 w-24">
+                    <Calendar size={14} />
+                    <span>Due Date</span>
+                  </div>
                   {card.dueDate ? (
-                    <span className="text-sm text-gray-700">
-                      {format(new Date(card.dueDate), "PPP")}
+                    <span className="text-sm text-gray-900">
+                      {format(new Date(card.dueDate), "MMM d, yyyy")}
                     </span>
                   ) : (
-                    <span className="text-sm text-gray-500">No due date</span>
+                    <span className="text-sm text-gray-500">None</span>
                   )}
                 </div>
 
                 {/* Start Date */}
                 {card.startDate && (
-                  <div>
-                    <h3 className="font-medium text-gray-900 mb-2 flex items-center gap-2">
-                      <PlayCircle size={16} />
-                      Start Date
-                    </h3>
-                    <span className="text-sm text-gray-700">
-                      {format(new Date(card.startDate), "PPP")}
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2 text-sm text-gray-600 w-24">
+                      <PlayCircle size={14} />
+                      <span>Start Date</span>
+                    </div>
+                    <span className="text-sm text-gray-900">
+                      {format(new Date(card.startDate), "MMM d, yyyy")}
                     </span>
                   </div>
                 )}
 
                 {/* Created */}
-                <div>
-                  <h3 className="font-medium text-gray-900 mb-2 flex items-center gap-2">
-                    <Clock size={16} />
-                    Created
-                  </h3>
-                  <span className="text-sm text-gray-700">
-                    {format(new Date(card.createdAt), "PPP 'at' pp")}
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2 text-sm text-gray-600 w-24">
+                    <Clock size={14} />
+                    <span>Created</span>
+                  </div>
+                  <span className="text-sm text-gray-900">
+                    {format(
+                      new Date(card.createdAt),
+                      "MMM d, yyyy 'at' h:mm a"
+                    )}
                   </span>
                 </div>
               </div>
@@ -425,10 +471,10 @@ export default function CardPageClient({
               {/* Labels */}
               {card.labels && card.labels.length > 0 && (
                 <div>
-                  <h3 className="font-medium text-gray-900 mb-2 flex items-center gap-2">
-                    <Tag size={16} />
-                    Labels
-                  </h3>
+                  <div className="flex items-center gap-2 text-sm text-gray-600 mb-3">
+                    <Tag size={14} />
+                    <span>Labels</span>
+                  </div>
                   <div className="flex flex-wrap gap-2">
                     {card.labels.map((label: any) => (
                       <Badge
@@ -446,7 +492,7 @@ export default function CardPageClient({
                 </div>
               )}
 
-              {/* Comments Section - Replaced the placeholder */}
+              {/* Comments Section */}
               <CommentSection
                 cardId={cardId}
                 userId={userId}

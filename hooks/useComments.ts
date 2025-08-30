@@ -8,22 +8,19 @@ import {
   deleteComment,
   getCardComments,
 } from "@/lib/services/comments";
-import { toast } from "sonner";
-import { Comment } from "@/types/forms/comment";
+import { useCommentsRealTime } from "./websocket/useCommentsRealTime";
 
 export interface CreateCommentData {
   cardId: string;
   content: string;
-  parentId?: number; // Changed from string to number
+  parentId?: string;
 }
 
-export interface UpdateCommentData {
-  commentId: number; // Changed from string to number
-  content: string;
-}
-
-// Hook to get all comments for a card
+// Hook to get all comments for a card with real-time updates
 export function useComments(cardId: string) {
+  // Set up real-time listening
+  useCommentsRealTime(cardId);
+
   return useQuery({
     queryKey: ["comments", cardId],
     queryFn: () => getCardComments(cardId),
@@ -38,14 +35,13 @@ export function useCreateComment() {
   return useMutation({
     mutationFn: createComment,
     onSuccess: (data, variables) => {
-      // Invalidate and refetch comments for the card
+      // Real-time will handle the update, but we can optionally invalidate for consistency
       queryClient.invalidateQueries({
         queryKey: ["comments", variables.cardId],
       });
-      toast.success("Comment added successfully");
     },
     onError: (error: Error) => {
-      toast.error(error.message || "Failed to add comment");
+      console.error("Failed to create comment:", error);
     },
   });
 }
@@ -56,15 +52,14 @@ export function useUpdateComment() {
 
   return useMutation({
     mutationFn: updateComment,
-    onSuccess: (data) => {
-      // Invalidate all comment queries to refresh the data
+    onSuccess: () => {
+      // Real-time will handle the update
       queryClient.invalidateQueries({
         queryKey: ["comments"],
       });
-      toast.success("Comment updated successfully");
     },
     onError: (error: Error) => {
-      toast.error(error.message || "Failed to update comment");
+      console.error("Failed to update comment:", error);
     },
   });
 }
@@ -76,14 +71,13 @@ export function useDeleteComment() {
   return useMutation({
     mutationFn: deleteComment,
     onSuccess: () => {
-      // Invalidate all comment queries to refresh the data
+      // Real-time will handle the update
       queryClient.invalidateQueries({
         queryKey: ["comments"],
       });
-      toast.success("Comment deleted successfully");
     },
     onError: (error: Error) => {
-      toast.error(error.message || "Failed to delete comment");
+      console.error("Failed to delete comment:", error);
     },
   });
 }

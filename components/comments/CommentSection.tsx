@@ -111,14 +111,14 @@ const MentionHover: React.FC<MentionHoverProps> = ({ user, username }) => {
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
-      <span className="bg-blue-100 text-blue-800 px-1 py-0.5 rounded text-sm font-medium cursor-pointer hover:bg-blue-200 transition-colors">
+      <span className="bg-blue-100 text-blue-800 px-1 py-0.5 rounded text-sm font-medium cursor-default hover:bg-blue-200 transition-colors">
         @{username}
       </span>
 
       {hovered && (
         <div
-          className="absolute left-1/2 -translate-x-1/2 mt-2
-             max-w-sm w-max  p-3 bg-white border border-gray-200
+          className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 z-10
+             max-w-sm w-max p-3 bg-white border border-gray-200
              rounded-lg shadow-lg text-sm text-gray-700 whitespace-normal"
         >
           <div className="flex items-center gap-2">
@@ -130,6 +130,8 @@ const MentionHover: React.FC<MentionHoverProps> = ({ user, username }) => {
               <p className="text-gray-500 text-xs">{user.email}</p>
             </div>
           </div>
+          <div className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-white"></div>
+          <div className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-200 translate-y-px"></div>
         </div>
       )}
     </span>
@@ -151,11 +153,12 @@ function EditCommentDialog({
     setIsSubmitting(true);
     try {
       await updateCommentMutation.mutateAsync({
-        commentId: comment.id.toString(), // Convert to string
+        commentId: String(comment.id),
         content: content.trim(),
       });
       onClose();
     } catch (error) {
+      console.error("Failed to update comment:", error);
     } finally {
       setIsSubmitting(false);
     }
@@ -209,6 +212,7 @@ function DeleteCommentDialog({
       await deleteCommentMutation.mutateAsync(comment.id.toString());
       onClose();
     } catch (error) {
+      console.error("Failed to delete comment:", error);
     } finally {
       setIsDeleting(false);
     }
@@ -258,12 +262,6 @@ function CommentItem({
   onReply,
   level = 0,
 }: CommentItemProps) {
-  console.log("CommentItem ->", {
-    id: comment.id,
-    content: comment.content,
-    mentions: comment.mentions,
-    isReply: level > 0,
-  });
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
@@ -297,7 +295,8 @@ function CommentItem({
                   addSuffix: true,
                 })}
               </span>
-              {comment.createdAt !== comment.updatedAt && (
+              {new Date(comment.createdAt).getTime() !==
+                new Date(comment.updatedAt).getTime() && (
                 <span className="text-xs text-gray-400">(edited)</span>
               )}
             </div>
@@ -311,7 +310,7 @@ function CommentItem({
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => onReply(comment.id.toString())} // Convert to string
+                  onClick={() => onReply(comment.id.toString())}
                   className="text-xs text-gray-500 hover:text-gray-700 p-0 h-auto"
                 >
                   <Reply size={14} className="mr-1" />
@@ -458,11 +457,12 @@ function CommentForm({
       await createCommentMutation.mutateAsync({
         cardId,
         content: content.trim(),
-        parentId: parentId,
+        parentId,
       });
       setContent("");
       if (onCancel) onCancel();
     } catch (error) {
+      console.error("Failed to create comment:", error);
     } finally {
       setIsSubmitting(false);
     }
@@ -556,12 +556,13 @@ export default function CommentSection({
   availableUsers,
 }: CommentSectionProps) {
   const [showNewComment, setShowNewComment] = useState(false);
-  const [replyingTo, setReplyingTo] = useState<string | null>(null);
+  const [replyingTo, setReplyingTo] = useState<number | null>(null); // Changed to number
 
+  // Real-time comments hook automatically handles WebSocket connections
   const { data: comments, isLoading, error } = useComments(cardId);
 
   const handleReply = (commentId: string) => {
-    setReplyingTo(commentId);
+    setReplyingTo(parseInt(commentId, 10)); // Convert string to number
     setShowNewComment(false);
   };
 
@@ -603,7 +604,7 @@ export default function CommentSection({
           <Button
             onClick={() => setShowNewComment(true)}
             size="sm"
-            className="flex items-center gap-2"
+            className="flex items-center gap-2 hover:cursor-pointer"
           >
             <Plus size={14} />
             Add Comment
@@ -632,11 +633,11 @@ export default function CommentSection({
               />
 
               {/* Reply form */}
-              {replyingTo === comment.id.toString() && ( // Convert for comparison
+              {replyingTo === comment.id && (
                 <div className="ml-8 mt-3 pl-4 border-l border-gray-200">
                   <CommentForm
                     cardId={cardId}
-                    parentId={comment.id.toString()} // Convert to string
+                    parentId={comment.id} // Keep as number
                     availableUsers={availableUsers}
                     onCancel={handleCancelReply}
                   />
