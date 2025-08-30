@@ -400,7 +400,7 @@ export default function CardPageClient({
                 <div className="flex items-center gap-4">
                   <div className="flex items-center gap-2 text-sm text-gray-600 w-24">
                     <User size={14} />
-                    <span>Reporter</span>
+                    <span>Created By</span>
                   </div>
                   {card.owner ? (
                     <div className="flex items-center gap-2">
