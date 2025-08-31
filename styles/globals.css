@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "./ui/scrollbar.css";
+@import "./ui/recharts.css";
 @import "./utils/calendar-view.css";
 @import "./animation/keyframes.css";
 

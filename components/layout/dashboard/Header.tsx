@@ -293,17 +293,6 @@ export default function Header({ teams, projects, userId }: HeaderProps) {
                   </Link>
                 </div>
               )}
-
-              {/* Mobile CTA */}
-              <div className="border-t border-border pt-4">
-                <Link
-                  href="/sign-in"
-                  className="block mx-auto px-6 py-3 border border-primary text-primary rounded-lg hover:bg-accent hover:border-primary/80 transition-all duration-200 font-medium text-center"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  Get Started
-                </Link>
-              </div>
             </div>
           </div>
         </>

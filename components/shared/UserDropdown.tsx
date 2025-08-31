@@ -6,11 +6,13 @@ import { Settings, LogOut, ChevronDown, Activity } from "lucide-react";
 import { SignOutButton } from "@clerk/nextjs";
 import { useUserContext, useUserLoading } from "@/contexts/UserContext";
 import UserAvatar from "@/components/shared/UserAvatar";
+import { useMediaQuery } from "usehooks-ts";
 
 export default function UserDropdown() {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
+  const isMobile = useMediaQuery("(max-width: 640px)");
 
   // Context values
   const { clerkUser, error, refetch } = useUserContext();
@@ -75,7 +77,7 @@ export default function UserDropdown() {
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center space-x-2 px-4 py-2 rounded-lg hover:bg-gray-50 focus:outline-none transition-colors duration-200"
       >
-        <UserAvatar size="28" showName={true} />
+        <UserAvatar size="28" showName={!isMobile} />
         <ChevronDown
           className={`w-4 h-4 text-gray-500 transition-transform duration-200 ${
             isOpen ? "rotate-180" : ""

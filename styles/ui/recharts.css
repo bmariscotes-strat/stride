@@ -1,0 +1,35 @@
+:root {
+  --tooltip-bg: white;
+  --tooltip-border: #e5e7eb;
+}
+
+[data-theme="dark"],
+.dark {
+  --tooltip-bg: #1f2937;
+  --tooltip-border: #374151;
+}
+
+.recharts-tooltip-wrapper .recharts-default-tooltip {
+  background-color: var(--tooltip-bg) !important;
+  border: 1px solid var(--tooltip-border) !important;
+  border-radius: 6px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.dark .recharts-tooltip-wrapper .recharts-default-tooltip {
+  color: #f3f4f6 !important;
+}
+
+.dark .recharts-cartesian-grid line {
+  stroke: #374151;
+}
+
+.dark .recharts-text {
+  fill: #9ca3af;
+}
+
+@media (max-width: 640px) {
+  .recharts-responsive-container {
+    min-height: 200px;
+  }
+}

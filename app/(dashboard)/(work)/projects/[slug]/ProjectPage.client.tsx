@@ -214,8 +214,8 @@ export default function ProjectPageClient({
           <>
             <AppBreadcrumb />
 
-            <div className="flex flex-col sm:flex-row items-start justify-between mb-4 gap-3 sm:gap-0">
-              <div className="flex-1 min-w-0 w-full sm:w-auto">
+            <div className="flex flex-row items-start justify-between mb-4 gap-3">
+              <div className="flex-1 min-w-0">
                 <h2 className="font-bold text-xl text-gray-900 dark:text-gray-100 mb-2 truncate">
                   {project.name}
                 </h2>
