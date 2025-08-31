@@ -86,7 +86,7 @@ export default function Header({ teams, projects, userId }: HeaderProps) {
           {/* Brand + Desktop Navigation */}
           <section className="flex items-center space-x-2 sm:space-x-4 lg:space-x-6">
             <Link
-              href="/"
+              href="/dashboard"
               className="flex items-center space-x-2 group flex-shrink-0"
             >
               <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center">
