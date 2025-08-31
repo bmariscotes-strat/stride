@@ -47,7 +47,12 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
         <div className="relative flex">
           {/* Left addon */}
           {leftAddon && (
-            <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm whitespace-nowrap">
+            <span
+              className="inline-flex items-center px-3 rounded-l-md border border-r-0 
+             border-gray-300 bg-gray-50 text-gray-500 
+             dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 
+             text-sm whitespace-nowrap"
+            >
               {leftAddon}
             </span>
           )}
@@ -66,7 +71,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
               id={inputId}
               type={type}
               className={cn(
-                "block w-full border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2 border",
+                "block w-full border-gray-300 dark:border-gray-700 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2 border",
                 leftIcon && !leftAddon && "pl-10",
                 rightIcon && !rightAddon && "pr-10",
                 leftAddon && "rounded-l-none border-l-0",
@@ -100,7 +105,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
 
           {/* Right addon */}
           {rightAddon && (
-            <span className="inline-flex items-center px-3 rounded-r-md border border-l-0 border-gray-300 bg-gray-50 text-gray-500 text-sm whitespace-nowrap">
+            <span className="inline-flex items-center px-3 rounded-r-md border border-l-0 border-gray-300 dark:border-gray-700 bg-gray-50 text-gray-500 text-sm whitespace-nowrap">
               {rightAddon}
             </span>
           )}

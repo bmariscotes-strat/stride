@@ -292,7 +292,7 @@ export default function ProjectCreationForm({
   }
 
   return (
-    <div className="p-6 max-w-2xl">
+    <div className="p-1 sm:p-1 md:p-6 lg:p-6 max-w-2xl">
       <form onSubmit={handleSubmit} className="space-y-12">
         <ProjectInformationSection
           formData={formData}
