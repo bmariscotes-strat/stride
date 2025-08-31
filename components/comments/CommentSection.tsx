@@ -111,14 +111,14 @@ const MentionHover: React.FC<MentionHoverProps> = ({ user, username }) => {
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
-      <span className="bg-blue-100 text-blue-800 px-1 py-0.5 rounded text-sm font-medium cursor-pointer hover:bg-blue-200 transition-colors">
+      <span className="bg-blue-100 text-blue-800 px-1 py-0.5 rounded text-sm font-medium cursor-default hover:bg-blue-200 transition-colors">
         @{username}
       </span>
 
       {hovered && (
         <div
-          className="absolute left-1/2 -translate-x-1/2 mt-2
-             max-w-sm w-max  p-3 bg-white border border-gray-200
+          className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 z-10
+             max-w-sm w-max p-3 bg-white border border-gray-200
              rounded-lg shadow-lg text-sm text-gray-700 whitespace-normal"
         >
           <div className="flex items-center gap-2">
@@ -130,6 +130,8 @@ const MentionHover: React.FC<MentionHoverProps> = ({ user, username }) => {
               <p className="text-gray-500 text-xs">{user.email}</p>
             </div>
           </div>
+          <div className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-white"></div>
+          <div className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-200 translate-y-px"></div>
         </div>
       )}
     </span>
@@ -603,7 +605,7 @@ export default function CommentSection({
           <Button
             onClick={() => setShowNewComment(true)}
             size="sm"
-            className="flex items-center gap-2"
+            className="flex items-center gap-2 hover:cursor-pointer"
           >
             <Plus size={14} />
             Add Comment

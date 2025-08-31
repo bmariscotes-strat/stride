@@ -3,6 +3,11 @@ import { DashboardService } from "@/lib/services/dashboard";
 import { getRequiredUserId } from "@/lib/utils/get-current-user";
 import { getCurrentUser } from "@/lib/services/users";
 import { redirect } from "next/navigation";
+import { createMetadata } from "@/lib/utils/metadata";
+
+export const metadata = createMetadata({
+  title: "Dashboard",
+});
 
 export default async function DashboardPage() {
   const userId = await getRequiredUserId();

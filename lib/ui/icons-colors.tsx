@@ -1,4 +1,12 @@
-import { Kanban, List, Table, Crown, Shield, Eye } from "lucide-react";
+import {
+  Kanban,
+  List,
+  Table,
+  Crown,
+  Calendar,
+  Shield,
+  Eye,
+} from "lucide-react";
 
 export const getRoleIcon = (role: "admin" | "editor" | "viewer") => {
   switch (role) {
@@ -32,6 +40,8 @@ export const getIcon = (iconName: string) => {
       return Kanban;
     case "List":
       return List;
+    case "Calendar":
+      return Calendar;
     case "Table":
       return Table;
     default:

@@ -10,7 +10,7 @@ import {
   useSensors,
   closestCorners,
 } from "@dnd-kit/core";
-import { RefreshCw } from "lucide-react";
+import { ListTodo, RefreshCw } from "lucide-react";
 import { Card } from "@/types/forms/tasks";
 import { useKanbanStore } from "@/stores/views/board-store";
 import { AddColumnCard } from "@/components/views/kanban/AddColumnCard";
@@ -204,7 +204,9 @@ export default function KanbanBoard({
   if (columns.length > 0 && columns.every((col) => col.cards.length === 0)) {
     return (
       <div className="flex flex-col items-center justify-center h-64 text-gray-500">
-        <p className="mb-2">No tasks yet</p>
+        <ListTodo className="h-12 w-12 mx-auto mb-3 text-gray-400" />
+        <p className="text-lg font-medium mb-1">No tasks yet</p>
+        <p className="text-sm">Tasks will appear here once created</p>
       </div>
     );
   }

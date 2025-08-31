@@ -3,9 +3,9 @@ import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useUserContext } from "@/contexts/UserContext";
 import { useCreateProject } from "@/hooks/useProjects";
-import AlertMessages from "@/components/projects/form/AlertMessages";
 import ProjectInformationSection from "./ProjectInformationSection";
 import type { ProjectCreationProps, ProjectFormData } from "@/types";
+import { toast } from "sonner";
 
 interface ProjectCreationFormProps extends ProjectCreationProps {
   onNavigateBack: () => void;
@@ -110,6 +110,18 @@ export default function ProjectCreationForm({
 
     return () => observer.disconnect();
   }, []);
+
+  // Success toasts
+  useEffect(() => {
+    if (success) {
+      toast.success(
+        "Project created successfully. You will soon be redirected."
+      );
+    }
+    if (error) {
+      toast.error(error);
+    }
+  }, [success, error]);
 
   // Clear error when form data changes
   useEffect(() => {
@@ -281,8 +293,6 @@ export default function ProjectCreationForm({
 
   return (
     <div className="p-6 max-w-2xl">
-      <AlertMessages success={success} error={error} />
-
       <form onSubmit={handleSubmit} className="space-y-12">
         <ProjectInformationSection
           formData={formData}

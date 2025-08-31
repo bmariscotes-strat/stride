@@ -663,6 +663,10 @@ export const cardsRelations = relations(cards, ({ one, many }) => ({
     fields: [cards.assigneeId],
     references: [users.id],
   }),
+  owner: one(users, {
+    fields: [cards.ownerId],
+    references: [users.id],
+  }),
   labels: many(cardLabels),
   comments: many(cardComments),
   attachments: many(cardAttachments),

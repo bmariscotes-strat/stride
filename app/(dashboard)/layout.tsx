@@ -1,40 +1,45 @@
 // app/(dashboard)/layout.tsx
-import Header from "@/components/layout/dashboard/Header";
-import { getCurrentUser } from "@/lib/services/users";
-import { getProjectsForUser } from "@/lib/services/projects";
-import { getTeamsForUser } from "@/lib/services/teams";
 import { Suspense } from "react";
-import { BaseNavSource } from "@/types";
+import HeaderWrapper from "./header-wrapper";
 
-export default async function DashboardLayout({
+export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const user = await getCurrentUser();
-  const userId = user?.id || null;
-  const teams: BaseNavSource[] = user
-    ? (await getTeamsForUser(user.id)).slice(0, 3).map((team) => ({
-        slug: team.slug,
-        name: team.name,
-        description: team.description,
-      }))
-    : [];
-  const projects: BaseNavSource[] = user
-    ? (await getProjectsForUser(user.id)).slice(0, 3).map((project) => ({
-        slug: project.slug,
-        name: project.name,
-        description: project.description,
-      }))
-    : [];
-
   return (
     <div className="min-h-screen">
       <div>
-        <Header userId={userId} teams={teams} projects={projects} />
+        <Suspense
+          fallback={
+            <div className="h-16 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 animate-pulse">
+              <div className="px-4 sm:px-6 lg:px-12 h-full flex items-center">
+                <div className="h-8 w-32 bg-gray-200 dark:bg-gray-700 rounded"></div>
+              </div>
+            </div>
+          }
+        >
+          <HeaderWrapper />
+        </Suspense>
 
         <main className="py-3 px-4 sm:px-6 lg:px-12">
-          <Suspense>{children}</Suspense>
+          <Suspense
+            fallback={
+              <div className="animate-pulse space-y-6">
+                <div className="h-32 bg-gray-200 dark:bg-gray-700 rounded-lg"></div>
+                <div className="grid grid-cols-4 gap-4">
+                  {[1, 2, 3, 4].map((i) => (
+                    <div
+                      key={i}
+                      className="h-24 bg-gray-200 dark:bg-gray-700 rounded"
+                    ></div>
+                  ))}
+                </div>
+              </div>
+            }
+          >
+            {children}
+          </Suspense>
         </main>
       </div>
     </div>
