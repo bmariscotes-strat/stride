@@ -334,6 +334,7 @@ export interface Card {
   updatedAt: Date;
   columnId: string;
   assigneeId?: string | null;
+  ownerId?: string | null;
   archived?: boolean;
   position: number;
 
