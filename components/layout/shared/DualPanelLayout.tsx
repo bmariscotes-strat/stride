@@ -161,7 +161,7 @@ export default function DualPanelLayout({
         className={`transition-all duration-300 ${isMobile ? "ml-0 pt-4" : ""}`}
         style={!isMobile ? { marginLeft: sidebarWidth } : undefined}
       >
-        <div className="pr-5">{right}</div>
+        <div className="pr-1 md:pr-5 lg:pr-5">{right}</div>
       </main>
     </div>
   );

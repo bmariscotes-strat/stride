@@ -36,17 +36,19 @@ export default function DeleteColumnModal({
             <AlertTriangle className="w-6 h-6 text-red-600" />
           </div>
           <div className="mt-4 text-center">
-            <h3 className="text-lg font-medium text-gray-900">Delete Column</h3>
+            <h3 className="text-lg font-medium text-gray-900 dark:text-gray-200">
+              Delete Column
+            </h3>
             <div className="mt-2 px-7 py-3">
               {hasCards ? (
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-gray-500 dark:text-gray-400">
                   Cannot delete column <strong>"{column.name}"</strong> because
                   it contains <strong>{column.cards.length}</strong> task
                   {column.cards.length === 1 ? "" : "s"}. Please move or delete
                   all tasks first.
                 </p>
               ) : (
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-gray-500 dark:text-gray-400">
                   Are you sure you want to delete the column{" "}
                   <strong>"{column.name}"</strong>? This action cannot be
                   undone.

@@ -29,15 +29,15 @@ export default function ArchiveProjectDialog({
             <Archive className="w-6 h-6 text-yellow-600" />
           </div>
           <div className="mt-4 text-center">
-            <h3 className="text-lg font-medium text-gray-900">
+            <h3 className="text-lg font-medium text-gray-900 dark:text-gray-200">
               Archive Project
             </h3>
             <div className="mt-2 px-7 py-3">
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-gray-500 dark:text-gray-400">
                 Are you sure you want to archive <strong>{project.name}</strong>
                 ? This will:
               </p>
-              <ul className="mt-3 text-sm text-gray-500 text-left list-disc list-inside">
+              <ul className="mt-3 text-sm text-gray-500 dark:text-gray-400 text-left list-disc list-inside">
                 <li>Hide the project from team members</li>
                 <li>Prevent new activity in the project</li>
                 <li>Preserve all project data, tasks, and attachments</li>
