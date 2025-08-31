@@ -209,13 +209,12 @@ export default function AnalyticsClient({
         );
       }
 
-      // 8. Average Time in Columns Sheet
       if (analyticsData.averageTimeInColumn.length > 0) {
         const timeData = [
-          ["Column Name", "Average Time (hours)"],
+          ["Column Name", "Average Time (days)"],
           ...analyticsData.averageTimeInColumn.map((item) => [
             item.columnName,
-            item.averageHours,
+            item.averageDays,
           ]),
         ];
         const timeSheet = XLSX.utils.aoa_to_sheet(timeData);
@@ -498,6 +497,36 @@ export default function AnalyticsClient({
             )}
           </div>
 
+          {/* Average Days in Columns */}
+          <div className="bg-white dark:bg-outer_space-500 rounded-lg border border-gray-300 dark:border-payne's_gray-400 p-6">
+            <h3 className="text-lg font-semibold text-outer_space-500 dark:text-platinum-500 mb-4">
+              Average Days in Columns
+            </h3>
+            {analyticsData.averageTimeInColumn.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart
+                  data={analyticsData.averageTimeInColumn}
+                  layout="vertical"
+                  margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis type="number" />
+                  <YAxis dataKey="columnName" type="category" width={100} />
+                  <Tooltip
+                    formatter={(value) => [`${value} days`, "Average Time"]}
+                  />
+                  <Bar dataKey="averageDays" fill="#8B5CF6" name="Days" />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <EmptyState
+                icon={Clock}
+                title="No Time Data"
+                description="Time tracking will show once cards move through different columns."
+              />
+            )}
+          </div>
+
           {/* Activity Trend */}
           <div className="bg-white dark:bg-outer_space-500 rounded-lg border border-gray-300 dark:border-payne's_gray-400 p-6">
             <h3 className="text-lg font-semibold text-outer_space-500 dark:text-platinum-500 mb-4">
@@ -548,35 +577,6 @@ export default function AnalyticsClient({
               />
             )}
           </div>
-
-          {/* Team Performance - Only show if user has permission */}
-          {analyticsPermissions.canViewTeamPerformance && (
-            <div className="bg-white dark:bg-outer_space-500 rounded-lg border border-gray-300 dark:border-payne's_gray-400 p-6">
-              <h3 className="text-lg font-semibold text-outer_space-500 dark:text-platinum-500 mb-4">
-                Team Performance
-              </h3>
-              {analyticsData.cardsByAssignee.length > 0 ? (
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={analyticsData.cardsByAssignee}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="assigneeName" />
-                    <YAxis />
-                    <Tooltip />
-                    <Legend />
-                    <Bar dataKey="assigned" fill="#3B82F6" name="Assigned" />
-                    <Bar dataKey="completed" fill="#10B981" name="Completed" />
-                    <Bar dataKey="overdue" fill="#EF4444" name="Overdue" />
-                  </BarChart>
-                </ResponsiveContainer>
-              ) : (
-                <EmptyState
-                  icon={Users}
-                  title="No Assignment Data"
-                  description="Team performance metrics will show once cards are assigned to members."
-                />
-              )}
-            </div>
-          )}
         </div>
 
         {/* Additional Metrics */}
@@ -612,32 +612,34 @@ export default function AnalyticsClient({
             )}
           </div>
 
-          {/* Average Time in Columns */}
-          <div className="bg-white dark:bg-outer_space-500 rounded-lg border border-gray-300 dark:border-payne's_gray-400 p-6">
-            <h3 className="text-lg font-semibold text-outer_space-500 dark:text-platinum-500 mb-4">
-              Average Time in Columns
-            </h3>
-            {analyticsData.averageTimeInColumn.length > 0 ? (
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart
-                  data={analyticsData.averageTimeInColumn}
-                  layout="horizontal"
-                >
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis type="number" />
-                  <YAxis dataKey="columnName" type="category" width={80} />
-                  <Tooltip />
-                  <Bar dataKey="averageHours" fill="#8B5CF6" name="Hours" />
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <EmptyState
-                icon={Clock}
-                title="No Time Data"
-                description="Time tracking will show once cards move through different columns."
-              />
-            )}
-          </div>
+          {/* Team Performance - Only show if user has permission */}
+          {analyticsPermissions.canViewTeamPerformance && (
+            <div className="bg-white dark:bg-outer_space-500 rounded-lg border border-gray-300 dark:border-payne's_gray-400 p-6">
+              <h3 className="text-lg font-semibold text-outer_space-500 dark:text-platinum-500 mb-4">
+                Team Performance
+              </h3>
+              {analyticsData.cardsByAssignee.length > 0 ? (
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={analyticsData.cardsByAssignee}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="assigneeName" />
+                    <YAxis />
+                    <Tooltip />
+                    <Legend />
+                    <Bar dataKey="assigned" fill="#3B82F6" name="Assigned" />
+                    <Bar dataKey="completed" fill="#10B981" name="Completed" />
+                    <Bar dataKey="overdue" fill="#EF4444" name="Overdue" />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <EmptyState
+                  icon={Users}
+                  title="No Assignment Data"
+                  description="Team performance metrics will show once cards are assigned to members."
+                />
+              )}
+            </div>
+          )}
         </div>
 
         {/* Individual Productivity Table */}

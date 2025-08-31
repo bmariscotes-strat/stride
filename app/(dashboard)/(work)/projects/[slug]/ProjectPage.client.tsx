@@ -318,7 +318,7 @@ export default function ProjectPageClient({
                       key={id}
                       type="button"
                       onClick={() => handleViewChange(id as ViewType)}
-                      className={`w-full text-left px-3 py-2 rounded-md text-sm flex items-center gap-2 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:ring-offset-2 dark:focus:ring-offset-gray-900 ${
+                      className={`w-full text-left px-3 py-2 rounded-md text-sm flex items-center gap-2 transition-colors focus:outline-none   ${
                         isActive && !isAnalytics
                           ? "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-medium"
                           : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-200"

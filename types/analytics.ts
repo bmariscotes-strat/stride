@@ -42,7 +42,7 @@ export interface CompletionTrendData {
 
 export interface ColumnTimeData {
   columnName: string;
-  averageHours: number;
+  averageDays: number;
 }
 
 export interface TeamProductivityData {
@@ -158,7 +158,7 @@ export interface ProjectAnalyticsData {
   }>;
   averageTimeInColumn: Array<{
     columnName: string;
-    averageHours: number;
+    averageDays: number;
   }>;
   teamProductivity: Array<{
     memberName: string;

@@ -48,7 +48,7 @@ export interface ProjectAnalyticsData {
   }>;
   averageTimeInColumn: Array<{
     columnName: string;
-    averageHours: number;
+    averageDays: number;
   }>;
   teamProductivity: Array<{
     memberName: string;
@@ -237,7 +237,7 @@ export async function getProjectAnalytics(
     const averageTimeInColumnData = await db
       .select({
         columnName: columns.name,
-        averageHours: sql<number>`AVG(EXTRACT(EPOCH FROM (${cards.updatedAt} - ${cards.createdAt})) / 3600)`,
+        averageDays: sql<number>`AVG(EXTRACT(EPOCH FROM (${cards.updatedAt} - ${cards.createdAt})) / 86400)`,
       })
       .from(cards)
       .innerJoin(columns, eq(cards.columnId, columns.id))
@@ -253,7 +253,7 @@ export async function getProjectAnalytics(
 
     const averageTimeInColumn = averageTimeInColumnData.map((item) => ({
       columnName: item.columnName,
-      averageHours: Math.round(item.averageHours || 0),
+      averageDays: Math.round(item.averageDays || 0), // Keep the calculation but rename the property
     }));
 
     // Team productivity (individual performance metrics)
