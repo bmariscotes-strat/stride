@@ -5,12 +5,15 @@ import {
 import type { ActivityLogResult } from "@/types";
 import { Zap, Archive, Clock } from "lucide-react";
 import Link from "next/link";
+import { useMediaQuery } from "usehooks-ts";
 
 interface RecentActivityProps {
   activities?: ActivityLogResult[];
 }
 
 export function RecentActivity({ activities }: RecentActivityProps) {
+  const isMobile = useMediaQuery("(max-width: 640px)");
+
   if (!activities || activities.length === 0) {
     return (
       <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-8 shadow-sm hover:shadow-md transition-shadow">
@@ -130,9 +133,15 @@ export function RecentActivity({ activities }: RecentActivityProps) {
                   )}
 
                   {/* User badge */}
-                  <span className="px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
-                    {activity.user?.username || activity.user?.id || "user"}
-                  </span>
+                  {!isMobile && (
+                    <span
+                      className="px-3 py-1 rounded-full text-xs font-medium 
+                   bg-blue-100 text-blue-700 
+                   dark:bg-blue-900/30 dark:text-blue-400"
+                    >
+                      {activity.user?.username || activity.user?.id || "user"}
+                    </span>
+                  )}
                 </div>
               </div>
             </div>

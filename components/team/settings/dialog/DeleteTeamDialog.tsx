@@ -35,19 +35,19 @@ export default function DeleteTeamModal({
         <div className="mt-3">
           {deleteStep === 1 ? (
             <>
-              <div className="flex items-center justify-center w-12 h-12 mx-auto bg-red-100 rounded-full">
+              <div className="flex items-center justify-center w-12 h-12 mx-auto bg-red-100 rounded-full dark:text-gray-200">
                 <AlertTriangle className="w-6 h-6 text-red-600" />
               </div>
               <div className="mt-4 text-center">
-                <h3 className="text-lg font-medium text-gray-900">
+                <h3 className="text-lg font-medium text-gray-900 dark:text-gray-200">
                   Delete Team
                 </h3>
                 <div className="mt-2 px-7 py-3">
-                  <p className="text-sm text-gray-500">
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
                     Are you sure you want to delete <strong>{team.name}</strong>
                     ? This action cannot be undone and will permanently delete:
                   </p>
-                  <ul className="mt-3 text-sm text-gray-500 text-left list-disc list-inside">
+                  <ul className="mt-3 text-sm text-gray-500 dark:text-gray-400 text-left list-disc list-inside">
                     <li>All team data and settings</li>
                     <li>All team projects and content</li>
                     <li>All member access to the team</li>

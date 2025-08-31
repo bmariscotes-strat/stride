@@ -13,7 +13,7 @@ export default function Header() {
   const isActive = (path: string) => pathname === path;
 
   return (
-    <header className="w-full px-6 py-3 bg-background sm:px-6 lg:px-37 sticky top-0 z-50 border-b border-border">
+    <header className="w-full px-6 py-3 bg-background sm:px-6 lg:px-37 md:px-17 sticky top-0 z-50 border-b border-border">
       <nav className="flex items-center justify-between max-w-10xl mx-auto">
         {/* Logo */}
         <Link href="/" className="flex items-center space-x-3 group">
@@ -70,6 +70,12 @@ export default function Header() {
       {isMobileMenuOpen && (
         <div className="md:hidden absolute left-0 right-0 bg-background border-b-2 pb-1 border-t-2 mt-2 border-border">
           <div className="flex flex-col space-y-4 p-4">
+            <div className="flex items-center justify-between px-4">
+              <span className="text-sm font-medium text-muted-foreground">
+                Theme
+              </span>
+              <ThemeToggle />
+            </div>
             <Link
               href="/sign-in"
               className="mx-4 px-4 py-2 border border-primary text-primary rounded-lg hover:bg-accent hover:border-primary/80 transition-all duration-200 font-medium text-center"

@@ -64,10 +64,10 @@ export function AddColumnCard({
       <div className="min-w-80 max-w-80">
         <button
           onClick={handleStartAdding}
-          className="w-full h-20 bg-gray-100 hover:bg-gray-200 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center text-gray-600 hover:text-gray-800 transition-colors group"
+          className="w-full h-20 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg flex items-center justify-center text-gray-600 hover:text-gray-800 transition-colors group"
         >
           <Plus size={20} className="mr-2" />
-          <span className="font-medium">Add Column</span>
+          <span className="font-medium dark:text-gray-600">Add Column</span>
         </button>
       </div>
     );
@@ -75,7 +75,7 @@ export function AddColumnCard({
 
   return (
     <div className="min-w-80 max-w-80">
-      <div className="bg-white rounded-lg border-2 border-blue-300 p-4 shadow-sm">
+      <div className="bg-white dark:bg-gray-800 rounded-lg border-2 border-blue-300 p-4 shadow-sm">
         <form onSubmit={handleSubmit}>
           <div className="mb-3">
             <input

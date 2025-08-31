@@ -240,81 +240,81 @@ export default function TeamSelectionModal({
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
-      <div className="flex min-h-screen items-center justify-center p-4">
+      <div className="flex min-h-screen items-center justify-center p-2 sm:p-4">
         <div
-          className="fixed inset-0 bg-black bg-opacity-25"
+          className="fixed inset-0 bg-black bg-opacity-25 dark:bg-opacity-50"
           onClick={onClose}
         />
 
-        <div className="relative bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+        <div className="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-xs sm:max-w-2xl lg:max-w-4xl max-h-[95vh] sm:max-h-[90vh] overflow-hidden">
           {/* Header */}
-          <div className="flex items-center justify-between p-6 border-b border-gray-200">
-            <h3 className="text-lg font-medium text-gray-900">
+          <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700">
+            <h3 className="text-base sm:text-lg font-medium text-gray-900 dark:text-white pr-4">
               {isEditMode
                 ? "Manage Project Teams & Roles"
                 : "Select Teams & Set Roles"}
             </h3>
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-600"
+              className="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 flex-shrink-0"
             >
-              <X className="h-6 w-6" />
+              <X className="h-5 w-5 sm:h-6 sm:w-6" />
             </button>
           </div>
 
-          <div className="flex h-[calc(90vh-180px)]">
+          <div className="flex flex-col lg:flex-row h-[calc(95vh-140px)] sm:h-[calc(90vh-180px)]">
             {/* Teams Selection */}
-            <div className="w-1/3 border-r border-gray-200 p-6">
-              <h4 className="text-sm font-medium text-gray-900 mb-2">
+            <div className="w-full lg:w-1/3 border-b lg:border-b-0 lg:border-r border-gray-200 dark:border-gray-700 p-4 sm:p-6">
+              <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-2">
                 Teams You Can Manage ({adminTeams.length})
               </h4>
-              <p className="text-xs text-gray-500 mb-4">
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
                 Only showing teams where you are an admin or owner
               </p>
 
-              <div className="space-y-2 max-h-[calc(90vh-300px)] overflow-y-auto">
+              <div className="space-y-2 max-h-40 lg:max-h-[calc(90vh-300px)] overflow-y-auto">
                 {adminTeams.length > 0 ? (
                   adminTeams.map((team) => (
                     <div
                       key={team.id}
                       className={`p-3 rounded-md border cursor-pointer transition-colors ${
                         selectedTeamIds.includes(team.id)
-                          ? "border-blue-500 bg-blue-50"
-                          : "border-gray-200 hover:bg-gray-50"
+                          ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-400"
+                          : "border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700"
                       }`}
                       onClick={() => handleTeamToggle(team.id)}
                     >
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
                           <div className="flex-shrink-0">
                             {selectedTeamIds.includes(team.id) ? (
-                              <div className="w-4 h-4 bg-blue-600 rounded-full flex items-center justify-center">
+                              <div className="w-4 h-4 bg-blue-600 dark:bg-blue-500 rounded-full flex items-center justify-center">
                                 <Check className="h-3 w-3 text-white" />
                               </div>
                             ) : (
-                              <div className="w-4 h-4 border-2 border-gray-300 rounded-full" />
+                              <div className="w-4 h-4 border-2 border-gray-300 dark:border-gray-500 rounded-full" />
                             )}
                           </div>
-                          <div>
-                            <div className="font-medium text-sm text-gray-900">
+                          <div className="min-w-0 flex-1">
+                            <div className="font-medium text-sm text-gray-900 dark:text-white truncate">
                               {team.name}
                             </div>
-                            <div className="text-xs text-gray-500">
+                            <div className="text-xs text-gray-500 dark:text-gray-400">
                               {team.members?.length || 0} members
                             </div>
                           </div>
                         </div>
-                        <Users className="h-4 w-4 text-gray-400" />
+                        <Users className="h-4 w-4 text-gray-400 dark:text-gray-500 flex-shrink-0 ml-2" />
                       </div>
                     </div>
                   ))
                 ) : (
                   <div className="flex flex-col items-center justify-center py-8 text-center">
-                    <Users className="h-8 w-8 text-gray-300 mb-2" />
-                    <p className="text-sm text-gray-500">
+                    <Users className="h-8 w-8 text-gray-300 dark:text-gray-600 mb-2" />
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
                       You don't have admin access to any teams
                     </p>
-                    <p className="text-xs text-gray-400 mt-1">
+                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
                       Contact a team owner to get admin permissions
                     </p>
                   </div>
@@ -323,28 +323,28 @@ export default function TeamSelectionModal({
             </div>
 
             {/* Member Roles */}
-            <div className="w-2/3 p-6">
+            <div className="w-full lg:w-2/3 p-4 sm:p-6">
               <div className="flex items-center justify-between mb-4">
-                <h4 className="text-sm font-medium text-gray-900">
+                <h4 className="text-sm font-medium text-gray-900 dark:text-white">
                   Project Member Roles ({uniqueMembers.length})
                 </h4>
                 {isEditMode && freshProjectData && (
-                  <div className="text-xs text-green-600 flex items-center gap-1">
-                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                  <div className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
+                    <div className="w-2 h-2 bg-green-500 dark:bg-green-400 rounded-full"></div>
                     Live data
                   </div>
                 )}
               </div>
 
               {uniqueMembers.length > 0 ? (
-                <div className="space-y-3 max-h-[calc(90vh-260px)] overflow-y-auto">
+                <div className="space-y-3 max-h-60 lg:max-h-[calc(90vh-260px)] overflow-y-auto">
                   {uniqueMembers.map((member) => (
                     <div
                       key={member.userId}
-                      className="flex items-center justify-between p-3 bg-gray-50 rounded-md"
+                      className="flex flex-col sm:flex-row sm:items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-md gap-3 sm:gap-0"
                     >
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
+                        <div className="w-8 h-8 bg-gray-300 dark:bg-gray-600 rounded-full flex items-center justify-center flex-shrink-0">
                           {member.user.avatarUrl ? (
                             <img
                               src={member.user.avatarUrl}
@@ -352,33 +352,33 @@ export default function TeamSelectionModal({
                               className="w-full h-full rounded-full object-cover"
                             />
                           ) : (
-                            <span className="text-xs font-medium text-gray-600">
+                            <span className="text-xs font-medium text-gray-600 dark:text-gray-300">
                               {member.user.firstName?.charAt(0) || ""}
                               {member.user.lastName?.charAt(0) || ""}
                             </span>
                           )}
                         </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-medium text-gray-900">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-1 sm:gap-2">
+                            <span className="text-sm font-medium text-gray-900 dark:text-white">
                               {member.user.firstName} {member.user.lastName}
                               {member.user.id === currentUserId && (
-                                <span className="ml-2 text-xs text-blue-600">
+                                <span className="ml-2 text-xs text-blue-600 dark:text-blue-400">
                                   (You)
                                 </span>
                               )}
                             </span>
                           </div>
-                          <div className="text-xs text-gray-600">
+                          <div className="text-xs text-gray-600 dark:text-gray-300 truncate">
                             {member.user.email}
                           </div>
-                          <div className="text-xs text-gray-500 mt-1">
+                          <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                             Teams: {member.teams.join(", ")}
                           </div>
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 justify-end sm:justify-start">
                         <select
                           value={member.role}
                           onChange={(e) =>
@@ -387,7 +387,7 @@ export default function TeamSelectionModal({
                               e.target.value as "admin" | "editor" | "viewer"
                             )
                           }
-                          className="text-sm border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          className="text-sm border border-gray-300 dark:border-gray-500 dark:bg-gray-600 dark:text-white rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
                         >
                           <option value="admin">Admin</option>
                           <option value="editor">Editor</option>
@@ -399,9 +399,9 @@ export default function TeamSelectionModal({
                   ))}
                 </div>
               ) : (
-                <div className="flex flex-col items-center justify-center h-64 text-center">
-                  <Users className="h-12 w-12 text-gray-300 mb-4" />
-                  <p className="text-gray-500">
+                <div className="flex flex-col items-center justify-center h-32 sm:h-64 text-center">
+                  <Users className="h-8 sm:h-12 w-8 sm:w-12 text-gray-300 dark:text-gray-600 mb-4" />
+                  <p className="text-sm text-gray-500 dark:text-gray-400 px-4">
                     Select teams to see their members and assign roles
                   </p>
                 </div>
@@ -410,25 +410,25 @@ export default function TeamSelectionModal({
           </div>
 
           {/* Footer */}
-          <div className="flex items-center justify-between p-6 border-t border-gray-200 bg-gray-50">
-            <div className="text-sm text-gray-600">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 sm:p-6 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 gap-4 sm:gap-0">
+            <div className="text-sm text-gray-600 dark:text-gray-300 text-center sm:text-left">
               {selectedTeamIds.length} team
               {selectedTeamIds.length !== 1 ? "s" : ""} selected,{" "}
               {uniqueMembers.length} member
               {uniqueMembers.length !== 1 ? "s" : ""} total
             </div>
 
-            <div className="flex gap-3">
+            <div className="flex gap-3 justify-center sm:justify-end">
               <button
                 onClick={onClose}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-600 flex-1 sm:flex-none"
               >
                 Cancel
               </button>
               <button
                 onClick={handleConfirm}
                 disabled={selectedTeamIds.length === 0}
-                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 dark:bg-blue-700 border border-transparent rounded-md hover:bg-blue-700 dark:hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed flex-1 sm:flex-none"
               >
                 {isEditMode ? "Update Teams & Roles" : "Confirm Selection"}
               </button>

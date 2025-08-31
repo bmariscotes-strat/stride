@@ -45,7 +45,6 @@ export function QuickActions() {
         {actions.map((action) => (
           <Button
             key={action.label}
-            variant="primary"
             size="md"
             fullWidth
             leftIcon={<action.icon size={20} />}

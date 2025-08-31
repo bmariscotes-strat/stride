@@ -2,6 +2,7 @@
 import React from "react";
 import { Info } from "lucide-react";
 import type { TeamWithRelations, TeamRole } from "@/types";
+import { useMediaQuery } from "usehooks-ts";
 
 interface FormData {
   name: string;
@@ -25,14 +26,16 @@ export default function TeamInformationSection({
   onInputChange,
   sectionRef,
 }: TeamInformationSectionProps) {
+  const isMobile = useMediaQuery("(max-width: 640px)");
+
   return (
     <section id="information" ref={sectionRef} className="scroll-mt-6">
       <div className="border-b border-gray-200 pb-6">
-        <h3 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
+        <h3 className="text-xl font-semibold text-gray-900 dark:text-white flex items-center gap-2">
           <Info size={20} />
           Team Information
         </h3>
-        <p className="mt-1 text-sm text-gray-600">
+        <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
           Update basic details about your team.
         </p>
       </div>
@@ -41,7 +44,7 @@ export default function TeamInformationSection({
         <div>
           <label
             htmlFor="teamName"
-            className="block text-sm font-medium text-gray-700"
+            className="block text-sm font-medium text-gray-700 dark:text-gray-500"
           >
             Team Name *
           </label>
@@ -52,7 +55,7 @@ export default function TeamInformationSection({
             onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
               onInputChange("name", e.target.value)
             }
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2 border"
+            className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2 border"
             placeholder="Enter team name"
             required
             maxLength={100}
@@ -73,8 +76,8 @@ export default function TeamInformationSection({
             Team URL Slug *
           </label>
           <div className="mt-1 flex rounded-md shadow-sm">
-            <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm">
-              yourapp.com/teams/
+            <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 dark:border-gray-700 dark:bg-gray-800 bg-gray-50 text-gray-500 text-sm">
+              {isMobile ? "teams/" : "stride-pm.app/teams/"}
             </span>
             <input
               type="text"
@@ -83,7 +86,7 @@ export default function TeamInformationSection({
               onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                 onInputChange("slug", e.target.value)
               }
-              className="flex-1 block w-full rounded-none rounded-r-md border-gray-300 focus:border-blue-500 focus:ring-blue-500 px-3 py-2 border"
+              className="flex-1 block w-full rounded-none rounded-r-md border-gray-300 dark:border-gray-700 focus:border-blue-500 focus:ring-blue-500 px-3 py-2 border"
               placeholder="team-url"
               required
               pattern="[a-z0-9-]+"
@@ -113,7 +116,7 @@ export default function TeamInformationSection({
             onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
               onInputChange("description", e.target.value)
             }
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2 border"
+            className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2 border"
             placeholder="What's this team about?"
             maxLength={500}
           />

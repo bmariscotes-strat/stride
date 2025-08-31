@@ -54,11 +54,11 @@ export default function AppearanceSection({
     <div id="appearance" ref={sectionRef} className="scroll-mt-6">
       <section>
         <div className="pb-6 border-b border-gray-200">
-          <h3 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
             <Palette size={20} />
             Appearance
           </h3>
-          <p className="mt-1 text-sm text-gray-600">
+          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
             Customize the look and feel of your interface.
           </p>
         </div>
@@ -66,7 +66,7 @@ export default function AppearanceSection({
         <div className="pt-6">
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-4">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-4">
                 Theme Preference
               </label>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

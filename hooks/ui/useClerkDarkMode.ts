@@ -2,33 +2,73 @@
 import { useState, useEffect } from "react";
 
 export function useDarkMode(): boolean {
-  const [isDark, setIsDark] = useState<boolean>(false);
+  const [isDark, setIsDark] = useState<boolean>(() => {
+    // Initialize with proper SSR handling
+    if (typeof window === "undefined") return false;
+
+    return (
+      document.documentElement.classList.contains("dark") ||
+      (!document.documentElement.classList.contains("light") &&
+        window.matchMedia("(prefers-color-scheme: dark)").matches)
+    );
+  });
 
   useEffect(() => {
-    // Check initial theme
     const checkTheme = (): void => {
+      const hasExplicitDark =
+        document.documentElement.classList.contains("dark");
+      const hasExplicitLight =
+        document.documentElement.classList.contains("light");
+      const systemPrefersDark = window.matchMedia(
+        "(prefers-color-scheme: dark)"
+      ).matches;
+
+      // If explicit theme is set, use that; otherwise fall back to system preference
       const isDarkMode =
-        document.documentElement.classList.contains("dark") ||
-        window.matchMedia("(prefers-color-scheme: dark)").matches;
+        hasExplicitDark || (!hasExplicitLight && systemPrefersDark);
+
       setIsDark(isDarkMode);
     };
 
+    // Initial check
     checkTheme();
 
     // Listen for system theme changes
     const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-    mediaQuery.addEventListener("change", checkTheme);
+    const handleMediaChange = () => checkTheme();
+    mediaQuery.addEventListener("change", handleMediaChange);
 
-    // Listen for manual theme changes (if you have a theme toggle)
-    const observer = new MutationObserver(checkTheme);
+    // Listen for class changes on documentElement with more specific handling
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (
+          mutation.type === "attributes" &&
+          mutation.attributeName === "class"
+        ) {
+          // Small delay to ensure DOM has updated
+          setTimeout(checkTheme, 0);
+        }
+      });
+    });
+
     observer.observe(document.documentElement, {
       attributes: true,
       attributeFilter: ["class"],
     });
 
+    // Also listen for storage events
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === "theme" || e.key === "darkMode") {
+        checkTheme();
+      }
+    };
+
+    window.addEventListener("storage", handleStorageChange);
+
     return () => {
-      mediaQuery.removeEventListener("change", checkTheme);
+      mediaQuery.removeEventListener("change", handleMediaChange);
       observer.disconnect();
+      window.removeEventListener("storage", handleStorageChange);
     };
   }, []);
 
