@@ -67,7 +67,11 @@ export default function UserSettings({ user, clerkUserId }: UserSettingsProps) {
           subtitle="Manage your account"
         />
       }
-      right={<div className="p-6 space-y-8">{renderActiveSection()}</div>}
+      right={
+        <div className="p-1 sm:p-1 md:p-6 lg:p-6 space-y-8">
+          {renderActiveSection()}
+        </div>
+      }
     />
   );
 }
