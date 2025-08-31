@@ -415,7 +415,7 @@ export default function UpdateTeamPage({
           />
         }
         right={
-          <div className="p-6 max-w-2xl">
+          <div className="p-1 sm:p-1 md:p-6 lg:p-6max-w-2xl">
             <form onSubmit={handleUpdate} className="space-y-12">
               {/* Information Section - Only show if user can edit team */}
               {permissions.canEditTeam && (

@@ -70,11 +70,6 @@ export default function Header({ teams, projects, userId }: HeaderProps) {
     })
   );
 
-  const navLinks = [
-    { href: "/", label: "About" },
-    { href: "/sign-up", label: "Register" },
-  ];
-
   const toggleMobileMenu = () => {
     setIsMobileMenuOpen(!isMobileMenuOpen);
   };
@@ -194,33 +189,11 @@ export default function Header({ teams, projects, userId }: HeaderProps) {
           />
 
           {/* Mobile Menu Panel */}
-          <div className="md:hidden fixed top-[73px] left-0 right-0 bg-background border-b border-border shadow-lg z-50 max-h-[calc(100vh-73px)] overflow-y-auto">
+          <div className="md:hidden fixed  left-0 right-0 bg-background border-b border-border shadow-lg z-50 max-h-[calc(100vh-73px)] overflow-y-auto">
             <div className="p-4 space-y-4">
-              {/* Mobile Navigation Links */}
-              <div className="space-y-2">
-                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-                  Navigation
-                </h3>
-                {navLinks.map((link) => (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    className={`block transition-colors font-medium px-4 py-3 rounded-lg ${
-                      isActive(link.href)
-                        ? "text-primary bg-accent font-semibold"
-                        : "text-muted-foreground hover:text-primary hover:bg-accent"
-                    }`}
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    scroll={false}
-                  >
-                    {link.label}
-                  </Link>
-                ))}
-              </div>
-
               {/* Mobile Workspace Section */}
-              <div className="border-t border-border pt-4 space-y-2">
-                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+              <div className="border-border pt-4 space-y-2">
+                <h3 className="text-sm font-semibold text-muted-foreground dark:text-gray-300  uppercase tracking-wider mb-3">
                   Workspace
                 </h3>
                 {workspaceItems.map((item) => (
@@ -233,19 +206,12 @@ export default function Header({ teams, projects, userId }: HeaderProps) {
                     {item.name}
                   </Link>
                 ))}
-                <Link
-                  href="/workspace"
-                  className="block px-4 py-2 text-sm text-primary hover:bg-accent rounded-lg transition-colors"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  View All Workspace →
-                </Link>
               </div>
 
               {/* Mobile Teams Section */}
               {teamNavItems.length > 0 && (
                 <div className="border-t border-border pt-4 space-y-2">
-                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+                  <h3 className="text-sm font-semibold text-muted-foreground dark:text-gray-300  uppercase tracking-wider mb-3">
                     Teams
                   </h3>
                   {teamNavItems.slice(0, 3).map((item) => (
@@ -271,7 +237,7 @@ export default function Header({ teams, projects, userId }: HeaderProps) {
               {/* Mobile Projects Section */}
               {projectNavItems.length > 0 && (
                 <div className="border-t border-border pt-4 space-y-2">
-                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+                  <h3 className="text-sm font-semibold text-muted-foreground uppercase dark:text-gray-300 tracking-wider mb-3">
                     Projects
                   </h3>
                   {projectNavItems.slice(0, 3).map((item) => (

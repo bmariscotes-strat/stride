@@ -14,6 +14,7 @@ import { useRouter } from "next/navigation";
 import { useDebounce } from "@/hooks/useDebounce";
 import UserAvatar from "@/components/shared/UserAvatar";
 import { toast } from "sonner";
+import { useMediaQuery } from "usehooks-ts";
 
 // TypeScript interfaces
 interface TeamSettings {
@@ -86,6 +87,8 @@ export default function CreateTeamPage() {
 
   // Debounce search query
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
+
+  const isMobile = useMediaQuery("(max-width: 640px)");
 
   // Handle scroll to update active section
   useEffect(() => {
@@ -458,7 +461,7 @@ export default function CreateTeamPage() {
         </>
       }
       right={
-        <div className="p-6 max-w-2xl">
+        <div className="p-1 sm:p-1 md:p-6 lg:p-6 max-w-2xl">
           <form onSubmit={handleSubmit} className="space-y-12">
             {/* Information Section */}
             <section
@@ -467,11 +470,11 @@ export default function CreateTeamPage() {
               className="scroll-mt-6"
             >
               <div className="border-b border-gray-200 pb-6">
-                <h3 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
+                <h3 className="text-xl font-semibold text-gray-900 dark:text-white flex items-center gap-2">
                   <Info size={20} />
                   Team Information
                 </h3>
-                <p className="mt-1 text-sm text-gray-600">
+                <p className="mt-1 text-sm text-gray-600 dark:text-gray-300 ">
                   Basic details about your team.
                 </p>
               </div>
@@ -480,7 +483,7 @@ export default function CreateTeamPage() {
                 <div>
                   <label
                     htmlFor="teamName"
-                    className="block text-sm font-medium text-gray-700"
+                    className="block text-sm font-medium text-gray-700 dark:text-gray-500"
                   >
                     Team Name *
                   </label>
@@ -491,7 +494,7 @@ export default function CreateTeamPage() {
                     onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                       handleInputChange("name", e.target.value)
                     }
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2 border"
+                    className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2 border"
                     placeholder="Enter team name"
                     required
                     maxLength={100}
@@ -501,13 +504,13 @@ export default function CreateTeamPage() {
                 <div>
                   <label
                     htmlFor="teamSlug"
-                    className="block text-sm font-medium text-gray-700"
+                    className="block text-sm font-medium text-gray-700 dark:text-gray-500"
                   >
                     Team URL Slug *
                   </label>
                   <div className="mt-1 flex rounded-md shadow-sm">
-                    <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm">
-                      yourapp.com/teams/
+                    <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 dark:border-gray-700 dark:bg-gray-800 bg-gray-50 text-gray-500 text-sm">
+                      {isMobile ? "teams/" : "stride-pm.app/teams/"}
                     </span>
                     <input
                       type="text"
@@ -516,7 +519,7 @@ export default function CreateTeamPage() {
                       onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                         handleInputChange("slug", e.target.value)
                       }
-                      className="flex-1 block w-full rounded-none rounded-r-md border-gray-300 focus:border-blue-500 focus:ring-blue-500 px-3 py-2 border"
+                      className="flex-1 block w-full rounded-none rounded-r-md  dark:border-gray-700 focus:border-blue-500 focus:ring-blue-500 px-3 py-2 border"
                       placeholder="team-url"
                       required
                       pattern="[a-z0-9-]+"
@@ -533,7 +536,7 @@ export default function CreateTeamPage() {
                 <div>
                   <label
                     htmlFor="description"
-                    className="block text-sm font-medium text-gray-700"
+                    className="block text-sm font-medium text-gray-700 dark:text-gray-500"
                   >
                     Description
                   </label>
@@ -544,7 +547,7 @@ export default function CreateTeamPage() {
                     onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
                       handleInputChange("description", e.target.value)
                     }
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2 border"
+                    className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2 border"
                     placeholder="What's this team about?"
                     maxLength={500}
                   />
@@ -558,19 +561,19 @@ export default function CreateTeamPage() {
             {/* Members Section */}
             <section id="members" ref={membersRef} className="scroll-mt-6">
               <div className="border-b border-gray-200 pb-6">
-                <h3 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
+                <h3 className="text-xl font-semibold text-gray-900 dark:text-white flex items-center gap-2">
                   <Users size={20} />
                   Team Members
                 </h3>
                 <p className="mt-1 text-sm text-gray-600">
                   Search for existing users or invite people by email. They will
-                  receive invitations to join.
+                  automatically join the team.
                 </p>
               </div>
 
               <div className="mt-6 space-y-6">
                 <div className="relative">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-500 mb-2">
                     Add Members
                   </label>
                   <div className="space-y-4">
@@ -593,8 +596,8 @@ export default function CreateTeamPage() {
                               searchQuery.includes("@")
                           )
                         }
-                        className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="Search users or enter email address..."
+                        className="block w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-800 dark:bg-gray-800 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="Search users' email address..."
                       />
                       {isSearching && (
                         <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
@@ -608,11 +611,11 @@ export default function CreateTeamPage() {
                   {showDropdown && (
                     <div
                       ref={dropdownRef}
-                      className="absolute z-10 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none"
+                      className="absolute z-10 mt-1 w-full bg-white dark:bg-gray-800 shadow-lg max-h-60 rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none"
                     >
                       {searchResults.length > 0 && (
                         <>
-                          <div className="px-3 py-2 text-xs font-medium text-gray-500 uppercase tracking-wide">
+                          <div className="px-3 py-2 text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wide">
                             Existing Users
                           </div>
                           {searchResults.map((user, index) => (
@@ -648,12 +651,12 @@ export default function CreateTeamPage() {
                                 )}
                               </div>
                               <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium text-gray-900 truncate">
+                                <p className="text-sm font-medium text-gray-900 dark:text-gray-200 truncate">
                                   {user.firstName && user.lastName
                                     ? `${user.firstName} ${user.lastName}`
                                     : user.username}
                                 </p>
-                                <p className="text-sm text-gray-500 truncate">
+                                <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
                                   {user.email}
                                 </p>
                               </div>
@@ -711,7 +714,7 @@ export default function CreateTeamPage() {
 
                 {formData.members.length > 0 && (
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-500 mb-2">
                       Added Members ({formData.members.length})
                     </label>
                     <div className="space-y-2">
@@ -779,7 +782,7 @@ export default function CreateTeamPage() {
             {/* Settings Section */}
             <section id="settings" ref={settingsRef} className="scroll-mt-6">
               <div className="border-b border-gray-200 pb-6">
-                <h3 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
+                <h3 className="text-xl font-semibold text-gray-900 dark:text-white flex items-center gap-2">
                   <Settings size={20} />
                   Team Settings
                 </h3>
@@ -800,13 +803,13 @@ export default function CreateTeamPage() {
                         onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                           handleSettingChange("isPrivate", e.target.checked)
                         }
-                        className="focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300 rounded"
+                        className="focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300  dark:border-gray-700rounded"
                       />
                     </div>
                     <div className="ml-3 text-sm">
                       <label
                         htmlFor="isPrivate"
-                        className="font-medium text-gray-700"
+                        className="font-medium text-gray-700 dark:text-gray-500"
                       >
                         Private Team
                       </label>
@@ -828,7 +831,7 @@ export default function CreateTeamPage() {
                             e.target.checked
                           )
                         }
-                        className="focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300 rounded"
+                        className="focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300 dark:border-gray-700 rounded"
                       />
                     </div>
                     <div className="ml-3 text-sm">
@@ -856,7 +859,7 @@ export default function CreateTeamPage() {
                             e.target.checked
                           )
                         }
-                        className="focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300 rounded"
+                        className="focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300 dark:border-gray-700 rounded"
                       />
                     </div>
                     <div className="ml-3 text-sm">
@@ -882,7 +885,7 @@ export default function CreateTeamPage() {
                   type="button"
                   disabled={isSubmitting}
                   onClick={navigateBack}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300  dark:border-gray-700 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Cancel
                 </button>

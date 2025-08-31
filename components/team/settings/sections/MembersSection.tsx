@@ -315,12 +315,12 @@ export default function TeamMembersSection({
 
   return (
     <section id="members" ref={sectionRef} className="scroll-mt-6">
-      <div className="border-b border-gray-200 pb-6">
-        <h3 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
+      <div className="border-b border-gray-200 dark:border-gray-700 pb-6">
+        <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
           <Users size={20} />
           Team Members ({(team.members?.length || 0) + pendingMembers.length})
         </h3>
-        <p className="mt-1 text-sm text-gray-600">
+        <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
           Manage team members, their roles, and add new members.
         </p>
       </div>
@@ -329,14 +329,14 @@ export default function TeamMembersSection({
         {/* Existing Members */}
         {team.members && team.members.length > 0 && (
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-3">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
               Current Members
             </label>
             <div className="space-y-3">
               {team.members.map((member) => (
                 <div
                   key={member.id}
-                  className="flex items-center justify-between p-4 bg-white border border-gray-200 rounded-lg"
+                  className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg gap-4 sm:gap-0"
                 >
                   <div className="flex items-center space-x-3">
                     <div className="flex-shrink-0">
@@ -362,98 +362,102 @@ export default function TeamMembersSection({
                         />
                       )}
                     </div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
                         {member.user?.firstName && member.user?.lastName
                           ? `${member.user?.firstName} ${member.user?.lastName}`
                           : member.user?.username || member.user?.email}
                       </p>
-                      <p className="text-sm text-gray-500">
+                      <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
                         {member.user?.email}
                       </p>
                       <div className="flex items-center gap-1 mt-1">
                         {getRoleIcon(member.role)}
-                        <span className="text-xs text-gray-500 capitalize">
+                        <span className="text-xs text-gray-500 dark:text-gray-400 capitalize">
                           {member.role}
                         </span>
                       </div>
                     </div>
                   </div>
 
-                  {canManageMembers &&
-                    member.role !== "owner" &&
-                    member.id !== currentUserId && (
-                      <div className="relative">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setShowMemberDropdown(
-                              showMemberDropdown === member.id
-                                ? null
-                                : member.id
-                            );
-                          }}
-                          className="p-2 text-gray-400 hover:text-gray-600 rounded-md hover:bg-gray-100"
-                        >
-                          <MoreVertical size={16} />
-                        </button>
+                  <div className="flex items-center justify-end gap-2 sm:ml-4">
+                    {canManageMembers &&
+                      member.role !== "owner" &&
+                      member.id !== currentUserId && (
+                        <div className="relative">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShowMemberDropdown(
+                                showMemberDropdown === member.id
+                                  ? null
+                                  : member.id
+                              );
+                            }}
+                            className="p-2 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700"
+                          >
+                            <MoreVertical size={16} />
+                          </button>
 
-                        {showMemberDropdown === member.id && (
-                          <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none z-10">
-                            <div className="py-1">
-                              <div className="px-3 py-2 text-xs font-medium text-gray-500 uppercase tracking-wide">
-                                Change Role
+                          {showMemberDropdown === member.id && (
+                            <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg ring-1 ring-black dark:ring-gray-600 ring-opacity-5 dark:ring-opacity-20 focus:outline-none z-10">
+                              <div className="py-1">
+                                <div className="px-3 py-2 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                                  Change Role
+                                </div>
+                                {(["admin", "member", "viewer"] as const).map(
+                                  (role) => (
+                                    <button
+                                      key={role}
+                                      type="button"
+                                      onClick={() => {
+                                        updateMemberRole(member.id, role);
+                                        setShowMemberDropdown(null);
+                                      }}
+                                      className={`block w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 ${
+                                        member.role === role
+                                          ? "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20"
+                                          : "text-gray-700 dark:text-gray-300"
+                                      }`}
+                                    >
+                                      <div className="flex items-center gap-2">
+                                        {getRoleIcon(role)}
+                                        <span className="capitalize">
+                                          {role}
+                                        </span>
+                                      </div>
+                                    </button>
+                                  )
+                                )}
+                                <div className="border-t border-gray-100 dark:border-gray-600 my-1"></div>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    removeExistingMember(member.id, member.id);
+                                    setShowMemberDropdown(null);
+                                  }}
+                                  className="block w-full text-left px-4 py-2 text-sm text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
+                                >
+                                  Remove from team
+                                </button>
                               </div>
-                              {(["admin", "member", "viewer"] as const).map(
-                                (role) => (
-                                  <button
-                                    key={role}
-                                    type="button"
-                                    onClick={() => {
-                                      updateMemberRole(member.id, role);
-                                      setShowMemberDropdown(null);
-                                    }}
-                                    className={`block w-full text-left px-4 py-2 text-sm hover:bg-gray-100 ${
-                                      member.role === role
-                                        ? "text-blue-600 bg-blue-50"
-                                        : "text-gray-700"
-                                    }`}
-                                  >
-                                    <div className="flex items-center gap-2">
-                                      {getRoleIcon(role)}
-                                      <span className="capitalize">{role}</span>
-                                    </div>
-                                  </button>
-                                )
-                              )}
-                              <div className="border-t border-gray-100 my-1"></div>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  removeExistingMember(member.id, member.id);
-                                  setShowMemberDropdown(null);
-                                }}
-                                className="block w-full text-left px-4 py-2 text-sm text-red-700 hover:bg-red-50"
-                              >
-                                Remove from team
-                              </button>
                             </div>
-                          </div>
-                        )}
-                      </div>
+                          )}
+                        </div>
+                      )}
+
+                    {member.role === "owner" && (
+                      <span className="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded whitespace-nowrap">
+                        Owner
+                      </span>
                     )}
 
-                  {member.role === "owner" && (
-                    <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
-                      Owner
-                    </span>
-                  )}
-
-                  {member.id === currentUserId && member.role !== "owner" && (
-                    <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
-                      You
-                    </span>
-                  )}
+                    {member.id === currentUserId && member.role !== "owner" && (
+                      <span className="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded whitespace-nowrap">
+                        You
+                      </span>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
@@ -463,13 +467,13 @@ export default function TeamMembersSection({
         {/* Add New Members */}
         {canManageMembers && (
           <div className="mt-6 space-y-6">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Add New Members
             </label>
             <div className="space-y-4">
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Search className="h-4 w-4 text-gray-400" />
+                  <Search className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                 </div>
                 <input
                   ref={searchInputRef}
@@ -486,12 +490,12 @@ export default function TeamMembersSection({
                         searchQuery.includes("@")
                     )
                   }
-                  className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                  className="block w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md leading-5 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:placeholder-gray-400 dark:focus:placeholder-gray-500 focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-blue-500 dark:focus:border-blue-400"
                   placeholder="Search users or enter email address..."
                 />
                 {isSearching && (
-                  <div className="inset-y-0 right-0 pr-3 flex items-center">
-                    <div className="animate-spin rounded-full h-4 border-b-2 border-blue-600"></div>
+                  <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 dark:border-blue-400"></div>
                   </div>
                 )}
               </div>
@@ -500,12 +504,12 @@ export default function TeamMembersSection({
               {showDropdown && (
                 <div
                   ref={dropdownRef}
-                  className="absolute z-10 bg-white shadow-lg max-h-60 rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none"
+                  className="absolute z-10 bg-white dark:bg-gray-800 shadow-lg max-h-60 rounded-md py-1 text-base ring-1 ring-black dark:ring-gray-600 ring-opacity-5 dark:ring-opacity-20 overflow-auto focus:outline-none"
                   style={{ width: searchInputRef.current?.offsetWidth }}
                 >
                   {searchResults.length > 0 && (
                     <>
-                      <div className="px-3 py-2 text-xs font-medium text-gray-500 uppercase tracking-wide">
+                      <div className="px-3 py-2 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
                         Existing Users
                       </div>
                       {searchResults.map((user, index) => (
@@ -513,8 +517,10 @@ export default function TeamMembersSection({
                           key={user.id}
                           type="button"
                           onClick={() => addMemberFromSearch(user)}
-                          className={`w-full text-left px-3 py-2 flex items-center space-x-3 hover:bg-gray-100 ${
-                            selectedIndex === index ? "bg-blue-50" : ""
+                          className={`w-full text-left px-3 py-2 flex items-center space-x-3 hover:bg-gray-100 dark:hover:bg-gray-700 ${
+                            selectedIndex === index
+                              ? "bg-blue-50 dark:bg-blue-900/20"
+                              : ""
                           }`}
                         >
                           <div className="flex-shrink-0">
@@ -541,12 +547,12 @@ export default function TeamMembersSection({
                             )}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-gray-900 truncate">
+                            <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
                               {user.firstName && user.lastName
                                 ? `${user.firstName} ${user.lastName}`
                                 : user.username}
                             </p>
-                            <p className="text-sm text-gray-500 truncate">
+                            <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
                               {user.email}
                             </p>
                           </div>
@@ -558,30 +564,30 @@ export default function TeamMembersSection({
                   {searchQuery.includes("@") && (
                     <>
                       {searchResults.length > 0 && (
-                        <div className="border-t border-gray-200 my-1"></div>
+                        <div className="border-t border-gray-200 dark:border-gray-600 my-1"></div>
                       )}
-                      <div className="px-3 py-2 text-xs font-medium text-gray-500 uppercase tracking-wide">
+                      <div className="px-3 py-2 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
                         Invite by Email
                       </div>
                       <button
                         type="button"
                         onClick={addMemberByEmail}
-                        className={`w-full text-left px-3 py-2 flex items-center space-x-3 hover:bg-gray-100 ${
+                        className={`w-full text-left px-3 py-2 flex items-center space-x-3 hover:bg-gray-100 dark:hover:bg-gray-700 ${
                           selectedIndex === searchResults.length
-                            ? "bg-blue-50"
+                            ? "bg-blue-50 dark:bg-blue-900/20"
                             : ""
                         }`}
                       >
                         <div className="flex-shrink-0">
-                          <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
-                            <Mail className="h-4 w-4 text-blue-600" />
+                          <div className="h-8 w-8 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                            <Mail className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                           </div>
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-900">
+                          <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
                             Invite "{searchQuery}"
                           </p>
-                          <p className="text-sm text-gray-500">
+                          <p className="text-sm text-gray-500 dark:text-gray-400">
                             Send email invitation
                           </p>
                         </div>
@@ -593,7 +599,7 @@ export default function TeamMembersSection({
                     !searchQuery.includes("@") &&
                     searchQuery.trim().length >= 2 &&
                     !isSearching && (
-                      <div className="px-3 py-2 text-sm text-gray-500">
+                      <div className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">
                         No users found. Try entering an email address to send an
                         invitation.
                       </div>
@@ -604,16 +610,16 @@ export default function TeamMembersSection({
               {/* Pending Members */}
               {pendingMembers.length > 0 && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Pending Members ({pendingMembers.length})
                   </label>
                   <div className="space-y-2">
                     {pendingMembers.map((member, index) => (
                       <div
                         key={`${member.email}-${index}`}
-                        className="flex items-center justify-between p-3 bg-yellow-50 border border-yellow-200 rounded-md"
+                        className="flex flex-col sm:flex-row sm:items-center justify-between p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-md gap-3 sm:gap-0"
                       >
-                        <div className="flex items-center space-x-3">
+                        <div className="flex items-center space-x-3 min-w-0 flex-1">
                           <div className="flex-shrink-0">
                             {member.avatarUrl ? (
                               <img
@@ -622,21 +628,21 @@ export default function TeamMembersSection({
                                 alt=""
                               />
                             ) : (
-                              <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center">
-                                <span className="text-sm font-medium text-gray-600">
+                              <div className="h-8 w-8 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center">
+                                <span className="text-sm font-medium text-gray-600 dark:text-gray-300">
                                   {member.firstName?.[0]?.toUpperCase() ||
                                     member.email[0]?.toUpperCase()}
                                 </span>
                               </div>
                             )}
                           </div>
-                          <div>
-                            <p className="text-sm font-medium text-gray-900">
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
                               {member.firstName && member.lastName
                                 ? `${member.firstName} ${member.lastName}`
                                 : member.username || member.email}
                             </p>
-                            <p className="text-sm text-gray-500">
+                            <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
                               {member.email}
                             </p>
                           </div>
@@ -644,7 +650,7 @@ export default function TeamMembersSection({
                         <button
                           type="button"
                           onClick={() => removePendingMember(index)}
-                          className="text-red-600 hover:text-red-800 p-1"
+                          className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 p-1 self-end sm:self-center"
                           title="Remove member"
                         >
                           <X size={16} />
@@ -657,7 +663,7 @@ export default function TeamMembersSection({
                     <button
                       type="button"
                       onClick={addPendingMembers}
-                      className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                      className="w-full sm:w-auto px-4 py-2 text-sm font-medium text-white bg-blue-600 dark:bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 dark:hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-gray-800 focus:ring-blue-500 dark:focus:ring-blue-400"
                     >
                       Add {pendingMembers.length} Member
                       {pendingMembers.length !== 1 ? "s" : ""}
@@ -670,8 +676,8 @@ export default function TeamMembersSection({
         )}
 
         {!canManageMembers && (
-          <div className="text-center py-6 bg-gray-50 rounded-md">
-            <p className="text-sm text-gray-500">
+          <div className="text-center py-6 bg-gray-50 dark:bg-gray-800 rounded-md">
+            <p className="text-sm text-gray-500 dark:text-gray-400">
               You don't have permission to manage team members.
             </p>
           </div>
