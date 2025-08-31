@@ -49,7 +49,7 @@ export const Dialog = ({
 
       {/* Dialog */}
       <div
-        className={`relative bg-white rounded-lg shadow-xl ${maxWidth} w-full max-h-[90vh] overflow-hidden`}
+        className={`relative bg-white dark:bg-gray-800 rounded-lg shadow-xl ${maxWidth} w-full max-h-[90vh] overflow-hidden`}
       >
         {children}
       </div>

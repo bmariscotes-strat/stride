@@ -24,6 +24,7 @@ import type {
   TeamMemberWithRelations,
 } from "@/types";
 import UserAvatar from "@/components/shared/UserAvatar";
+import { createMetadata } from "@/lib/utils/metadata";
 
 // Define the expected team type with members that include user data
 export interface TeamPageData
@@ -35,11 +36,46 @@ export interface TeamPageData
   currentUserRole?: string;
 }
 
-export default async function TeamPage({
-  params,
-}: {
+interface TeamPageProps {
   params: Promise<{ slug: string }>;
-}) {
+}
+
+// Generate metadata for the team page
+export async function generateMetadata({ params }: TeamPageProps) {
+  const { slug } = await params;
+
+  try {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
+      return createMetadata({
+        title: "Team - Sign In Required",
+        description: "Sign in to view this team",
+      });
+    }
+
+    const team = await getTeamBySlug(slug, currentUser.id);
+    if (!team) {
+      return createMetadata({
+        title: "Team Not Found",
+        description: "The requested team could not be found",
+      });
+    }
+
+    return createMetadata({
+      title: `${team.name} - Team`,
+      description:
+        team.description ||
+        `Collaborate with the ${team.name} team on projects and tasks`,
+    });
+  } catch (error) {
+    return createMetadata({
+      title: "Team",
+      description: "Team collaboration and project management",
+    });
+  }
+}
+
+export default async function TeamPage({ params }: TeamPageProps) {
   const currentUser = await getCurrentUser();
   const userId = currentUser?.id || null;
 
@@ -78,7 +114,7 @@ export default async function TeamPage({
             <div className="flex items-start justify-between mb-4">
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-2">
-                  <h2 className="font-bold text-xl text-gray-900">
+                  <h2 className="font-bold text-xl text-gray-900 dark:text-gray-100">
                     {team.name}
                   </h2>
                 </div>
@@ -98,7 +134,7 @@ export default async function TeamPage({
               {permissions.canViewSettings && (
                 <Link
                   href={`/team/${team.slug}/settings`}
-                  className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md"
+                  className="p-2 text-gray-400 dark:text-gray-500 hover:text-gray-600 hover:bg-gray-100 rounded-md"
                   title="Team Settings"
                 >
                   <Settings size={16} />
@@ -107,20 +143,22 @@ export default async function TeamPage({
             </div>
 
             {team.description && (
-              <p className="text-sm text-gray-700 mb-4">{team.description}</p>
+              <p className="text-sm text-gray-700  dark:text-gray-300 mb-4">
+                {team.description}
+              </p>
             )}
 
             {/* Team Stats */}
             <div className="space-y-3 mb-6">
-              <div className="flex items-center gap-2 text-sm text-gray-600">
+              <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
                 <Users size={14} />
                 <span>{team.members?.length || 0} members</span>
               </div>
-              <div className="flex items-center gap-2 text-sm text-gray-600">
+              <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
                 <FolderOpen size={14} />
                 <span>{projects.length} projects</span>
               </div>
-              <div className="flex items-center gap-2 text-sm text-gray-600">
+              <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
                 <Calendar size={14} />
                 <span>
                   Created {new Date(team.createdAt).toLocaleDateString()}
@@ -160,7 +198,7 @@ export default async function TeamPage({
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 truncate">
+                      <p className="text-sm font-medium text-gray-900 dark:text-gray-300 truncate">
                         {member.user?.firstName && member.user?.lastName
                           ? `${member.user.firstName} ${member.user.lastName}`
                           : member.user?.username ||
@@ -240,7 +278,7 @@ export default async function TeamPage({
                 <ProjectCard
                   key={project.id}
                   project={project}
-                  canEdit={permissions.canEditTeam} // Pass permission to ProjectCard
+                  canEdit={permissions.canEditTeam}
                 />
               ))}
             </div>

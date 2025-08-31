@@ -1,5 +1,3 @@
-// app\(dashboard)\(work)\projects\[slug]\analytics\page.tsx
-
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
@@ -10,11 +8,11 @@ import { AnalyticsPermissionChecker } from "@/lib/permissions/checkers/analytics
 import { notFound, redirect } from "next/navigation";
 import { getProjectAnalytics } from "@/lib/services/analytics";
 import AnalyticsClient from "./Analytics.client";
+import { createMetadata } from "@/lib/utils/metadata";
 
-export const metadata = {
+export const metadata = createMetadata({
   title: "Project Analytics",
-  description: "Track project performance and team productivity",
-};
+});
 
 export default async function AnalyticsPage({
   params,

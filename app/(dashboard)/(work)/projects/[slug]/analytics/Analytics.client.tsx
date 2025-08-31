@@ -209,13 +209,12 @@ export default function AnalyticsClient({
         );
       }
 
-      // 8. Average Time in Columns Sheet
       if (analyticsData.averageTimeInColumn.length > 0) {
         const timeData = [
-          ["Column Name", "Average Time (hours)"],
+          ["Column Name", "Average Time (days)"],
           ...analyticsData.averageTimeInColumn.map((item) => [
             item.columnName,
-            item.averageHours,
+            item.averageDays,
           ]),
         ];
         const timeSheet = XLSX.utils.aoa_to_sheet(timeData);
@@ -271,22 +270,29 @@ export default function AnalyticsClient({
     description: string;
     suggestion?: string;
   }) => (
-    <div className="flex flex-col items-center justify-center h-64 text-center p-6">
-      <Icon size={48} className="text-gray-400 dark:text-gray-600 mb-4" />
-      <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-2">
+    <div className="flex flex-col items-center justify-center h-48 md:h-64 text-center p-4 md:p-6">
+      <Icon
+        size={40}
+        className="text-gray-400 dark:text-gray-600 mb-3 md:mb-4 sm:w-12 sm:h-12"
+      />
+      <h3 className="text-base md:text-lg font-semibold text-gray-700 dark:text-gray-300 mb-2">
         {title}
       </h3>
-      <p className="text-gray-500 dark:text-gray-400 mb-2">{description}</p>
+      <p className="text-sm text-gray-500 dark:text-gray-400 mb-2 px-2">
+        {description}
+      </p>
       {suggestion && (
-        <p className="text-sm text-blue-600 dark:text-blue-400">{suggestion}</p>
+        <p className="text-xs md:text-sm text-blue-600 dark:text-blue-400 px-2">
+          {suggestion}
+        </p>
       )}
     </div>
   );
 
   if (!hasData) {
     return (
-      <div className="space-y-6">
-        <div className="p-5">
+      <div className="space-y-6 px-4 sm:px-0">
+        <div className="p-3 sm:p-5">
           <AppBreadcrumb />
         </div>
 
@@ -308,44 +314,64 @@ export default function AnalyticsClient({
 
   return (
     <>
-      <div className="space-y-6 pt-3">
+      <div className="space-y-4 sm:space-y-6 pt-3 px-4 sm:px-0">
         {/* Header */}
-        <div className="flex justify-between items-center">
-          <div>
+        <div className="flex flex-col space-y-4 lg:flex-row lg:justify-between lg:items-start lg:space-y-0">
+          <div className="min-w-0 flex-1">
             <AppBreadcrumb />
-
-            <h1 className="text-2xl font-bold text-gray-900">Analytics</h1>
-            <p className="mt-1 text-sm text-gray-600">
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mt-2">
+              Analytics
+            </h1>
+            <p className="mt-1 text-sm text-gray-600 dark:text-gray-400 break-words">
               Track{" "}
-              <span className="font-bold text-primary">{project.name} </span>{" "}
+              <span className="font-bold text-primary">{project.name}</span>{" "}
               performance and team productivity
             </p>
           </div>
 
           {/* Controls */}
-          <div className="flex items-center space-x-4 ">
+          <div className="flex flex-col space-y-3 sm:flex-row sm:items-center sm:space-y-0 sm:space-x-4 shrink-0">
             {/* Time Range Filter */}
             <div className="flex items-center space-x-2">
-              <Filter size={16} className="text-gray-500" />
-
+              <Filter size={16} className="text-gray-500 dark:text-gray-400" />
               <Select
                 value={timeRange}
                 onValueChange={(value) => handleTimeRangeChange(value as any)}
                 disabled={isLoading}
               >
-                <SelectTrigger className="w-[160px] text-sm disabled:opacity-50">
+                <SelectTrigger className="w-full sm:w-[160px] text-sm disabled:opacity-50 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100">
                   <SelectValue placeholder="Select range" />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="7d">Last 7 days</SelectItem>
-                  <SelectItem value="30d">Last 30 days</SelectItem>
-                  <SelectItem value="90d">Last 90 days</SelectItem>
-                  <SelectItem value="1y">Last year</SelectItem>
+                <SelectContent className="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600">
+                  <SelectItem
+                    value="7d"
+                    className="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700"
+                  >
+                    Last 7 days
+                  </SelectItem>
+                  <SelectItem
+                    value="30d"
+                    className="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700"
+                  >
+                    Last 30 days
+                  </SelectItem>
+                  <SelectItem
+                    value="90d"
+                    className="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700"
+                  >
+                    Last 90 days
+                  </SelectItem>
+                  <SelectItem
+                    value="1y"
+                    className="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700"
+                  >
+                    Last year
+                  </SelectItem>
                 </SelectContent>
               </Select>
 
               {isLoading && (
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 dark:border-blue-400"></div>
               )}
             </div>
 
@@ -354,7 +380,7 @@ export default function AnalyticsClient({
               <button
                 onClick={exportToExcel}
                 disabled={isExporting}
-                className="flex items-center space-x-2 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white rounded-md text-sm font-medium transition-colors"
+                className="flex items-center justify-center space-x-2 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-green-400 dark:bg-green-700 dark:hover:bg-green-600 dark:disabled:bg-green-500 text-white rounded-md text-sm font-medium transition-colors w-full sm:w-auto"
               >
                 {isExporting ? (
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
@@ -368,7 +394,7 @@ export default function AnalyticsClient({
         </div>
 
         {/* Overview Metrics */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 sm:gap-6">
           {[
             {
               title: "Total Cards",
@@ -408,25 +434,25 @@ export default function AnalyticsClient({
           ].map((metric, index) => (
             <div
               key={index}
-              className="bg-white dark:bg-outer_space-500 rounded-lg border border-gray-300 dark:border-payne's_gray-400 p-6"
+              className="bg-white dark:bg-gray-800 rounded-lg border border-gray-300 dark:border-gray-700 p-4 sm:p-6 shadow-sm hover:shadow-md transition-shadow"
             >
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center justify-between mb-3 sm:mb-4">
                 <div
-                  className={`w-10 h-10 bg-${metric.color}-100 dark:bg-${metric.color}-900/20 rounded-lg flex items-center justify-center`}
+                  className={`w-8 h-8 sm:w-10 sm:h-10 bg-${metric.color}-100 dark:bg-${metric.color}-900/20 rounded-lg flex items-center justify-center`}
                 >
                   <metric.icon
-                    className={`text-${metric.color}-500`}
-                    size={20}
+                    className={`text-${metric.color}-500 dark:text-${metric.color}-400`}
+                    size={16}
                   />
                 </div>
               </div>
-              <div className="text-2xl font-bold text-outer_space-500 dark:text-platinum-500 mb-1">
+              <div className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mb-1">
                 {metric.value}
               </div>
-              <div className="text-sm text-payne's_gray-500 dark:text-french_gray-400 mb-2">
+              <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mb-2">
                 {metric.unit}
               </div>
-              <div className="text-xs font-medium text-outer_space-500 dark:text-platinum-500">
+              <div className="text-xs font-medium text-gray-700 dark:text-gray-300">
                 {metric.title}
               </div>
             </div>
@@ -434,20 +460,20 @@ export default function AnalyticsClient({
         </div>
 
         {/* Charts Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-6">
           {/* Cards by Status */}
-          <div className="bg-white dark:bg-outer_space-500 rounded-lg border border-gray-300 dark:border-payne's_gray-400 p-6">
-            <h3 className="text-lg font-semibold text-outer_space-500 dark:text-platinum-500 mb-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-300 dark:border-gray-700 p-4 sm:p-6 shadow-sm">
+            <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-4">
               Cards by Status
             </h3>
             {analyticsData.cardsByStatus.length > 0 ? (
-              <ResponsiveContainer width="100%" height={300}>
+              <ResponsiveContainer width="100%" height={250}>
                 <PieChart>
                   <Pie
                     data={analyticsData.cardsByStatus}
                     cx="50%"
                     cy="50%"
-                    outerRadius={80}
+                    outerRadius={60}
                     fill="#8884d8"
                     dataKey="count"
                     label={({ status, percentage }) =>
@@ -461,7 +487,12 @@ export default function AnalyticsClient({
                       />
                     ))}
                   </Pie>
-                  <Tooltip />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "var(--tooltip-bg)",
+                      border: "1px solid var(--tooltip-border)",
+                    }}
+                  />
                   <Legend />
                 </PieChart>
               </ResponsiveContainer>
@@ -475,17 +506,22 @@ export default function AnalyticsClient({
           </div>
 
           {/* Cards by Priority */}
-          <div className="bg-white dark:bg-outer_space-500 rounded-lg border border-gray-300 dark:border-payne's_gray-400 p-6">
-            <h3 className="text-lg font-semibold text-outer_space-500 dark:text-platinum-500 mb-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-300 dark:border-gray-700 p-4 sm:p-6 shadow-sm">
+            <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-4">
               Cards by Priority
             </h3>
             {analyticsData.cardsByPriority.length > 0 ? (
-              <ResponsiveContainer width="100%" height={300}>
+              <ResponsiveContainer width="100%" height={250}>
                 <BarChart data={analyticsData.cardsByPriority}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="priority" />
-                  <YAxis />
-                  <Tooltip />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
+                  <XAxis dataKey="priority" tick={{ fontSize: 12 }} />
+                  <YAxis tick={{ fontSize: 12 }} />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "var(--tooltip-bg)",
+                      border: "1px solid var(--tooltip-border)",
+                    }}
+                  />
                   <Bar dataKey="count" fill="#3B82F6" />
                 </BarChart>
               </ResponsiveContainer>
@@ -498,18 +534,62 @@ export default function AnalyticsClient({
             )}
           </div>
 
+          {/* Average Days in Columns */}
+          <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-300 dark:border-gray-700 p-4 sm:p-6 shadow-sm">
+            <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-4">
+              Average Days in Columns
+            </h3>
+            {analyticsData.averageTimeInColumn.length > 0 ? (
+              <ResponsiveContainer width="100%" height={250}>
+                <BarChart
+                  data={analyticsData.averageTimeInColumn}
+                  layout="vertical"
+                  margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
+                  <XAxis type="number" tick={{ fontSize: 12 }} />
+                  <YAxis
+                    dataKey="columnName"
+                    type="category"
+                    width={80}
+                    tick={{ fontSize: 11 }}
+                  />
+                  <Tooltip
+                    formatter={(value) => [`${value} days`, "Average Time"]}
+                    contentStyle={{
+                      backgroundColor: "var(--tooltip-bg)",
+                      border: "1px solid var(--tooltip-border)",
+                    }}
+                  />
+                  <Bar dataKey="averageDays" fill="#8B5CF6" name="Days" />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <EmptyState
+                icon={Clock}
+                title="No Time Data"
+                description="Time tracking will show once cards move through different columns."
+              />
+            )}
+          </div>
+
           {/* Activity Trend */}
-          <div className="bg-white dark:bg-outer_space-500 rounded-lg border border-gray-300 dark:border-payne's_gray-400 p-6">
-            <h3 className="text-lg font-semibold text-outer_space-500 dark:text-platinum-500 mb-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-300 dark:border-gray-700 p-4 sm:p-6 shadow-sm">
+            <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-4">
               Activity Trend
             </h3>
             {analyticsData.activityTrend.length > 0 ? (
-              <ResponsiveContainer width="100%" height={300}>
+              <ResponsiveContainer width="100%" height={250}>
                 <AreaChart data={analyticsData.activityTrend}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="date" />
-                  <YAxis />
-                  <Tooltip />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
+                  <XAxis dataKey="date" tick={{ fontSize: 12 }} />
+                  <YAxis tick={{ fontSize: 12 }} />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "var(--tooltip-bg)",
+                      border: "1px solid var(--tooltip-border)",
+                    }}
+                  />
                   <Legend />
                   <Area
                     type="monotone"
@@ -548,51 +628,27 @@ export default function AnalyticsClient({
               />
             )}
           </div>
-
-          {/* Team Performance - Only show if user has permission */}
-          {analyticsPermissions.canViewTeamPerformance && (
-            <div className="bg-white dark:bg-outer_space-500 rounded-lg border border-gray-300 dark:border-payne's_gray-400 p-6">
-              <h3 className="text-lg font-semibold text-outer_space-500 dark:text-platinum-500 mb-4">
-                Team Performance
-              </h3>
-              {analyticsData.cardsByAssignee.length > 0 ? (
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={analyticsData.cardsByAssignee}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="assigneeName" />
-                    <YAxis />
-                    <Tooltip />
-                    <Legend />
-                    <Bar dataKey="assigned" fill="#3B82F6" name="Assigned" />
-                    <Bar dataKey="completed" fill="#10B981" name="Completed" />
-                    <Bar dataKey="overdue" fill="#EF4444" name="Overdue" />
-                  </BarChart>
-                </ResponsiveContainer>
-              ) : (
-                <EmptyState
-                  icon={Users}
-                  title="No Assignment Data"
-                  description="Team performance metrics will show once cards are assigned to members."
-                />
-              )}
-            </div>
-          )}
         </div>
 
         {/* Additional Metrics */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-6">
           {/* Completion Rate Trend */}
-          <div className="bg-white dark:bg-outer_space-500 rounded-lg border border-gray-300 dark:border-payne's_gray-400 p-6">
-            <h3 className="text-lg font-semibold text-outer_space-500 dark:text-platinum-500 mb-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-300 dark:border-gray-700 p-4 sm:p-6 shadow-sm">
+            <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-4">
               Completion Rate Trend
             </h3>
             {analyticsData.completionTrend.length > 0 ? (
-              <ResponsiveContainer width="100%" height={300}>
+              <ResponsiveContainer width="100%" height={250}>
                 <LineChart data={analyticsData.completionTrend}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="week" />
-                  <YAxis />
-                  <Tooltip />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
+                  <XAxis dataKey="week" tick={{ fontSize: 12 }} />
+                  <YAxis tick={{ fontSize: 12 }} />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "var(--tooltip-bg)",
+                      border: "1px solid var(--tooltip-border)",
+                    }}
+                  />
                   <Legend />
                   <Line
                     type="monotone"
@@ -612,95 +668,109 @@ export default function AnalyticsClient({
             )}
           </div>
 
-          {/* Average Time in Columns */}
-          <div className="bg-white dark:bg-outer_space-500 rounded-lg border border-gray-300 dark:border-payne's_gray-400 p-6">
-            <h3 className="text-lg font-semibold text-outer_space-500 dark:text-platinum-500 mb-4">
-              Average Time in Columns
-            </h3>
-            {analyticsData.averageTimeInColumn.length > 0 ? (
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart
-                  data={analyticsData.averageTimeInColumn}
-                  layout="horizontal"
-                >
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis type="number" />
-                  <YAxis dataKey="columnName" type="category" width={80} />
-                  <Tooltip />
-                  <Bar dataKey="averageHours" fill="#8B5CF6" name="Hours" />
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <EmptyState
-                icon={Clock}
-                title="No Time Data"
-                description="Time tracking will show once cards move through different columns."
-              />
-            )}
-          </div>
+          {/* Team Performance - Only show if user has permission */}
+          {analyticsPermissions.canViewTeamPerformance && (
+            <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-300 dark:border-gray-700 p-4 sm:p-6 shadow-sm">
+              <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                Team Performance
+              </h3>
+              {analyticsData.cardsByAssignee.length > 0 ? (
+                <ResponsiveContainer width="100%" height={250}>
+                  <BarChart data={analyticsData.cardsByAssignee}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
+                    <XAxis dataKey="assigneeName" tick={{ fontSize: 12 }} />
+                    <YAxis tick={{ fontSize: 12 }} />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: "var(--tooltip-bg)",
+                        border: "1px solid var(--tooltip-border)",
+                      }}
+                    />
+                    <Legend />
+                    <Bar dataKey="assigned" fill="#3B82F6" name="Assigned" />
+                    <Bar dataKey="completed" fill="#10B981" name="Completed" />
+                    <Bar dataKey="overdue" fill="#EF4444" name="Overdue" />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <EmptyState
+                  icon={Users}
+                  title="No Assignment Data"
+                  description="Team performance metrics will show once cards are assigned to members."
+                />
+              )}
+            </div>
+          )}
         </div>
 
         {/* Individual Productivity Table */}
         {analyticsPermissions.canViewDetailedAnalytics &&
           analyticsData.teamProductivity.length > 0 && (
-            <div className="bg-white dark:bg-outer_space-500 rounded-lg border border-gray-300 dark:border-payne's_gray-400 p-6">
+            <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-300 dark:border-gray-700 p-4 sm:p-6 shadow-sm">
               <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-semibold text-outer_space-500 dark:text-platinum-500">
+                <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white">
                   Individual Productivity
                 </h3>
               </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-gray-300 dark:border-gray-700">
-                      <th className="text-left p-3 font-medium text-gray-700 dark:text-gray-300">
-                        Member
-                      </th>
-                      <th className="text-center p-3 font-medium text-gray-700 dark:text-gray-300">
-                        Tasks Completed
-                      </th>
-                      <th className="text-center p-3 font-medium text-gray-700 dark:text-gray-300">
-                        Avg. Task Time
-                      </th>
-                      <th className="text-center p-3 font-medium text-gray-700 dark:text-gray-300">
-                        Productivity Score
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {analyticsData.teamProductivity.map((member, index) => (
-                      <tr
-                        key={index}
-                        className="border-b border-gray-100 dark:border-gray-800"
-                      >
-                        <td className="p-3 font-medium text-gray-900 dark:text-gray-100">
-                          {member.memberName}
-                        </td>
-                        <td className="p-3 text-center text-gray-600 dark:text-gray-400">
-                          {member.tasksCompleted}
-                        </td>
-                        <td className="p-3 text-center text-gray-600 dark:text-gray-400">
-                          {formatNumber(member.averageTaskTime)} days
-                        </td>
-                        <td className="p-3 text-center">
-                          <span
-                            className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${
-                              Number(member.productivity) >= 80
-                                ? "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400"
-                                : Number(member.productivity) >= 60
-                                  ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400"
-                                  : "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400"
-                            }`}
-                          >
-                            {formatNumber(member.productivity, 0)}%
-                          </span>
-                        </td>
+              <div className="overflow-x-auto -mx-4 sm:mx-0">
+                <div className="inline-block min-w-full align-middle">
+                  <table className="min-w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-gray-300 dark:border-gray-700">
+                        <th className="text-left p-2 sm:p-3 font-medium text-gray-700 dark:text-gray-300">
+                          Member
+                        </th>
+                        <th className="text-center p-2 sm:p-3 font-medium text-gray-700 dark:text-gray-300">
+                          Tasks Completed
+                        </th>
+                        <th className="text-center p-2 sm:p-3 font-medium text-gray-700 dark:text-gray-300 hidden sm:table-cell">
+                          Avg. Task Time
+                        </th>
+                        <th className="text-center p-2 sm:p-3 font-medium text-gray-700 dark:text-gray-300">
+                          Productivity Score
+                        </th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {analyticsData.teamProductivity.map((member, index) => (
+                        <tr
+                          key={index}
+                          className="border-b border-gray-100 dark:border-gray-800"
+                        >
+                          <td className="p-2 sm:p-3 font-medium text-gray-900 dark:text-gray-100">
+                            <div
+                              className="truncate max-w-32 sm:max-w-none"
+                              title={member.memberName}
+                            >
+                              {member.memberName}
+                            </div>
+                          </td>
+                          <td className="p-2 sm:p-3 text-center text-gray-600 dark:text-gray-400">
+                            {member.tasksCompleted}
+                          </td>
+                          <td className="p-2 sm:p-3 text-center text-gray-600 dark:text-gray-400 hidden sm:table-cell">
+                            {formatNumber(member.averageTaskTime)} days
+                          </td>
+                          <td className="p-2 sm:p-3 text-center">
+                            <span
+                              className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${
+                                Number(member.productivity) >= 80
+                                  ? "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400"
+                                  : Number(member.productivity) >= 60
+                                    ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400"
+                                    : "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400"
+                              }`}
+                            >
+                              {formatNumber(member.productivity, 0)}%
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
-              <div className="mt-4 text-xs text-gray-500 dark:text-gray-400">
+              <div className="mt-4 text-xs text-gray-500 dark:text-gray-400 space-y-1">
                 <p>
                   * Productivity score is calculated based on completion rate
                   (70%) and task efficiency (30%)
@@ -715,13 +785,13 @@ export default function AnalyticsClient({
 
         {/* Permission-based empty state for restricted content */}
         {!analyticsPermissions.canViewDetailedAnalytics && (
-          <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-6">
-            <div className="flex items-center space-x-3">
+          <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 sm:p-6">
+            <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-3">
               <AlertCircle
-                className="text-yellow-600 dark:text-yellow-400"
+                className="text-yellow-600 dark:text-yellow-400 shrink-0"
                 size={20}
               />
-              <div>
+              <div className="min-w-0">
                 <h3 className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
                   Limited Analytics Access
                 </h3>

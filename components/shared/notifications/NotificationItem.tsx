@@ -110,12 +110,14 @@ export default function NotificationItem({
     <Link
       href={notificationUrl}
       onClick={handleLinkClick}
-      className={`relative flex items-start p-4 border-b border-gray-100 hover:bg-gray-50 transition-colors ${
-        !notification.isRead ? "bg-blue-50 border-l-2 border-l-blue-500" : ""
+      className={`relative flex items-start p-4 border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors ${
+        !notification.isRead
+          ? "bg-blue-50 dark:bg-blue-900/20 border-l-2 border-l-blue-500 dark:border-l-blue-400"
+          : ""
       }`}
     >
       {!notification.isRead && (
-        <div className="absolute left-1 top-1/2 transform -translate-y-1/2 w-2 h-2 bg-blue-500 rounded-full"></div>
+        <div className="absolute left-1 top-1/2 transform -translate-y-1/2 w-2 h-2 bg-blue-500 dark:bg-blue-400 rounded-full"></div>
       )}
 
       <div className="flex-shrink-0 mr-3 mt-1 ml-2">
@@ -127,7 +129,9 @@ export default function NotificationItem({
           <div className="flex-1">
             <p
               className={`text-sm font-medium ${
-                !notification.isRead ? "text-gray-900" : "text-gray-700"
+                !notification.isRead
+                  ? "text-gray-900 dark:text-gray-100"
+                  : "text-gray-700 dark:text-gray-300"
               }`}
             >
               {notification.title}
@@ -135,7 +139,9 @@ export default function NotificationItem({
             {notification.message && (
               <p
                 className={`text-sm mt-1 ${
-                  !notification.isRead ? "text-gray-800" : "text-gray-600"
+                  !notification.isRead
+                    ? "text-gray-800 dark:text-gray-200"
+                    : "text-gray-600 dark:text-gray-400"
                 }`}
               >
                 {notification.message}
@@ -145,7 +151,9 @@ export default function NotificationItem({
             <div className="flex items-center gap-2 mt-2">
               <p
                 className={`text-xs ${
-                  !notification.isRead ? "text-blue-600" : "text-gray-500"
+                  !notification.isRead
+                    ? "text-blue-600 dark:text-blue-400"
+                    : "text-gray-500 dark:text-gray-400"
                 }`}
               >
                 {formatTimeAgo(notification.createdAt)}
@@ -153,8 +161,8 @@ export default function NotificationItem({
               <span
                 className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                   !notification.isRead
-                    ? "bg-blue-100 text-blue-700"
-                    : "bg-gray-100 text-gray-500"
+                    ? "bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300"
+                    : "bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400"
                 }`}
               >
                 {notification.isRead ? "Read" : "Unread"}
@@ -170,7 +178,7 @@ export default function NotificationItem({
                   e.stopPropagation();
                   onMarkAsRead(notification.id);
                 }}
-                className="flex items-center justify-center w-7 h-7 text-blue-600 hover:text-blue-800 hover:bg-blue-100 rounded transition-colors"
+                className="flex items-center justify-center w-7 h-7 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/40 rounded transition-colors"
                 title="Mark as read"
               >
                 <Check className="w-4 h-4" />
@@ -182,7 +190,7 @@ export default function NotificationItem({
                 e.stopPropagation();
                 onRemove(notification.id);
               }}
-              className="flex items-center justify-center w-7 h-7 text-gray-400 hover:text-red-600 hover:bg-red-100 rounded transition-colors"
+              className="flex items-center justify-center w-7 h-7 text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 rounded transition-colors"
               title="Remove notification"
             >
               <X className="w-4 h-4" />

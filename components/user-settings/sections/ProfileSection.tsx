@@ -81,18 +81,18 @@ export default function ProfileSection({
       {/* Basic Profile Information */}
       <section className="border-b border-gray-200 pb-8">
         <div className="pb-6">
-          <h3 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-white flex items-center gap-2">
             <User2 size={20} />
             Profile Information
           </h3>
-          <p className="mt-1 text-sm text-gray-600">
+          <p className="mt-1 text-sm text-gray-600 dark:text-gray-300 ">
             Update your basic profile information and avatar.
           </p>
         </div>
 
         {/* Avatar Upload Section */}
         <div className="mb-8">
-          <label className="block text-sm font-medium text-gray-700 mb-4">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-500 mb-4">
             Profile Picture
           </label>
           <div className="flex items-center gap-6">
@@ -124,7 +124,7 @@ export default function ProfileSection({
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={uploadImage.isPending}
-                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 dark:border-gray-700 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Camera size={16} />
                 Change Photo
@@ -149,7 +149,7 @@ export default function ProfileSection({
             <div>
               <label
                 htmlFor="firstName"
-                className="block text-sm font-medium text-gray-700"
+                className="block text-sm font-medium text-gray-700 dark:text-gray-500"
               >
                 First Name *
               </label>
@@ -158,7 +158,7 @@ export default function ProfileSection({
                 id="firstName"
                 value={formData.firstName}
                 onChange={(e) => handleInputChange("firstName", e.target.value)}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2 border"
+                className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2 border"
                 required
                 maxLength={100}
               />
@@ -167,7 +167,7 @@ export default function ProfileSection({
             <div>
               <label
                 htmlFor="lastName"
-                className="block text-sm font-medium text-gray-700"
+                className="block text-sm font-medium text-gray-700 dark:text-gray-500"
               >
                 Last Name *
               </label>
@@ -176,7 +176,7 @@ export default function ProfileSection({
                 id="lastName"
                 value={formData.lastName}
                 onChange={(e) => handleInputChange("lastName", e.target.value)}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2 border"
+                className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2 border"
                 required
                 maxLength={100}
               />
@@ -188,7 +188,7 @@ export default function ProfileSection({
             <div>
               <label
                 htmlFor="username"
-                className="block text-sm font-medium text-gray-700"
+                className="block text-sm font-medium text-gray-700 dark:text-gray-500"
               >
                 Username *
               </label>
@@ -201,7 +201,7 @@ export default function ProfileSection({
                   onChange={(e) =>
                     handleInputChange("username", e.target.value)
                   }
-                  className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 pl-10 pr-3 py-2 border"
+                  className="block w-full rounded-md border-gray-300 dark:border-gray-700 shadow-sm focus:border-blue-500 focus:ring-blue-500 pl-10 pr-3 py-2 border"
                   required
                   maxLength={50}
                 />
@@ -212,7 +212,7 @@ export default function ProfileSection({
             <div>
               <label
                 htmlFor="jobPosition"
-                className="block text-sm font-medium text-gray-700"
+                className="block text-sm font-medium text-gray-700 dark:text-gray-500"
               >
                 Job Position
               </label>
@@ -225,7 +225,7 @@ export default function ProfileSection({
                   onChange={(e) =>
                     handleInputChange("jobPosition", e.target.value)
                   }
-                  className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 pl-10 pr-3 py-2 border"
+                  className="block w-full rounded-md border-gray-300 dark:border-gray-700 shadow-sm focus:border-blue-500 focus:ring-blue-500 pl-10 pr-3 py-2 border"
                   placeholder="e.g. Software Engineer"
                   maxLength={50}
                 />
@@ -259,7 +259,7 @@ export default function ProfileSection({
             <Mail size={20} />
             Email Address
           </h3>
-          <p className="mt-1 text-sm text-gray-600">
+          <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
             Update your email address. A verification email will be sent to the
             new address.
           </p>
@@ -269,7 +269,7 @@ export default function ProfileSection({
           <div>
             <label
               htmlFor="email"
-              className="block text-sm font-medium text-gray-700"
+              className="block text-sm font-medium text-gray-700 dark:text-gray-500"
             >
               Email Address *
             </label>
@@ -278,7 +278,7 @@ export default function ProfileSection({
               id="email"
               value={formData.email}
               onChange={(e) => handleInputChange("email", e.target.value)}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2 border"
+              className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2 border"
               required
             />
             <p className="mt-1 text-xs text-gray-500">Current: {user.email}</p>

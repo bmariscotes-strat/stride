@@ -29,13 +29,15 @@ export default function ArchiveTeamDialog({
             <Archive className="w-6 h-6 text-yellow-600" />
           </div>
           <div className="mt-4 text-center">
-            <h3 className="text-lg font-medium text-gray-900">Archive Team</h3>
+            <h3 className="text-lg font-medium text-gray-900 dark:text-gray-200">
+              Archive Team
+            </h3>
             <div className="mt-2 px-7 py-3">
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-gray-500 dark:text-gray-400">
                 Are you sure you want to archive <strong>{team.name}</strong>?
                 This will:
               </p>
-              <ul className="mt-3 text-sm text-gray-500 text-left list-disc list-inside">
+              <ul className="mt-3 text-sm text-gray-500 dark:text-gray-400 text-left list-disc list-inside">
                 <li>Hide the team from all members</li>
                 <li>Prevent new activity in the team</li>
                 <li>Preserve all team data and projects</li>

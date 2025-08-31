@@ -113,7 +113,7 @@ export function ColumnHeader({
                 value={columnName}
                 onChange={(e) => setColumnName(e.target.value)}
                 onKeyDown={handleKeyPress}
-                className="font-semibold text-gray-900 bg-transparent border-b border-blue-300 focus:outline-none focus:border-blue-500 flex-1 min-w-0"
+                className="font-semibold dark:text-white text-gray-900 bg-transparent border-b border-blue-300 focus:outline-none focus:border-blue-500 flex-1 min-w-0"
                 maxLength={50}
                 autoFocus
               />
@@ -133,7 +133,7 @@ export function ColumnHeader({
             </div>
           ) : (
             <>
-              <h3 className="font-semibold text-gray-900 truncate">
+              <h3 className="font-semibold dark:text-white text-gray-900 truncate">
                 {column.name}
               </h3>
               <span className="text-sm font-normal text-gray-500 flex-shrink-0">

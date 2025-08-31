@@ -10,12 +10,12 @@ import type {
 } from "@/types";
 
 import {
-  ProjectAlertMessages,
   ProjectInformationSection,
   ProjectDangerZoneSection,
   DeleteProjectDialog,
   ArchiveProjectDialog,
 } from "@/components/projects";
+import { toast } from "sonner";
 
 export default function ProjectEditForm({
   project,
@@ -88,6 +88,15 @@ export default function ProjectEditForm({
       });
     }
   }, [project.id, project.projectTeamMembers]);
+
+  useEffect(() => {
+    if (success) {
+      toast.success("Project updated successfully.");
+    }
+    if (error) {
+      toast.error(error);
+    }
+  }, [success, error]);
 
   // Handle scroll to update active section
   useEffect(() => {
@@ -300,9 +309,7 @@ export default function ProjectEditForm({
   };
 
   return (
-    <div className="p-6 max-w-2xl">
-      <ProjectAlertMessages success={success} error={error} />
-
+    <div className="p-1 sm:p-1 md:p-6 lg:p-6 max-w-2xl">
       <form onSubmit={handleSubmit} className="space-y-12">
         <ProjectInformationSection
           formData={formData}

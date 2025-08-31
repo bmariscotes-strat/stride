@@ -40,8 +40,10 @@ export function DroppableColumn({
   return (
     <div
       ref={setNodeRef}
-      className={`bg-gray-50 rounded-lg p-4 min-w-80 max-w-80 flex flex-col ${
-        isOver ? "bg-blue-50 border-2 border-blue-300 border-dashed" : ""
+      className={`bg-gray-50 dark:bg-gray-800 rounded-lg p-4 min-w-80 max-w-80 flex flex-col ${
+        isOver
+          ? "bg-blue-50 dark:bg-blue-900 border-2 border-blue-300 border-dashed"
+          : ""
       }`}
     >
       <ColumnHeader

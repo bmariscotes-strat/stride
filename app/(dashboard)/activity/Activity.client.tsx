@@ -67,21 +67,21 @@ export default function ActivityLogsClient({
   };
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="border-b border-gray-200 dark:border-gray-700 pb-4">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+    <div className="p-3 sm:p-6 space-y-4 sm:space-y-6">
+      <div className="border-b border-gray-200 dark:border-gray-700 pb-3 sm:pb-4">
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
           Activity Logs
         </h1>
-        <p className="text-gray-600 dark:text-gray-400 mt-1">
+        <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mt-1">
           Track all your recent actions and changes
         </p>
       </div>
 
       {activities.length === 0 && !loading ? (
-        <div className="flex flex-col items-center justify-center py-16 text-center">
-          <div className="w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mb-4">
+        <div className="flex flex-col items-center justify-center py-12 sm:py-16 text-center">
+          <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mb-3 sm:mb-4">
             <svg
-              className="w-8 h-8 text-gray-400"
+              className="w-6 h-6 sm:w-8 sm:h-8 text-gray-400"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -94,41 +94,41 @@ export default function ActivityLogsClient({
               />
             </svg>
           </div>
-          <p className="text-lg font-medium text-gray-900 dark:text-white mb-1">
+          <p className="text-base sm:text-lg font-medium text-gray-900 dark:text-white mb-1">
             No activity yet
           </p>
-          <p className="text-gray-500 dark:text-gray-400">
+          <p className="text-sm sm:text-base text-gray-500 dark:text-gray-400">
             Your activity logs will appear here as you use the platform.
           </p>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-2 sm:space-y-3">
           {activities.map((log) => {
             const IconComponent = getActivityIconComponent(log.actionType);
 
             return (
               <div
                 key={log.id}
-                className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:shadow-md transition-shadow duration-200"
+                className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 sm:p-4 hover:shadow-md transition-shadow duration-200"
               >
-                <div className="flex items-start space-x-3">
+                <div className="flex items-start space-x-2 sm:space-x-3">
                   {/* Icon */}
-                  <div className="w-8 h-8 bg-blue-50 dark:bg-blue-900/30 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <IconComponent className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                  <div className="w-7 h-7 sm:w-8 sm:h-8 bg-blue-50 dark:bg-blue-900/30 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <IconComponent className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-600 dark:text-blue-400" />
                   </div>
 
                   <div className="flex-1 min-w-0">
                     {/* Formatted activity message */}
-                    <p className="text-gray-900 dark:text-white font-medium leading-relaxed">
+                    <p className="text-sm sm:text-base text-gray-900 dark:text-white font-medium leading-relaxed">
                       {formatActivityMessage(log)}
                     </p>
 
                     {/* Additional context - show card/project info if available */}
-                    <div className="flex items-center space-x-4 mt-2 text-sm text-gray-500 dark:text-gray-400">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-4 mt-2 text-xs sm:text-sm text-gray-500 dark:text-gray-400 space-y-1 sm:space-y-0">
                       <span>{getRelativeTime(log.createdAt)}</span>
 
                       {/* Show full timestamp on hover */}
-                      <span className="text-xs opacity-75">
+                      <span className="text-xs opacity-75 hidden sm:block">
                         {log.createdAt.toLocaleString()}
                       </span>
                     </div>
@@ -140,10 +140,10 @@ export default function ActivityLogsClient({
                       <img
                         src={log.user.avatarUrl}
                         alt={`${log.user.firstName} ${log.user.lastName}`}
-                        className="w-8 h-8 rounded-full"
+                        className="w-7 h-7 sm:w-8 sm:h-8 rounded-full"
                       />
                     ) : (
-                      <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
+                      <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
                         <span className="text-xs font-medium text-gray-600 dark:text-gray-300">
                           {log.user?.firstName?.[0] || "U"}
                           {log.user?.lastName?.[0] || ""}
@@ -159,7 +159,7 @@ export default function ActivityLogsClient({
       )}
 
       {loading && (
-        <div className="flex items-center justify-center py-8">
+        <div className="flex items-center justify-center py-6 sm:py-8">
           <div className="flex items-center space-x-2 text-gray-500 dark:text-gray-400">
             <svg
               className="animate-spin w-4 h-4"
@@ -180,7 +180,9 @@ export default function ActivityLogsClient({
                 d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
               ></path>
             </svg>
-            <span>Loading more activities...</span>
+            <span className="text-sm sm:text-base">
+              Loading more activities...
+            </span>
           </div>
         </div>
       )}

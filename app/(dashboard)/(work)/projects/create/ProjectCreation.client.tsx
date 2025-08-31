@@ -1,4 +1,3 @@
-// projects/create/ProjectCreation.client.tsx - Minor update to pass currentUserId
 "use client";
 import React, { useState, useEffect } from "react";
 import DualPanelLayout from "@/components/layout/shared/DualPanelLayout";
@@ -77,7 +76,7 @@ export default function ProjectCreation({
           </div>
         }
         right={
-          <div className="p-6 flex items-center justify-center">
+          <div className="p-1 sm:p-1 md:p-6 lg:p-6 max-w-2xl flex items-center justify-center">
             <div className="text-center">
               <div className="mb-4">
                 <FolderOpen className="h-12 w-12 text-gray-400 mx-auto" />
