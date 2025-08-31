@@ -48,20 +48,22 @@ const getButtonClasses = (
   // Variant and style combination classes
   const variantStyleClasses = {
     primary: {
-      filled: "bg-primary text-white hover:bg-primary/85",
+      filled:
+        "bg-primary text-white hover:bg-blue-700 dark:bg-blue-600 dark:text-white dark:hover:bg-blue-500", // Changed from bg-primary
       outlined:
-        "border-purple-600 text-purple-600 hover:bg-purple-50 focus:ring-purple-200 hover:border-purple-700",
+        "border-purple-600 text-purple-600 hover:bg-purple-50 hover:border-purple-700 dark:border-purple-400 dark:text-purple-300 dark:hover:bg-purple-900/40 dark:hover:border-purple-300",
     },
     secondary: {
       filled:
-        "bg-gray-600 text-white hover:bg-gray-700 focus:ring-gray-200 shadow-lg hover:shadow-xl",
+        "bg-gray-600 text-white hover:bg-gray-700 shadow-lg hover:shadow-xl dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-100",
       outlined:
-        "border-gray-600 text-gray-600 hover:bg-gray-50 focus:ring-gray-200 hover:border-gray-700",
+        "border-gray-600 text-gray-600 hover:bg-gray-50 hover:border-gray-700 dark:border-gray-500 dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:border-gray-400",
     },
     accent: {
-      filled: "bg-accent hover:bg-primary/50 focus:ring-pink-200 text-white",
+      filled:
+        "bg-accent text-white hover:bg-primary/50 dark:bg-pink-600 dark:hover:bg-pink-500",
       outlined:
-        "border-pink-400 text-pink-600 hover:bg-pink-50 focus:ring-pink-200 hover:border-pink-500",
+        "border-pink-400 text-pink-600 hover:bg-pink-50 hover:border-pink-500 dark:border-pink-500 dark:text-pink-300 dark:hover:bg-pink-900/40 dark:hover:border-pink-400",
     },
   };
 
