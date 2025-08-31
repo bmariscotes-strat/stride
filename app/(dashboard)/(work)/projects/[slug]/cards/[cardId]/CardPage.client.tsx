@@ -156,11 +156,11 @@ export default function CardPageClient({
           <>
             <div className="flex items-start justify-between mb-4">
               <div className="flex-1">
-                <h2 className="font-bold text-xl text-gray-900 mb-2">
+                <h2 className="font-bold text-xl text-gray-900 dark:text-gray-100 mb-2 truncate">
                   {project.name}
                 </h2>
                 {project.description && (
-                  <p className="text-sm text-gray-700 mb-4">
+                  <p className="text-sm text-gray-700 dark:text-gray-300 mb-4">
                     {project.description}
                   </p>
                 )}
@@ -180,7 +180,7 @@ export default function CardPageClient({
             <div className="space-y-3 mb-6">
               {project.teams && project.teams.length > 0 && (
                 <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-sm text-gray-600 font-medium">
+                  <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 font-medium">
                     <Users size={14} />
                     <span>Teams ({project.teams.length}):</span>
                   </div>
@@ -192,7 +192,7 @@ export default function CardPageClient({
                       >
                         <Link
                           href={`/team/${team.slug}`}
-                          className="text-blue-500 hover:underline text-sm"
+                          className="text-blue-500 dark:text-blue-400 hover:underline text-sm"
                         >
                           {team.name}
                         </Link>
@@ -210,14 +210,14 @@ export default function CardPageClient({
                 </div>
               )}
 
-              <div className="flex items-center gap-2 text-sm text-gray-600">
+              <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
                 <Calendar size={14} />
                 <span>
                   Created {new Date(project.createdAt).toLocaleDateString()}
                 </span>
               </div>
 
-              <div className="flex items-center gap-2 text-sm text-gray-600">
+              <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
                 <Crown size={14} />
                 <span>
                   Owner: {project.owner?.firstName} {project.owner?.lastName}
@@ -256,7 +256,8 @@ export default function CardPageClient({
             <div className="mb-6">
               <Link
                 href={`/projects/${project.slug}`}
-                className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 text-sm"
+                className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 
+             dark:text-gray-400 dark:hover:text-gray-200 text-sm"
               >
                 <ArrowLeft size={16} />
                 Back to Project
@@ -266,7 +267,7 @@ export default function CardPageClient({
             {/* Card Header */}
             <div className="flex items-start justify-between mb-6">
               <div className="flex-1">
-                <h1 className="text-2xl font-bold text-gray-900 mb-3">
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-3">
                   {card.title}
                 </h1>
 
@@ -354,22 +355,24 @@ export default function CardPageClient({
             <div className="space-y-6">
               {/* Description */}
               {card.description && (
-                <div className=" bg-gray-50 rounded-lg p-4">
-                  <h3 className="font-medium text-gray-900 mb-3">
+                <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
+                  <h3 className="font-medium text-gray-900 dark:text-gray-100 mb-3">
                     Description
                   </h3>
                   <div
-                    className="prose prose-sm max-w-none text-gray-700 [&_ul]:list-disc [&_ul]:pl-5 [&_li]:mb-1"
+                    className="prose prose-sm max-w-none text-gray-700 dark:text-gray-300 
+                 [&_ul]:list-disc [&_ul]:pl-5 [&_li]:mb-1 
+                 dark:[&_ul]:marker:text-gray-400"
                     dangerouslySetInnerHTML={{ __html: card.description }}
                   />
                 </div>
               )}
 
-              {/* Metadata - Jira Style */}
+              {/* Metadata */}
               <div className="space-y-4">
                 {/* Assignee */}
                 <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-2 text-sm text-gray-600 w-24">
+                  <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-500 w-24">
                     <User size={14} />
                     <span>Assignee</span>
                   </div>
@@ -387,7 +390,7 @@ export default function CardPageClient({
                           {card.assignee.lastName?.charAt(0)}
                         </div>
                       )}
-                      <span className="text-sm text-gray-900">
+                      <span className="text-sm text-gray-900 dark:text-gray-500">
                         {card.assignee.firstName} {card.assignee.lastName}
                       </span>
                     </div>
@@ -398,7 +401,7 @@ export default function CardPageClient({
 
                 {/* Reporter/Creator */}
                 <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-2 text-sm text-gray-600 w-24">
+                  <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-500 w-24">
                     <User size={14} />
                     <span>Created By</span>
                   </div>
@@ -416,7 +419,7 @@ export default function CardPageClient({
                           {card.owner.lastName?.charAt(0)}
                         </div>
                       )}
-                      <span className="text-sm text-gray-900">
+                      <span className="text-sm text-gray-900 dark:text-gray-500">
                         {card.owner.firstName} {card.owner.lastName}
                       </span>
                     </div>
@@ -427,12 +430,12 @@ export default function CardPageClient({
 
                 {/* Due Date */}
                 <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-2 text-sm text-gray-600 w-24">
+                  <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-500 w-24">
                     <Calendar size={14} />
                     <span>Due Date</span>
                   </div>
                   {card.dueDate ? (
-                    <span className="text-sm text-gray-900">
+                    <span className="text-sm text-gray-900 dark:text-gray-500">
                       {format(new Date(card.dueDate), "MMM d, yyyy")}
                     </span>
                   ) : (
@@ -443,11 +446,11 @@ export default function CardPageClient({
                 {/* Start Date */}
                 {card.startDate && (
                   <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-2 text-sm text-gray-600 w-24">
+                    <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-500 w-24">
                       <PlayCircle size={14} />
                       <span>Start Date</span>
                     </div>
-                    <span className="text-sm text-gray-900">
+                    <span className="text-sm text-gray-900 dark:text-gray-500">
                       {format(new Date(card.startDate), "MMM d, yyyy")}
                     </span>
                   </div>
@@ -455,11 +458,11 @@ export default function CardPageClient({
 
                 {/* Created */}
                 <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-2 text-sm text-gray-600 w-24">
+                  <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-500 w-24">
                     <Clock size={14} />
                     <span>Created</span>
                   </div>
-                  <span className="text-sm text-gray-900">
+                  <span className="text-sm text-gray-900 dark:text-gray-500">
                     {format(
                       new Date(card.createdAt),
                       "MMM d, yyyy 'at' h:mm a"
@@ -471,7 +474,7 @@ export default function CardPageClient({
               {/* Labels */}
               {card.labels && card.labels.length > 0 && (
                 <div>
-                  <div className="flex items-center gap-2 text-sm text-gray-600 mb-3">
+                  <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-500 mb-3">
                     <Tag size={14} />
                     <span>Labels</span>
                   </div>

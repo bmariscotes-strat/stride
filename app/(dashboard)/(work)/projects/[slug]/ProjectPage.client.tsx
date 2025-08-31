@@ -144,17 +144,17 @@ export default function ProjectPageClient({
     switch (activeView) {
       case "kanban":
         return (
-          <div className="p-6 relative">
+          <div className="p-1 sm:p-1 md:p-6 lg:p-6 relative">
             <div className="flex items-center justify-center h-full">
               <div className="text-center w-full">
                 <div className="flex flex-col items-start pb-3">
                   <div className="flex items-center gap-2 mb-2">
                     <Kanban className="h-6 w-6 text-gray-400" />
-                    <h3 className="text-lg font-medium text-gray-900">
+                    <h3 className="text-lg font-medium text-gray-900 dark:text-white">
                       Kanban Board
                     </h3>
                   </div>
-                  <p className="text-gray-700 text-sm">
+                  <p className="text-gray-700 text-sm dark:text-gray-100">
                     Drag and drop your tasks.
                   </p>
                 </div>
@@ -214,13 +214,13 @@ export default function ProjectPageClient({
           <>
             <AppBreadcrumb />
 
-            <div className="flex items-start justify-between mb-4">
-              <div className="flex-1">
-                <h2 className="font-bold text-xl text-gray-900 mb-2">
+            <div className="flex flex-col sm:flex-row items-start justify-between mb-4 gap-3 sm:gap-0">
+              <div className="flex-1 min-w-0 w-full sm:w-auto">
+                <h2 className="font-bold text-xl text-gray-900 dark:text-gray-100 mb-2 truncate">
                   {project.name}
                 </h2>
                 {project.description && (
-                  <p className="text-sm text-gray-700 mb-4">
+                  <p className="text-sm text-gray-700 dark:text-gray-300 mb-4 line-clamp-3 sm:line-clamp-none">
                     {project.description}
                   </p>
                 )}
@@ -230,7 +230,7 @@ export default function ProjectPageClient({
               {showSettings && (
                 <Link
                   href={`/projects/${project.slug}/settings`}
-                  className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md"
+                  className="p-2 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors shrink-0"
                   title="Project Settings"
                 >
                   <Settings size={16} />
@@ -241,25 +241,26 @@ export default function ProjectPageClient({
             <div className="space-y-3 mb-6">
               {project.teams && project.teams.length > 0 && (
                 <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-sm text-gray-600 font-medium">
+                  <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 font-medium">
                     <Users size={14} />
                     <span>Teams ({project.teams.length}):</span>
                   </div>
-                  <div className="ml-5 space-y-1">
+                  <div className="ml-5 space-y-2">
                     {project.teams.map((team) => (
                       <div
                         key={team.id}
-                        className="flex items-center justify-between"
+                        className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-0"
                       >
                         <Link
                           href={`/team/${team.slug}`}
-                          className="text-blue-500 hover:underline text-sm"
+                          className="text-blue-500 dark:text-blue-400 hover:underline text-sm truncate min-w-0 flex-1"
+                          title={team.name}
                         >
                           {team.name}
                         </Link>
                         {team.role && (
                           <div
-                            className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${getRoleBadgeClass(team.role)}`}
+                            className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium shrink-0 ${getRoleBadgeClass(team.role)}`}
                           >
                             {getRoleIcon(team.role)}
                             {team.role}
@@ -271,16 +272,16 @@ export default function ProjectPageClient({
                 </div>
               )}
 
-              <div className="flex items-center gap-2 text-sm text-gray-600">
-                <Calendar size={14} />
-                <span>
+              <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                <Calendar size={14} className="shrink-0" />
+                <span className="truncate">
                   Created {new Date(project.createdAt).toLocaleDateString()}
                 </span>
               </div>
 
-              <div className="flex items-center gap-2 text-sm text-gray-600">
-                <Crown size={14} />
-                <span>
+              <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                <Crown size={14} className="shrink-0" />
+                <span className="truncate">
                   Owner: {project.owner?.firstName} {project.owner?.lastName}
                   {isProjectOwner && " (You)"}
                 </span>
@@ -296,15 +297,17 @@ export default function ProjectPageClient({
                     console.log("Create task button clicked");
                     setCreateTaskOpen(true);
                   }}
-                  className="w-full bg-blue-600 text-white px-3 py-2 rounded-md text-sm font-medium hover:bg-blue-700 transition-colors"
+                  className="w-full bg-blue-600 dark:bg-blue-600 text-white px-3 py-2 rounded-md text-sm font-medium hover:bg-blue-700 dark:hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
                 >
                   Create New Card
                 </button>
               )}
             </div>
 
-            <div className="border-t border-gray-200 pt-4">
-              <h3 className="font-medium text-gray-900 mb-3">Views</h3>
+            <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+              <h3 className="font-medium text-gray-900 dark:text-gray-100 mb-3">
+                Views
+              </h3>
               <div className="space-y-1">
                 {updatedViews.map(({ id, label, icon, isActive }) => {
                   const Icon = getViewIcon(icon);
@@ -315,21 +318,23 @@ export default function ProjectPageClient({
                       key={id}
                       type="button"
                       onClick={() => handleViewChange(id as ViewType)}
-                      className={`w-full text-left px-3 py-2 rounded-md text-sm flex items-center gap-2 transition-colors ${
+                      className={`w-full text-left px-3 py-2 rounded-md text-sm flex items-center gap-2 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:ring-offset-2 dark:focus:ring-offset-gray-900 ${
                         isActive && !isAnalytics
-                          ? "bg-blue-100 text-blue-700 font-medium"
-                          : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
-                      } ${isAnalytics ? "border-t border-gray-200 mt-2 pt-4" : ""}`}
+                          ? "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-medium"
+                          : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-200"
+                      } ${isAnalytics ? "border-t border-gray-200 dark:border-gray-700 mt-2 pt-4" : ""}`}
                       title={
                         isAnalytics
                           ? "View project analytics and performance metrics"
                           : undefined
                       }
                     >
-                      <Icon size={16} />
-                      {label}
+                      <Icon size={16} className="shrink-0" />
+                      <span className="truncate flex-1 min-w-0">{label}</span>
                       {isAnalytics && (
-                        <span className="ml-auto text-xs text-gray-400">→</span>
+                        <span className="ml-auto text-xs text-gray-400 dark:text-gray-500 shrink-0">
+                          →
+                        </span>
                       )}
                     </button>
                   );
@@ -342,7 +347,13 @@ export default function ProjectPageClient({
       />
 
       {canCreateCards && createTaskOpen && (
-        <Suspense fallback={<div>Loading...</div>}>
+        <Suspense
+          fallback={
+            <div className="flex items-center justify-center p-4">
+              <div className="text-gray-600 dark:text-gray-400">Loading...</div>
+            </div>
+          }
+        >
           <CreateTaskDialog
             open={createTaskOpen}
             onOpenChange={handleTaskDialogClose}
