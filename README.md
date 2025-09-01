@@ -4,9 +4,9 @@
 <div align="center">
 </h1>
 
-  <a href="https://github.com/bmariscotes-strat/bmariscotes-mini-project-2/releases">
+  <a href="https://github.com/bmariscotes-strat/stride/releases">
     <img src="https://img.shields.io/github/v/release/bmariscotes-strat/stride" alt="GitHub release" />
-  <a href="https://wryte-blog.vercel.app">
+  <a href="https://stride-pm.app">
     <img src="https://img.shields.io/badge/Live%20Site-online-brightgreen" alt="live site" />
   </a>
 
