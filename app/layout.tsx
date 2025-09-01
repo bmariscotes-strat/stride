@@ -8,17 +8,14 @@ import { Toaster } from "sonner";
 import "@/styles/globals.css";
 import { Providers } from "@/components/theme/ThemeProvider";
 import { ReactQueryProvider } from "@/components/providers/ReactQueryProvider";
+import { createMetadata } from "@/lib/utils/metadata";
 
 console.log("Logging enabled?", process.env.NODE_ENV === "development");
 
-export const metadata: Metadata = {
+export const metadata: Metadata = createMetadata({
   title: "Stride",
-  icons: {
-    icon: "/favicon.ico",
-  },
   description: "Team collaboration and project management platform",
-  generator: "v0.dev",
-};
+});
 
 export default function RootLayout({
   children,
