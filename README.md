@@ -91,7 +91,7 @@ A team collaboration and project management platform featuring Kanban boards, co
 
 ## 📖 Documentation
 
-For detailed project documentation, API references, and development guides, visit the comprehensive documentation:
+For detailed project documentation, references, and development guides, visit the comprehensive documentation:
 
 **[📚 Stride Documentation](https://stratpoint.slite.com/app/docs/WQ3kxRoIJ12fOM/Stride-Documentation)**
 
