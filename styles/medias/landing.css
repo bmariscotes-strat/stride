@@ -1,0 +1,6 @@
+@media (min-width: 1024px) and (max-width: 1400px) {
+  .hero {
+    padding-left: 5.5rem;
+    padding-right: 5.6rem;
+  }
+}
