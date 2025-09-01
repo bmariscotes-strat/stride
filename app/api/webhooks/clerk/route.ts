@@ -8,6 +8,7 @@ import { WebhookEvent } from "@clerk/nextjs/server";
 import { db } from "@/lib/db/db";
 import { users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
+import { clerkClient } from "@clerk/nextjs/server";
 
 // Define types for Clerk webhook data
 interface ClerkUserData {
@@ -191,8 +192,51 @@ export async function POST(req: Request) {
   }
 }
 
+// Add this helper function after your existing functions
 /**
- * Create: Create user
+ * Generate a unique username from email
+ */
+async function generateUniqueUsername(email: string): Promise<string> {
+  // Extract base username from email
+  const baseUsername = email
+    .split("@")[0]
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, ""); // Remove special characters
+
+  let username = baseUsername;
+  let counter = 1;
+
+  // Keep trying until we find a unique username
+  while (counter <= 999) {
+    try {
+      // Check if username already exists in your database
+      const existingUser = await db
+        .select()
+        .from(users)
+        .where(eq(users.username, username))
+        .limit(1);
+
+      if (existingUser.length === 0) {
+        // Username is available
+        return username;
+      }
+
+      // Try with a number suffix
+      username = `${baseUsername}${counter}`;
+      counter++;
+    } catch (error) {
+      console.error("Error checking username availability:", error);
+      // Fallback to timestamp-based username
+      return `${baseUsername}${Date.now()}`;
+    }
+  }
+
+  // If we've tried 999 variations, use timestamp
+  return `${baseUsername}${Date.now()}`;
+}
+
+/**
+ * Create: Create user with auto-generated username
  */
 async function handleUserCreated(userData: ClerkUserData) {
   try {
@@ -201,14 +245,40 @@ async function handleUserCreated(userData: ClerkUserData) {
       JSON.stringify(userData, null, 2)
     );
 
+    const primaryEmail = userData.email_addresses[0]?.email_address || "";
+
+    // Generate username if not provided (for OAuth users)
+    let username = userData.username || "";
+
+    if (!username && primaryEmail) {
+      console.log("🔵 No username provided, generating from email...");
+      username = await generateUniqueUsername(primaryEmail);
+      console.log(`🔵 Generated username: ${username}`);
+
+      // Update the user in Clerk with the generated username
+      try {
+        const clerk = await clerkClient();
+        await clerk.users.updateUser(userData.id, {
+          username: username,
+        });
+        console.log(`✅ Updated Clerk user with username: ${username}`);
+      } catch (clerkError) {
+        console.error(
+          "❌ Error updating Clerk user with username:",
+          clerkError
+        );
+        // Continue with database creation even if Clerk update fails
+      }
+    }
+
     const result = await db
       .insert(users)
       .values({
         clerkUserId: userData.id,
-        username: userData.username || "",
+        username: username,
         firstName: userData.first_name || "",
         lastName: userData.last_name || "",
-        email: userData.email_addresses[0]?.email_address || "",
+        email: primaryEmail,
       })
       .returning();
 
