@@ -823,7 +823,9 @@ export default function CalendarView({
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <CalendarIcon className="h-5 w-5 text-gray-400" />
-          <h3 className="text-lg font-medium text-gray-900">Calendar View</h3>
+          <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+            Calendar View
+          </h3>
           <span className="text-sm text-gray-500">
             ({events.length} card{events.length !== 1 ? "s" : ""} with due
             dates)
@@ -840,7 +842,10 @@ export default function CalendarView({
 
           {/* Refresh indicator */}
           {isRefetching && (
-            <div className="inline-flex items-center gap-2 bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm">
+            <div
+              className="inline-flex items-center gap-2 bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm 
+                dark:bg-blue-900 dark:text-blue-100"
+            >
               <RefreshCw size={14} className="animate-spin" />
               Syncing...
             </div>
@@ -850,7 +855,8 @@ export default function CalendarView({
           <button
             onClick={manualRefresh}
             disabled={isRefetching}
-            className="p-2 bg-white shadow-sm rounded-md hover:bg-gray-50 transition-colors disabled:opacity-50"
+            className="p-2 bg-white shadow-sm rounded-md hover:bg-gray-50 transition-colors disabled:opacity-50 
+           dark:bg-gray-900 dark:hover:bg-gray-800 dark:text-gray-100"
             title="Refresh calendar (Ctrl+R)"
           >
             <RefreshCw

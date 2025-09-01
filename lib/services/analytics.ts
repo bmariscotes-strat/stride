@@ -362,7 +362,6 @@ export async function getProjectAnalyticsWithCache(
   projectId: string,
   timeRange: "7d" | "30d" | "90d" | "1y" = "30d"
 ): Promise<ProjectAnalyticsData> {
-  // You can implement caching here if needed (Redis, etc.)
   return await getProjectAnalytics(projectId, timeRange);
 }
 

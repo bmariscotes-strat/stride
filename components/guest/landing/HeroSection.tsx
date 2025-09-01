@@ -21,7 +21,7 @@ export default function HeroSection() {
   }, []);
 
   return (
-    <section className="min-h-[90vh] lg:h-[90vh] flex items-center justify-center py-8 lg:py-0">
+    <section className="hero min-h-[90vh] lg:h-[90vh] flex items-center justify-center py-8 lg:py-0">
       <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 lg:grid-cols-2 items-center h-full gap-8 sm:gap-12">
           {/* Left Side */}

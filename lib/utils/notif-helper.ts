@@ -75,15 +75,13 @@ export async function getNotificationUrlById(
 
     // Handle standalone card notifications (if they don't have projectId but have cardId)
     if (notification.cardId && !notification.projectId) {
-      // You might need to fetch the project ID from the card ID
-      // For now, return a generic fallback
-      return `/dashboard`; // or wherever you want to redirect
+      return `/dashboard`;
     }
 
     // Fallback for notifications without specific context
     return "/dashboard";
   } catch (error) {
     console.error("Error fetching slugs for notification URL:", error);
-    return "/dashboard"; // Better fallback than "#"
+    return "/dashboard";
   }
 }

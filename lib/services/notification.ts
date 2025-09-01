@@ -602,14 +602,7 @@ export class NotificationService {
     cutoffDate.setDate(cutoffDate.getDate() - daysOld);
 
     try {
-      await db.delete(notifications).where(
-        and(
-          eq(notifications.isRead, true)
-          // Assuming createdAt is a timestamp column
-          // You might need to adjust this based on your schema
-          // lt(notifications.createdAt, cutoffDate)
-        )
-      );
+      await db.delete(notifications).where(and(eq(notifications.isRead, true)));
     } catch (error) {
       console.error("Failed to delete old notifications:", error);
     }
@@ -741,7 +734,6 @@ export class NotificationService {
     return result;
   }
 
-  // Alternative version if you only need users from all teams in the project
   private static async getAllProjectTeamMembers(
     projectId: string,
     excludeUserIds: string[] = []

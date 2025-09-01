@@ -149,7 +149,6 @@ export default function CreateTeamPage() {
 
       setIsSearching(true);
       try {
-        // You'll need to implement this server action
         const results = await searchUsersAction(debouncedSearchQuery);
 
         // Filter out current user and already added members
@@ -353,8 +352,6 @@ export default function CreateTeamPage() {
         const invitationPromises = formData.members.map(async (member) => {
           try {
             if (member.isExistingUser && member.id) {
-              // For existing users, you might want to add them directly to the team
-              // and send a notification through your app
               console.log(`Adding existing user ${member.email} to team`);
             } else {
               // For non-existing users, send Clerk invitation

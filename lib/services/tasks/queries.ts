@@ -465,7 +465,7 @@ export class TaskQueryService extends BaseTaskService {
           assignee: assignee!,
           labels,
           comments,
-          attachments: [], // Add if you have attachments
+          attachments: [],
           commentsCount: commentsCount?.count || 0,
         };
       })
@@ -564,7 +564,7 @@ export class TaskQueryService extends BaseTaskService {
             : null,
           labels,
           comments,
-          attachments: [], // Add if you have attachments
+          attachments: [],
           commentsCount: commentsCount?.count || 0,
         };
       })
@@ -714,7 +714,7 @@ export class TaskQueryService extends BaseTaskService {
             : null,
           labels,
           comments,
-          attachments: [], // Add if you have attachments
+          attachments: [],
           commentsCount: commentsCount?.count || 0,
         };
       })

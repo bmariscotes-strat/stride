@@ -573,21 +573,6 @@ export async function getUserMentionedComments(
  */
 export async function markMentionsAsRead(userId: string, commentIds: number[]) {
   try {
-    // Note: You might want to add a 'read' field to your mentions table
-    // For now, this is a placeholder that could update a separate table
-    // or add a timestamp field to track when mentions were acknowledged
-
-    // If you add an 'acknowledgedAt' field to mentions table:
-    // await db
-    //   .update(mentions)
-    //   .set({ acknowledgedAt: new Date() })
-    //   .where(
-    //     and(
-    //       eq(mentions.mentionedUserId, userId),
-    //       inArray(mentions.commentId, commentIds)
-    //     )
-    //   );
-
     return { success: true };
   } catch (error) {
     console.error("Failed to mark mentions as read:", error);

@@ -3,6 +3,7 @@
 @import "./ui/recharts.css";
 @import "./utils/calendar-view.css";
 @import "./animation/keyframes.css";
+@import "./medias/landing.css";
 
 @custom-variant dark (&:is(.dark *));
 
