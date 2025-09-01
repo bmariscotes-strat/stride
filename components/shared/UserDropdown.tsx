@@ -92,7 +92,7 @@ export default function UserDropdown() {
             {/* Settings Link */}
             <button
               onClick={handleSettings}
-              className="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 hover:text-gray-900 transition-colors duration-150"
+              className="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600  hover:text-gray-900 transition-colors duration-150"
             >
               <Settings className="w-4 h-4 mr-3 text-gray-500" />
               Settings
@@ -103,7 +103,7 @@ export default function UserDropdown() {
 
             <button
               onClick={handleActivity}
-              className="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 hover:text-gray-900 transition-colors duration-150"
+              className="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600  hover:text-gray-900 transition-colors duration-150"
             >
               <Activity className="w-4 h-4 mr-3 text-gray-500" />
               Activity
@@ -113,7 +113,7 @@ export default function UserDropdown() {
 
             {/* Logout Link */}
             <SignOutButton>
-              <button className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors duration-150">
+              <button className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 hover:text-red-700 dark:hover:bg-gray-600  transition-colors duration-150">
                 <LogOut className="w-4 h-4 mr-3 text-red-500" />
                 Logout
               </button>
