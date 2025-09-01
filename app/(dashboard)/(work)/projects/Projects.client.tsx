@@ -34,8 +34,11 @@ export default function ProjectsClient() {
 
   if (loading || loadingProjects) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-gray-900">
-        <p className="text-gray-600 dark:text-gray-400">Loading...</p>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-2 border-primary/20 dark:border-blue-600/20 border-t-primary dark:border-t-blue-600 rounded-full animate-spin"></div>
+          <p className="text-gray-600 dark:text-gray-400">Loading...</p>
+        </div>
       </div>
     );
   }

@@ -49,7 +49,7 @@ const getButtonClasses = (
   const variantStyleClasses = {
     primary: {
       filled:
-        "bg-primary text-white hover:bg-primary/80 hover:text-white/80 dark:bg-blue-600 dark:text-white dark:hover:bg-blue-500", // Changed from bg-primary
+        "bg-primary text-white hover:bg-primary/80 hover:text-white/80 dark:bg-blue-600 dark:text-white dark:hover:bg-blue-500",
       outlined:
         "border-purple-600 text-purple-600 hover:bg-purple-50 hover:border-purple-700 dark:border-purple-400 dark:text-purple-300 dark:hover:bg-purple-900/40 dark:hover:border-purple-300",
     },

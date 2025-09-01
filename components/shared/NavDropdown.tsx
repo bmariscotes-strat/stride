@@ -197,9 +197,9 @@ const NavDropdown = React.memo<NavDropdownProps>(
           ${
             routeActive
               ? "text-primary font-semibold"
-              : "text-gray-700 font-medium hover:text-gray-900"
+              : "text-gray-700 dark:text-gray-300 font-medium hover:text-gray-900 dark:hover:text-gray-100"
           }
-          ${isOpen ? "text-gray-900 bg-gray-50" : "hover:bg-gray-50"}
+          ${isOpen ? "text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 rounded-md" : "hover:bg-gray-50 dark:hover:bg-gray-800 hover:rounded-md"}
         `}
           onClick={handleToggle}
           aria-expanded={isOpen}
@@ -226,22 +226,22 @@ const NavDropdown = React.memo<NavDropdownProps>(
         {/* Dropdown Menu */}
         {isOpen && (
           <div
-            className="absolute top-full left-0 mt-1 min-w-[280px] bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50"
+            className="absolute top-full left-0 mt-1 min-w-[280px] bg-white dark:bg-gray-900 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-2 z-50"
             role="menu"
             aria-label={`${title} options`}
           >
             {isEmpty ? (
               /* Empty State */
               <div className="px-4 py-6 text-center">
-                <div className="text-gray-400 mb-3">
+                <div className="text-gray-400 dark:text-gray-500 mb-3">
                   <Rocket className="w-8 h-8 mx-auto opacity-50" />
                 </div>
-                <div className="text-sm text-gray-500 mb-4">
+                <div className="text-sm text-gray-500 dark:text-gray-400 mb-4">
                   {emptyStateText || `No ${title.toLowerCase()} yet`}
                 </div>
                 <Link
                   href={viewAllHref}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white text-sm font-medium rounded-md hover:bg-primary/90 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white hover:bg-primary/80 hover:text-white/80 dark:bg-blue-600 dark:text-white dark:hover:bg-blue-500 text-sm font-medium rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
                   onClick={closeDropdown}
                   prefetch={false}
                   role="menuitem"
@@ -265,12 +265,12 @@ const NavDropdown = React.memo<NavDropdownProps>(
                         key={key}
                         href={href}
                         className={`
-                        flex items-center gap-3 px-4 py-2 text-sm transition-colors
+                        flex items-center gap-3 px-4 py-2 text-sm transition-colors rounded-md mx-2
                         focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-inset
                         ${
                           isActive
-                            ? "bg-blue-50 text-primary border-r-2 border-blue-600"
-                            : "text-gray-700 hover:bg-gray-50 hover:text-gray-900"
+                            ? "bg-blue-50 dark:bg-blue-900/30 text-primary border-r-2 border-blue-600"
+                            : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100"
                         }
                       `}
                         onClick={() => handleItemClick(item)}
@@ -280,7 +280,9 @@ const NavDropdown = React.memo<NavDropdownProps>(
                         {item.icon && (
                           <div
                             className={`flex-shrink-0 w-5 h-5 ${
-                              isActive ? "text-primary" : "text-gray-400"
+                              isActive
+                                ? "text-primary"
+                                : "text-gray-400 dark:text-gray-500"
                             }`}
                             aria-hidden="true"
                           >
@@ -294,7 +296,9 @@ const NavDropdown = React.memo<NavDropdownProps>(
                           {(item.description || item.type) && (
                             <div
                               className={`text-xs mt-0.5 overflow-hidden text-ellipsis whitespace-nowrap ${
-                                isActive ? "text-primary" : "text-gray-500"
+                                isActive
+                                  ? "text-primary"
+                                  : "text-gray-500 dark:text-gray-400"
                               }`}
                               style={{ maxWidth: "220px" }}
                               title={item.description || item.type}
@@ -310,8 +314,8 @@ const NavDropdown = React.memo<NavDropdownProps>(
 
                 {/* Items Counter */}
                 {hasMoreItems && (
-                  <div className="border-t border-gray-100 mt-2 pt-2">
-                    <div className="px-4 py-1 text-xs text-gray-500">
+                  <div className="border-t border-gray-100 dark:border-gray-700 mt-2 pt-2">
+                    <div className="px-4 py-1 text-xs text-gray-500 dark:text-gray-400">
                       Showing {visibleItems.length} of {items.length}{" "}
                       {title.toLowerCase()}
                     </div>
@@ -320,10 +324,10 @@ const NavDropdown = React.memo<NavDropdownProps>(
 
                 {/* View All Link */}
                 {(hasMoreItems || items.some((item) => item.slug)) && (
-                  <div className="border-t border-gray-100 mt-2 pt-2">
+                  <div className="border-t border-gray-100 dark:border-gray-700 mt-2 pt-2">
                     <Link
                       href={viewAllHref}
-                      className="flex items-center justify-center px-4 py-2 text-sm font-medium text-primary hover:text-primary hover:bg-blue-50 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-inset"
+                      className="flex items-center justify-center px-4 py-2 text-sm font-medium text-primary hover:text-primary hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-inset rounded-md mx-2"
                       onClick={closeDropdown}
                       prefetch={false}
                       role="menuitem"

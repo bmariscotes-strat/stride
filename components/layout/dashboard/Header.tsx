@@ -209,56 +209,86 @@ export default function Header({ teams, projects, userId }: HeaderProps) {
               </div>
 
               {/* Mobile Teams Section */}
-              {teamNavItems.length > 0 && (
-                <div className="border-t border-border pt-4 space-y-2">
-                  <h3 className="text-sm font-semibold text-muted-foreground dark:text-gray-300  uppercase tracking-wider mb-3">
-                    Teams
-                  </h3>
-                  {teamNavItems.slice(0, 3).map((item) => (
+              <div className="border-t border-border pt-4 space-y-2">
+                <h3 className="text-sm font-semibold text-muted-foreground dark:text-gray-300 uppercase tracking-wider mb-3">
+                  Teams
+                </h3>
+                {teamNavItems.length > 0 ? (
+                  <>
+                    {teamNavItems.slice(0, 3).map((item) => (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        className="block px-4 py-3 rounded-lg text-muted-foreground hover:text-primary hover:bg-accent transition-colors"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                      >
+                        {item.name}
+                      </Link>
+                    ))}
                     <Link
-                      key={item.href}
-                      href={item.href}
-                      className="block px-4 py-3 rounded-lg text-muted-foreground hover:text-primary hover:bg-accent transition-colors"
+                      href="/team"
+                      className="block px-4 py-2 text-sm text-primary hover:bg-accent rounded-lg transition-colors"
                       onClick={() => setIsMobileMenuOpen(false)}
                     >
-                      {item.name}
+                      View All Teams →
                     </Link>
-                  ))}
-                  <Link
-                    href="/team"
-                    className="block px-4 py-2 text-sm text-primary hover:bg-accent rounded-lg transition-colors"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    View All Teams →
-                  </Link>
-                </div>
-              )}
+                  </>
+                ) : (
+                  <div className="px-4 py-3">
+                    <p className="text-sm text-muted-foreground mb-2">
+                      No teams yet.
+                    </p>
+                    <Link
+                      href="/team/create"
+                      className="text-sm text-primary hover:underline"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    >
+                      → Create Team
+                    </Link>
+                  </div>
+                )}
+              </div>
 
               {/* Mobile Projects Section */}
-              {projectNavItems.length > 0 && (
-                <div className="border-t border-border pt-4 space-y-2">
-                  <h3 className="text-sm font-semibold text-muted-foreground uppercase dark:text-gray-300 tracking-wider mb-3">
-                    Projects
-                  </h3>
-                  {projectNavItems.slice(0, 3).map((item) => (
+              <div className="border-t border-border pt-4 space-y-2">
+                <h3 className="text-sm font-semibold text-muted-foreground uppercase dark:text-gray-300 tracking-wider mb-3">
+                  Projects
+                </h3>
+                {projectNavItems.length > 0 ? (
+                  <>
+                    {projectNavItems.slice(0, 3).map((item) => (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        className="block px-4 py-3 rounded-lg text-muted-foreground hover:text-primary hover:bg-accent transition-colors"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                      >
+                        {item.name}
+                      </Link>
+                    ))}
                     <Link
-                      key={item.href}
-                      href={item.href}
-                      className="block px-4 py-3 rounded-lg text-muted-foreground hover:text-primary hover:bg-accent transition-colors"
+                      href="/projects"
+                      className="block px-4 py-2 text-sm text-primary hover:bg-accent rounded-lg transition-colors"
                       onClick={() => setIsMobileMenuOpen(false)}
                     >
-                      {item.name}
+                      View All Projects →
                     </Link>
-                  ))}
-                  <Link
-                    href="/projects"
-                    className="block px-4 py-2 text-sm text-primary hover:bg-accent rounded-lg transition-colors"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    View All Projects →
-                  </Link>
-                </div>
-              )}
+                  </>
+                ) : (
+                  <div className="px-4 py-3">
+                    <p className="text-sm text-muted-foreground mb-2">
+                      No projects yet.
+                    </p>
+                    <Link
+                      href="/projects/create"
+                      className="text-sm text-primary hover:underline"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    >
+                      → Create Project
+                    </Link>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </>
