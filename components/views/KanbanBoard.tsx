@@ -216,32 +216,6 @@ export default function KanbanBoard({
 
   return (
     <div className="h-full overflow-x-auto custom-scrollbar relative">
-      {/*
-
-        tag: remove-once-final-comment
-
-       {isRefetching && (
-        <div className="absolute top-4 right-16 z-50">
-          <div className="inline-flex items-center gap-2 bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm">
-            <RefreshCw size={14} className="animate-spin" />
-            Syncing...
-          </div>
-        </div>
-      )} 
-
-      <div className="absolute top-4 right-4 z-40">
-        <button
-          onClick={manualRefresh}
-          disabled={isRefetching}
-          className="p-2 bg-white shadow-md rounded-full hover:bg-gray-50 transition-colors disabled:opacity-50"
-          title="Refresh board"
-        >
-          <RefreshCw size={16} className={isRefetching ? "animate-spin" : ""} />
-        </button>
-      </div>
-
-      */}
-
       <DndContext
         sensors={sensors}
         collisionDetection={closestCorners}

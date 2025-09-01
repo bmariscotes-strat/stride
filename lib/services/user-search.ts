@@ -110,12 +110,8 @@ export async function inviteUserToTeamAction(
     });
 
     if (existingUser) {
-      // User exists, you might want to add them directly to the team
-      // and send an internal notification instead of a Clerk invitation
+      // Pending email system integration here. For now, a console.
       console.log(`User ${email} already exists, adding to team directly`);
-
-      // You can implement direct team member addition logic here
-      // For now, we'll still send a Clerk invitation
     }
 
     // Send Clerk invitation
@@ -224,9 +220,6 @@ export async function checkEmailStatusAction(
       isTeamMember = !!teamMember;
     }
 
-    // Check for pending Clerk invitations
-    // Note: You might need to store invitation status in your database
-    // as Clerk's API for checking pending invitations might be limited
     let isPendingInvitation = false;
 
     return {

@@ -46,7 +46,6 @@ export default function UserAvatar({
   layout = "horizontal",
   useContext = true,
 }: UserAvatarProps) {
-  // Get context values only if we're in a client component
   let contextDisplayName = "";
   let avatarUrl = null;
 
@@ -98,7 +97,9 @@ export default function UserAvatar({
   }
 
   const nameElement = (
-    <span className={`text-sm font-medium text-gray-700 ${nameClassName}`}>
+    <span
+      className={`text-sm  dark:text-gray-200 font-medium text-gray-700 ${nameClassName}`}
+    >
       {name}
     </span>
   );

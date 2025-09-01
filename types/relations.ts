@@ -43,7 +43,7 @@ export interface TeamWithProjectRole extends TeamBasic {
 }
 
 // =============================================================================
-// EXTENDED INTERFACES WITH RELATIONS - For when you need related data
+// EXTENDED INTERFACES WITH RELATIONS
 // =============================================================================
 
 export interface UserWithRelations extends User {

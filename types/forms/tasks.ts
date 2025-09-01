@@ -65,7 +65,7 @@ export interface PaginationOptions {
   offset?: number; // Will be calculated from page/limit
 }
 
-// Alternative: Strict pagination (if you prefer to make them required)
+// Alternative: Strict pagination
 export interface StrictPaginationOptions {
   page: number;
   limit: number;

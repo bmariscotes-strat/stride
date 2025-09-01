@@ -101,7 +101,6 @@ export default function ProjectInformationSection({
         console.log("Successfully updated all member roles");
       } catch (error) {
         console.error("Failed to assign roles:", error);
-        // You might want to show a toast notification here
       }
     }
 
