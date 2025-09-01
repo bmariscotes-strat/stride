@@ -122,8 +122,7 @@ function getUserDisplayRole(context: any, isProjectOwner: boolean): string {
   return "Viewer";
 }
 
-// Generate static params for better performance (optional)
+// Generate static params for better performance
 export async function generateStaticParams() {
-  // You can implement this if you want static generation
   return [];
 }

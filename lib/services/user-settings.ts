@@ -103,7 +103,7 @@ export async function updateUserEmail(
     await clerk.emailAddresses.createEmailAddress({
       userId,
       emailAddress: data.email,
-      verified: true, // you chose to skip verification
+      verified: true,
       primary: true,
     });
 
@@ -240,9 +240,6 @@ export async function updateUserAppearance(
   try {
     const { userId } = await auth();
     if (!userId) throw new Error("Unauthorized");
-
-    // Persist to DB if/when you want
-    // await db.update(users).set({ theme: data.theme, updatedAt: new Date() }).where(eq(users.clerkUserId, userId));
 
     return jsonSafe({ success: true, theme: data.theme });
   } catch (error) {

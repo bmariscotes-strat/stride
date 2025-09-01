@@ -48,7 +48,7 @@ export class LabelService {
       orderBy: (labels, { asc }) => [asc(labels.name)],
     });
 
-    // Get usage count for each label (you'll need to implement this based on your cardLabels table)
+    // Get usage count for each label
     const labelsWithUsage: LabelWithUsage[] = await Promise.all(
       projectLabels.map(async (label) => {
         // Count how many cards use this label

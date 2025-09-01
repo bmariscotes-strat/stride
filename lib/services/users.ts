@@ -198,7 +198,7 @@ export async function requireCurrentUser(): Promise<User> {
 }
 
 /**
- * Delete user (soft delete by setting isArchived flag if you add it, or hard delete)
+ * Delete user
  * @param userId string - user ID
  * @returns boolean indicating success
  */
@@ -229,11 +229,7 @@ export async function searchUsers(
     const foundUsers = await db
       .select()
       .from(users)
-      .where(
-        // You might want to add ilike support or use raw SQL for better search
-        // For now, this is a basic approach
-        eq(users.username, query)
-      )
+      .where(eq(users.username, query))
       .limit(limit);
 
     return foundUsers;

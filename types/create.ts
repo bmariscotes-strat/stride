@@ -133,7 +133,7 @@ export interface CreateProjectWithTeams extends CreateProject {
   teamRoles?: Record<string, "admin" | "editor" | "viewer">; // Optional roles per team
 }
 
-// Alternative interface using teamAssignments array (if you prefer this structure)
+// Alternative interface using teamAssignments array
 export interface CreateProjectWithTeamAssignments extends CreateProject {
   teamAssignments: Array<{
     teamId: string;
