@@ -268,6 +268,7 @@ export async function GET(
       assigneeId: card.assigneeId,
       archived: card.isArchived || false,
       position: card.position,
+      ownerId: card.ownerId,
       // Relations
       column: card.column
         ? {
